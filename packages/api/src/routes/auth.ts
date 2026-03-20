@@ -22,8 +22,9 @@ router.post('/register', async (req, res) => {
     const data = registerSchema.parse(req.body)
     const passwordHash = await bcrypt.hash(data.password, 10)
 
+    const { password: _pw, ...userData } = data
     const user = await prisma.user.create({
-      data: { ...data, passwordHash, password: undefined }
+      data: { ...userData, passwordHash }
     })
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: '30d' })
