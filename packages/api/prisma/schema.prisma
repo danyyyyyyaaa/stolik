@@ -1,0 +1,210 @@
+// This is your Prisma schema file
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── RESTAURANT ───────────────────────────────────────────────────────────────
+model Restaurant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  cuisine     String   // italian | polish | japanese | french | ...
+  district    String
+  city        String   @default("Warszawa")
+  address     String
+  phone       String?
+  email       String?
+  website     String?
+  instagram   String?
+  priceRange  String   @default("$$") // $ | $$ | $$$ | $$$$
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  emoji       String?
+  coverImage  String?
+  images      String[] // Cloudflare R2 URLs
+  isActive    Boolean  @default(true)
+  isPremium   Boolean  @default(false)
+  plan        String   @default("free") // free | pro | business
+
+  // Opening hours
+  openMonday    String? // "12:00-23:00"
+  openTuesday   String?
+  openWednesday String?
+  openThursday  String?
+  openFriday    String?
+  openSaturday  String?
+  openSunday    String?
+
+  // Booking settings
+  slotDuration     Int @default(90)  // minutes
+  maxGuestsPerSlot Int @default(20)
+  minAdvanceHours  Int @default(1)
+  maxAdvanceDays   Int @default(30)
+  depositRequired  Boolean @default(false)
+  depositAmount    Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  owner     User         @relation(fields: [ownerId], references: [id])
+  ownerId   String
+  tables    Table[]
+  bookings  Booking[]
+  guests    GuestProfile[]
+  reviews   Review[]
+  staff     StaffMember[]
+
+  @@map("restaurants")
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+model Table {
+  id           String  @id @default(cuid())
+  name         String  // "Stół 1", "A1", "Taras 3"
+  capacity     Int
+  minCapacity  Int     @default(1)
+  isActive     Boolean @default(true)
+  posX         Float?  // Floor plan position
+  posY         Float?
+  shape        String  @default("round") // round | square | rectangle
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+  bookings     Booking[]
+
+  @@map("tables")
+}
+
+// ─── USER (guest or restaurant owner) ────────────────────────────────────────
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  phone       String?
+  firstName   String
+  lastName    String
+  avatarUrl   String?
+  role        String   @default("guest") // guest | owner | admin
+  isVerified  Boolean  @default(false)
+  passwordHash String?
+  googleId    String?  @unique
+  language    String   @default("pl")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  restaurants  Restaurant[]
+  bookings     Booking[]
+  reviews      Review[]
+
+  @@map("users")
+}
+
+// ─── BOOKING ──────────────────────────────────────────────────────────────────
+model Booking {
+  id          String   @id @default(cuid())
+  bookingRef  String   @unique // #ST1234
+  status      String   @default("pending") // pending | confirmed | cancelled | completed | no_show
+  date        DateTime
+  time        String   // "19:00"
+  guestCount  Int
+  duration    Int      @default(90) // minutes
+  notes       String?
+  source      String   @default("app") // app | widget | manual | instagram
+
+  // Guest info (may not be registered user)
+  guestName   String
+  guestPhone  String
+  guestEmail  String?
+
+  // Payment
+  depositPaid     Boolean @default(false)
+  depositAmount   Float?
+  stripePaymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+  table        Table?     @relation(fields: [tableId], references: [id])
+  tableId      String?
+  user         User?      @relation(fields: [userId], references: [id])
+  userId       String?
+  reminders    Reminder[]
+
+  @@map("bookings")
+}
+
+// ─── GUEST PROFILE (CRM) ──────────────────────────────────────────────────────
+model GuestProfile {
+  id           String   @id @default(cuid())
+  phone        String
+  name         String?
+  email        String?
+  notes        String?
+  tags         String[] // ["vip", "vegetarian", "birthday"]
+  visitCount   Int      @default(0)
+  noShowCount  Int      @default(0)
+  isVip        Boolean  @default(false)
+  isBlocked    Boolean  @default(false)
+  lastVisit    DateTime?
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([phone, restaurantId])
+  @@map("guest_profiles")
+}
+
+// ─── REMINDER ────────────────────────────────────────────────────────────────
+model Reminder {
+  id        String   @id @default(cuid())
+  type      String   // sms | whatsapp | email
+  sentAt    DateTime?
+  status    String   @default("pending") // pending | sent | failed
+
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId String
+
+  @@map("reminders")
+}
+
+// ─── REVIEW ──────────────────────────────────────────────────────────────────
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  comment   String?
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+
+  @@map("reviews")
+}
+
+// ─── STAFF ───────────────────────────────────────────────────────────────────
+model StaffMember {
+  id    String @id @default(cuid())
+  role  String // manager | host | waiter
+  name  String
+  email String
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+
+  @@map("staff_members")
+}

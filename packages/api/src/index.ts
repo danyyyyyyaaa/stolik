@@ -1,0 +1,50 @@
+import express from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
+import { createServer } from 'http'
+import { Server } from 'socket.io'
+
+import { authRouter } from './routes/auth'
+import { restaurantsRouter } from './routes/restaurants'
+import { bookingsRouter } from './routes/bookings'
+import { tablesRouter } from './routes/tables'
+import { guestsRouter } from './routes/guests'
+import { widgetRouter } from './routes/widget'
+
+dotenv.config()
+
+const app = express()
+const httpServer = createServer(app)
+const io = new Server(httpServer, {
+  cors: { origin: '*' }
+})
+
+app.use(cors())
+app.use(express.json())
+
+// Routes
+app.use('/api/auth', authRouter)
+app.use('/api/restaurants', restaurantsRouter)
+app.use('/api/bookings', bookingsRouter)
+app.use('/api/tables', tablesRouter)
+app.use('/api/guests', guestsRouter)
+app.use('/api/widget', widgetRouter)  // public — no auth needed
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', version: '0.1.0' })
+})
+
+// Realtime — socket.io для обновления слотов в реальном времени
+io.on('connection', (socket) => {
+  socket.on('join_restaurant', (restaurantId: string) => {
+    socket.join(`restaurant:${restaurantId}`)
+  })
+})
+
+export { io }
+
+const PORT = process.env.PORT || 3001
+httpServer.listen(PORT, () => {
+  console.log(`🍽️  Stolik API running on http://localhost:${PORT}`)
+})

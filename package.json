@@ -1,0 +1,20 @@
+{
+  "name": "stolik",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Polish restaurant booking platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=packages/api",
+    "dev:web": "npm run dev --workspace=apps/web-dashboard",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "build:api": "npm run build --workspace=packages/api",
+    "build:web": "npm run build --workspace=apps/web-dashboard"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
