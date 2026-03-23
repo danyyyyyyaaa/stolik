@@ -10,6 +10,7 @@ import { bookingsRouter } from './routes/bookings'
 import { tablesRouter } from './routes/tables'
 import { guestsRouter } from './routes/guests'
 import { widgetRouter } from './routes/widget'
+import { subscriptionsRouter } from './routes/subscriptions'
 
 dotenv.config()
 
@@ -20,6 +21,11 @@ const io = new Server(httpServer, {
 })
 
 app.use(cors())
+
+// ⚠️  Stripe webhook MUST be registered before express.json()
+// so the raw body is preserved for signature verification
+app.use('/api/subscriptions', subscriptionsRouter)
+
 app.use(express.json())
 
 // Routes

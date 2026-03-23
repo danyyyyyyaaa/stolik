@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { getRestaurants, getSlots } from '../api/restaurants';
+import { createBooking, getMyBookings } from '../api/bookings';
 
 // ─── TRANSLATIONS ────────────────────────────────────────────────────────────
 const T = {
@@ -228,17 +230,28 @@ const T = {
   },
 };
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
-const RESTAURANTS = [
-  { id: 1, name: "Różana", district: "Mokotów", cuisine: "italian", rating: 4.9, price: "$$$", emoji: "🍝", color: "#C84B31", open: "23:00", desc: "Klasyczna włoska kuchnia w sercu Mokotowa. Domowe makarony, świeże składniki i wyjątkowa atmosfera." },
-  { id: 2, name: "Sowa & Przyjaciele", district: "Śródmieście", cuisine: "polish", rating: 4.7, price: "$$", emoji: "🦉", color: "#2D6A35", open: "22:00", desc: "Nowoczesna kuchnia polska z tradycyjnymi akcentami. Sezonowe menu zmienia się co miesiąc." },
-  { id: 3, name: "Tamka 43", district: "Powiśle", cuisine: "french", rating: 4.8, price: "$$$$", emoji: "🥂", color: "#8B5A2B", open: "23:30", desc: "Wysublimowana kuchnia francuska z widokiem na Wisłę. Obowiązkowa rezerwacja." },
-  { id: 4, name: "Koku Sushi", district: "Żoliborz", cuisine: "japanese", rating: 4.6, price: "$$$", emoji: "🍱", color: "#C0392B", open: "22:30", desc: "Autentyczne sushi od japońskiego szefa kuchni. Świeże ryby dostępne każdego dnia." },
-  { id: 5, name: "Zoni", district: "Praga", cuisine: "polish", rating: 4.5, price: "$$", emoji: "🥘", color: "#1A6B5A", open: "21:00", desc: "Kuchnia polska w industrialnym klimacie Pragi. Lokalne produkty, duże porcje." },
-  { id: 6, name: "Osteria Rossa", district: "Wilanów", cuisine: "italian", rating: 4.8, price: "$$$", emoji: "🫕", color: "#9B2335", open: "23:00", desc: "Rodzinna osteria z Sycylii. Autentyczne przepisy, lokalne wino, ciepła atmosfera." },
-];
+// ─── CUISINE FALLBACKS ───────────────────────────────────────────────────────
+const CUISINE_EMOJI = {
+  polska: "🥘", polish: "🥘", włoska: "🍝", italiana: "🍝", italian: "🍝",
+  japońska: "🍱", japanese: "🍱", francuska: "🥂", french: "🥂", inne: "🍽️",
+};
+const CUISINE_COLOR = {
+  polska: "#2D6A35", polish: "#2D6A35", włoska: "#C84B31", italiana: "#C84B31", italian: "#C84B31",
+  japońska: "#C0392B", japanese: "#C0392B", francuska: "#8B5A2B", french: "#8B5A2B", inne: "#555555",
+};
 
-const TIMES = ["17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30"];
+function normalizeRestaurant(r) {
+  return {
+    ...r,
+    id:     String(r.id),
+    emoji:  r.emoji  || CUISINE_EMOJI[r.cuisine]  || "🍽️",
+    color:  r.color  || CUISINE_COLOR[r.cuisine]  || "#2D6A35",
+    open:   r.openUntil || r.open || "22:00",
+    price:  r.priceRange || r.price || "$$",
+    rating: r.rating ?? 4.5,
+    desc:   r.description || r.desc || "",
+  };
+}
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const themes = {
@@ -312,37 +325,74 @@ const Icon = ({ name, size = 20, color = "currentColor" }) => {
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 export default function App() {
-  const [theme, setTheme] = useState("dark");
-  const [lang, setLang] = useState("pl");
-  const [screen, setScreen] = useState("home"); // home | restaurant | booking | confirmed | bookings | profile | search
-  const [activeTab, setActiveTab] = useState("home");
+  const [theme, setTheme]           = useState("dark");
+  const [lang, setLang]             = useState("pl");
+  const [screen, setScreen]         = useState("home");
+  const [activeTab, setActiveTab]   = useState("home");
   const [cuisineFilter, setCuisineFilter] = useState("all");
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [bookingDate, setBookingDate] = useState(null);
-  const [bookingTime, setBookingTime] = useState(null);
+  const [bookingDate, setBookingDate]   = useState(null);  // ISO "YYYY-MM-DD"
+  const [bookingTime, setBookingTime]   = useState(null);
   const [bookingGuests, setBookingGuests] = useState(2);
-  const [myBookings, setMyBookings] = useState([]);
+  const [myBookings, setMyBookings]     = useState([]);
   const [restaurantTab, setRestaurantTab] = useState("about");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery]   = useState("");
 
-  const t = T[lang];
+  // ── API state ───────────────────────────────────────────────────────────────
+  const [restaurants, setRestaurantsState]   = useState([]);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [slots, setSlots]                    = useState([]);
+  const [loadingSlots, setLoadingSlots]      = useState(false);
+  const [bookingLoading, setBookingLoading]  = useState(false);
+  const [bookingError, setBookingError]      = useState("");
+  const [guestName, setGuestName]            = useState("");
+  const [guestPhone, setGuestPhone]          = useState("");
+  const [lastBooking, setLastBooking]        = useState(null);
+
+  const t  = T[lang];
   const th = themes[theme];
 
-  const cuisines = ["all", "italian", "polish", "french", "japanese"];
-  const cuisineLabels = { all: t.all, italian: t.italian, polish: t.polish, french: t.french, japanese: t.japanese };
+  // ── Fetch restaurants on mount ──────────────────────────────────────────────
+  useEffect(() => {
+    setLoadingRestaurants(true);
+    getRestaurants()
+      .then(data => setRestaurantsState(data.map(normalizeRestaurant)))
+      .catch(err => console.error('[API] restaurants:', err))
+      .finally(() => setLoadingRestaurants(false));
+  }, []);
 
-  const filteredRestaurants = RESTAURANTS.filter(r =>
+  // ── Fetch slots when restaurant / date / guests change ──────────────────────
+  useEffect(() => {
+    if (!selectedRestaurant?.id || !bookingDate) return;
+    setLoadingSlots(true);
+    setSlots([]);
+    setBookingTime(null);
+    getSlots(selectedRestaurant.id, bookingDate, bookingGuests)
+      .then(s => setSlots(s))
+      .catch(err => console.error('[API] slots:', err))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedRestaurant?.id, bookingDate, bookingGuests]);
+
+  const cuisines = ["all", "polish", "italiana", "french", "japanese"];
+  const cuisineLabels = { all: t.all, italiana: t.italian, polish: t.polish, french: t.french, japanese: t.japanese };
+
+  const filteredRestaurants = restaurants.filter(r =>
     (cuisineFilter === "all" || r.cuisine === cuisineFilter) &&
-    (searchQuery === "" || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.district.toLowerCase().includes(searchQuery.toLowerCase()))
+    (searchQuery === "" || r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.district || "").toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const dates = [
-    { label: t.tonight, value: "Dziś, 20 mar" },
-    { label: t.tomorrow, value: "Jutro, 21 mar" },
-    { label: t.this_weekend, value: "Sob, 22 mar" },
-    { label: "22 mar", value: "22 mar" },
-    { label: "23 mar", value: "23 mar" },
-  ];
+  // Real next-7-day options with ISO date values
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const iso = d.toISOString().split("T")[0];
+    let label;
+    if (i === 0)      label = t.tonight;
+    else if (i === 1) label = t.tomorrow;
+    else              label = d.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+    return { label, value: iso };
+  });
 
   function goTo(s, tab) {
     setScreen(s);
@@ -355,19 +405,41 @@ export default function App() {
     setBookingDate(null);
     setBookingTime(null);
     setBookingGuests(2);
+    setGuestName("");
+    setGuestPhone("");
+    setBookingError("");
+    setSlots([]);
     setScreen("restaurant");
   }
 
-  function confirmBooking() {
-    const newBooking = {
-      id: `#ST${Math.floor(Math.random()*9000+1000)}`,
-      restaurant: selectedRestaurant,
-      date: bookingDate || dates[0].value,
-      time: bookingTime || TIMES[4],
-      guests: bookingGuests,
-    };
-    setMyBookings(prev => [newBooking, ...prev]);
-    setScreen("confirmed");
+  async function confirmBooking() {
+    if (!selectedRestaurant) return;
+    const date = bookingDate || dates[0].value;
+    const time = bookingTime || slots[0];
+    if (!time)              { setBookingError("Wybierz godzinę rezerwacji"); return; }
+    if (!guestName.trim())  { setBookingError("Podaj imię i nazwisko"); return; }
+    if (!guestPhone.trim()) { setBookingError("Podaj numer telefonu"); return; }
+    setBookingLoading(true);
+    setBookingError("");
+    try {
+      const result = await createBooking({
+        restaurantId: selectedRestaurant.id,
+        date,
+        time,
+        guestCount:  bookingGuests,
+        guestName:   guestName.trim(),
+        guestPhone:  guestPhone.trim(),
+        source:      "app",
+      });
+      const booking = { ...result.booking, restaurant: selectedRestaurant };
+      setLastBooking(booking);
+      setMyBookings(prev => [booking, ...prev]);
+      setScreen("confirmed");
+    } catch (err) {
+      setBookingError(err.message || "Błąd rezerwacji. Spróbuj ponownie.");
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
   const s = {
@@ -410,12 +482,12 @@ export default function App() {
 
         {/* SCREENS */}
         <div style={{ flex: 1, overflowY: "auto", paddingBottom: 4 }}>
-          {screen === "home" && <HomeScreen {...{t, th, cuisines, cuisineLabels, cuisineFilter, setCuisineFilter, filteredRestaurants, openRestaurant, theme, setTheme, lang, setLang}} />}
+          {screen === "home" && <HomeScreen {...{t, th, cuisines, cuisineLabels, cuisineFilter, setCuisineFilter, filteredRestaurants, loadingRestaurants, openRestaurant, theme, setTheme, lang, setLang}} />}
           {screen === "search" && <SearchScreen {...{t, th, searchQuery, setSearchQuery, filteredRestaurants, openRestaurant}} />}
-          {screen === "restaurant" && <RestaurantScreen {...{t, th, selectedRestaurant, restaurantTab, setRestaurantTab, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, TIMES, goTo, confirmBooking}} />}
-          {screen === "booking" && <BookingScreen {...{t, th, selectedRestaurant, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, TIMES, goTo, confirmBooking}} />}
-          {screen === "confirmed" && <ConfirmedScreen {...{t, th, myBookings, goTo}} />}
-          {screen === "bookings" && <BookingsScreen {...{t, th, myBookings, openRestaurant}} />}
+          {screen === "restaurant" && <RestaurantScreen {...{t, th, selectedRestaurant, restaurantTab, setRestaurantTab, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, slots, loadingSlots, goTo, confirmBooking, bookingLoading, bookingError, guestName, setGuestName, guestPhone, setGuestPhone}} />}
+          {screen === "booking" && <BookingScreen {...{t, th, selectedRestaurant, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, slots, loadingSlots, goTo, confirmBooking, bookingLoading, bookingError, guestName, setGuestName, guestPhone, setGuestPhone}} />}
+          {screen === "confirmed" && <ConfirmedScreen {...{t, th, lastBooking, goTo}} />}
+          {screen === "bookings" && <BookingsScreen {...{t, th, myBookings, setMyBookings, openRestaurant}} />}
           {screen === "profile" && <ProfileScreen {...{t, th, theme, setTheme, lang, setLang, goTo}} />}
         </div>
 
@@ -446,7 +518,7 @@ export default function App() {
 }
 
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
-function HomeScreen({ t, th, cuisines, cuisineLabels, cuisineFilter, setCuisineFilter, filteredRestaurants, openRestaurant, theme, setTheme, lang, setLang }) {
+function HomeScreen({ t, th, cuisines, cuisineLabels, cuisineFilter, setCuisineFilter, filteredRestaurants, loadingRestaurants, openRestaurant, theme, setTheme, lang, setLang }) {
   return (
     <div className="fade-in" style={{ padding: "16px 0 20px" }}>
       {/* Header */}
@@ -500,15 +572,23 @@ function HomeScreen({ t, th, cuisines, cuisineLabels, cuisineFilter, setCuisineF
       {/* Section title */}
       <div style={{ padding: "0 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 15, fontWeight: 600 }}>{t.available_now}</span>
-        <span style={{ fontSize: 12, color: th.accent }}>{filteredRestaurants.length}</span>
+        {!loadingRestaurants && <span style={{ fontSize: 12, color: th.accent }}>{filteredRestaurants.length}</span>}
       </div>
 
       {/* Restaurant cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px" }}>
-        {filteredRestaurants.map((r, i) => (
-          <RestaurantCard key={r.id} r={r} t={t} th={th} onClick={() => openRestaurant(r)} index={i} />
-        ))}
-      </div>
+      {loadingRestaurants ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px" }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ height: 200, borderRadius: 20, background: th.bgCard, border: `1px solid ${th.border}`, opacity: 0.5 }} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px" }}>
+          {filteredRestaurants.map((r, i) => (
+            <RestaurantCard key={r.id} r={r} t={t} th={th} onClick={() => openRestaurant(r)} index={i} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -580,7 +660,7 @@ function SearchScreen({ t, th, searchQuery, setSearchQuery, filteredRestaurants,
 }
 
 // ─── RESTAURANT SCREEN ────────────────────────────────────────────────────────
-function RestaurantScreen({ t, th, selectedRestaurant: r, restaurantTab, setRestaurantTab, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, TIMES, goTo, confirmBooking }) {
+function RestaurantScreen({ t, th, selectedRestaurant: r, restaurantTab, setRestaurantTab, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, slots, loadingSlots, goTo, confirmBooking, bookingLoading, bookingError, guestName, setGuestName, guestPhone, setGuestPhone }) {
   if (!r) return null;
   const tabs = ["about","menu","reviews"];
 
@@ -651,16 +731,21 @@ function RestaurantScreen({ t, th, selectedRestaurant: r, restaurantTab, setRest
             ))}
           </div>
           {/* Time */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 4 }}>
-            {TIMES.slice(2,8).map(ti => (
-              <button key={ti} onClick={() => setBookingTime(ti)} className="pill-btn"
-                style={{ padding: "7px 12px", borderRadius: 10, whiteSpace: "nowrap", fontSize: 12, fontWeight: 500, background: bookingTime === ti ? th.accent : th.bgCardAlt, color: bookingTime === ti ? "#fff" : th.textSub, border: `1px solid ${bookingTime === ti ? "transparent" : th.border}` }}>
-                {ti}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 4, minHeight: 38 }}>
+            {loadingSlots
+              ? <span style={{ fontSize: 12, color: th.textMuted, alignSelf: "center" }}>Ładowanie…</span>
+              : slots.length === 0 && bookingDate
+              ? <span style={{ fontSize: 12, color: th.textMuted, alignSelf: "center" }}>Brak wolnych slotów</span>
+              : slots.slice(0, 6).map(ti => (
+                  <button key={ti} onClick={() => setBookingTime(ti)} className="pill-btn"
+                    style={{ padding: "7px 12px", borderRadius: 10, whiteSpace: "nowrap", fontSize: 12, fontWeight: 500, background: bookingTime === ti ? th.accent : th.bgCardAlt, color: bookingTime === ti ? "#fff" : th.textSub, border: `1px solid ${bookingTime === ti ? "transparent" : th.border}` }}>
+                    {ti}
+                  </button>
+                ))
+            }
           </div>
           {/* Guests */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontSize: 13, color: th.textSub }}>{t.select_guests}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button onClick={() => setBookingGuests(g => Math.max(1,g-1))} className="stolik-btn"
@@ -674,9 +759,17 @@ function RestaurantScreen({ t, th, selectedRestaurant: r, restaurantTab, setRest
               </button>
             </div>
           </div>
-          <button onClick={confirmBooking} className="stolik-btn"
-            style={{ width: "100%", padding: "14px 0", borderRadius: 14, background: th.accent, color: "#fff", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer" }}>
-            {t.confirm_booking}
+          {/* Guest info */}
+          <input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Imię i nazwisko"
+            style={{ width: "100%", background: th.bgCardAlt, border: `1px solid ${th.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: th.text, outline: "none", fontFamily: "inherit", marginBottom: 8 }} />
+          <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="+48 500 000 000" type="tel"
+            style={{ width: "100%", background: th.bgCardAlt, border: `1px solid ${th.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: th.text, outline: "none", fontFamily: "inherit", marginBottom: 10 }} />
+          {bookingError && (
+            <div style={{ fontSize: 12, color: "#E05C5C", background: "rgba(224,92,92,0.1)", borderRadius: 8, padding: "7px 10px", marginBottom: 8 }}>{bookingError}</div>
+          )}
+          <button onClick={confirmBooking} disabled={bookingLoading} className="stolik-btn"
+            style={{ width: "100%", padding: "14px 0", borderRadius: 14, background: th.accent, color: "#fff", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", opacity: bookingLoading ? 0.6 : 1 }}>
+            {bookingLoading ? "Rezerwowanie…" : t.confirm_booking}
           </button>
         </div>
       </div>
@@ -685,7 +778,7 @@ function RestaurantScreen({ t, th, selectedRestaurant: r, restaurantTab, setRest
 }
 
 // ─── BOOKING SCREEN ───────────────────────────────────────────────────────────
-function BookingScreen({ t, th, selectedRestaurant: r, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, TIMES, goTo, confirmBooking }) {
+function BookingScreen({ t, th, selectedRestaurant: r, bookingDate, setBookingDate, bookingTime, setBookingTime, bookingGuests, setBookingGuests, dates, slots, loadingSlots, goTo, confirmBooking, bookingLoading, bookingError, guestName, setGuestName, guestPhone, setGuestPhone }) {
   if (!r) return null;
   return (
     <div className="fade-in" style={{ padding: "20px 20px 24px" }}>
@@ -726,18 +819,24 @@ function BookingScreen({ t, th, selectedRestaurant: r, bookingDate, setBookingDa
         <div style={{ fontSize: 12, color: th.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
           <Icon name="clock" size={13} color={th.textMuted} />{t.select_time}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-          {TIMES.map(ti => (
-            <button key={ti} onClick={() => setBookingTime(ti)} className="pill-btn"
-              style={{ padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 500, textAlign: "center", background: bookingTime === ti ? th.accent : th.bgCard, color: bookingTime === ti ? "#fff" : th.textSub, border: `1px solid ${bookingTime === ti ? "transparent" : th.border}` }}>
-              {ti}
-            </button>
-          ))}
-        </div>
+        {loadingSlots ? (
+          <div style={{ fontSize: 13, color: th.textMuted, padding: "10px 0" }}>Ładowanie slotów…</div>
+        ) : slots.length === 0 && bookingDate ? (
+          <div style={{ fontSize: 13, color: th.textMuted, padding: "10px 0" }}>Brak wolnych slotów w tym dniu</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+            {slots.map(ti => (
+              <button key={ti} onClick={() => setBookingTime(ti)} className="pill-btn"
+                style={{ padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 500, textAlign: "center", background: bookingTime === ti ? th.accent : th.bgCard, color: bookingTime === ti ? "#fff" : th.textSub, border: `1px solid ${bookingTime === ti ? "transparent" : th.border}` }}>
+                {ti}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Guests */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 12, color: th.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
           <Icon name="users" size={13} color={th.textMuted} />{t.select_guests}
         </div>
@@ -754,17 +853,31 @@ function BookingScreen({ t, th, selectedRestaurant: r, bookingDate, setBookingDa
         </div>
       </div>
 
-      <button onClick={confirmBooking} className="stolik-btn"
-        style={{ width: "100%", padding: "16px 0", borderRadius: 16, background: th.accent, color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: 0.3 }}>
-        {t.confirm_booking}
+      {/* Guest contact */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, color: th.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>
+          Dane kontaktowe
+        </div>
+        <input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Imię i nazwisko"
+          style={{ width: "100%", background: th.bgCard, border: `1px solid ${th.border}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: th.text, outline: "none", fontFamily: "inherit", marginBottom: 10 }} />
+        <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="+48 500 000 000" type="tel"
+          style={{ width: "100%", background: th.bgCard, border: `1px solid ${th.border}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: th.text, outline: "none", fontFamily: "inherit" }} />
+      </div>
+
+      {bookingError && (
+        <div style={{ fontSize: 13, color: "#E05C5C", background: "rgba(224,92,92,0.1)", border: "1px solid rgba(224,92,92,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>{bookingError}</div>
+      )}
+
+      <button onClick={confirmBooking} disabled={bookingLoading} className="stolik-btn"
+        style={{ width: "100%", padding: "16px 0", borderRadius: 16, background: th.accent, color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: 0.3, opacity: bookingLoading ? 0.6 : 1 }}>
+        {bookingLoading ? "Rezerwowanie…" : t.confirm_booking}
       </button>
     </div>
   );
 }
 
 // ─── CONFIRMED SCREEN ─────────────────────────────────────────────────────────
-function ConfirmedScreen({ t, th, myBookings, goTo }) {
-  const b = myBookings[0];
+function ConfirmedScreen({ t, th, lastBooking: b, goTo }) {
   return (
     <div className="fade-in" style={{ padding: "40px 24px 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* Check circle */}
@@ -784,10 +897,10 @@ function ConfirmedScreen({ t, th, myBookings, goTo }) {
             </div>
           </div>
           {[
-            [t.date, b.date || "Dziś, 20 mar"],
-            [t.time, b.time || "19:00"],
-            [t.table_for, `${b.guests} ${b.guests === 1 ? t.guest : t.guests}`],
-            [t.booking_id, b.id],
+            [t.date, b.date || "—"],
+            [t.time, b.time || "—"],
+            [t.table_for, `${b.guestCount} ${b.guestCount === 1 ? t.guest : t.guests}`],
+            [t.booking_id, b.bookingRef || b.id],
           ].map(([label, value]) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${th.border}` }}>
               <span style={{ fontSize: 13, color: th.textSub }}>{label}</span>
@@ -810,38 +923,78 @@ function ConfirmedScreen({ t, th, myBookings, goTo }) {
 }
 
 // ─── BOOKINGS SCREEN ──────────────────────────────────────────────────────────
-function BookingsScreen({ t, th, myBookings, openRestaurant }) {
+function BookingsScreen({ t, th, myBookings, setMyBookings, openRestaurant }) {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getMyBookings()
+      .then(data => setMyBookings(data))
+      .catch(err => console.error('[API] myBookings:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const upcoming = myBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed');
+  const past     = myBookings.filter(b => b.status === 'cancelled' || b.status === 'completed');
+
+  function BookingCard({ b }) {
+    const rest = normalizeRestaurant(b.restaurant || {});
+    const isCancelled = b.status === 'cancelled';
+    return (
+      <div key={b.id} onClick={() => b.restaurant && openRestaurant(rest)} className="card-hover"
+        style={{ background: th.bgCard, borderRadius: 18, padding: 16, border: `1px solid ${th.border}`, cursor: "pointer", opacity: isCancelled ? 0.6 : 1 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 14, background: `${rest.color}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{rest.emoji}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{rest.name || "Restauracja"}</div>
+            <div style={{ fontSize: 12, color: th.textSub }}>{rest.district || ""}</div>
+          </div>
+          <div style={{ background: isCancelled ? "rgba(224,92,92,0.1)" : th.accentBg, borderRadius: 8, padding: "4px 10px" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isCancelled ? "#E05C5C" : th.accentText }}>
+              {isCancelled ? "✕" : "✓"}
+            </span>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 16 }}>
+          <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={11} color={th.textMuted} />{b.date || "—"}</span>
+          <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="clock" size={11} color={th.textMuted} />{b.time || "—"}</span>
+          <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="users" size={11} color={th.textMuted} />{b.guestCount}</span>
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: th.textMuted }}>{b.bookingRef || b.id}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in" style={{ padding: "20px 20px" }}>
       <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>{t.my_bookings}</div>
-      {myBookings.length === 0 ? (
+      {loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[1,2].map(i => <div key={i} style={{ height: 110, borderRadius: 18, background: th.bgCard, border: `1px solid ${th.border}`, opacity: 0.5 }} />)}
+        </div>
+      ) : myBookings.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: th.textMuted }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>
           <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>{t.no_bookings}</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {myBookings.map(b => (
-            <div key={b.id} onClick={() => openRestaurant(b.restaurant)} className="card-hover"
-              style={{ background: th.bgCard, borderRadius: 18, padding: 16, border: `1px solid ${th.border}`, cursor: "pointer" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 14, background: `${b.restaurant.color}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{b.restaurant.emoji}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{b.restaurant.name}</div>
-                  <div style={{ fontSize: 12, color: th.textSub }}>{b.restaurant.district}</div>
-                </div>
-                <div style={{ background: th.accentBg, borderRadius: 8, padding: "4px 10px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: th.accentText }}>✓</span>
-                </div>
+        <div>
+          {upcoming.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: th.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{t.upcoming}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {upcoming.map(b => <BookingCard key={b.id} b={b} />)}
               </div>
-              <div style={{ display: "flex", gap: 16 }}>
-                <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={11} color={th.textMuted} />{b.date || "Dziś"}</span>
-                <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="clock" size={11} color={th.textMuted} />{b.time || "19:00"}</span>
-                <span style={{ fontSize: 12, color: th.textSub, display: "flex", alignItems: "center", gap: 4 }}><Icon name="users" size={11} color={th.textMuted} />{b.guests}</span>
-              </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: th.textMuted }}>{b.id}</div>
             </div>
-          ))}
+          )}
+          {past.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: th.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{t.past}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {past.map(b => <BookingCard key={b.id} b={b} />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

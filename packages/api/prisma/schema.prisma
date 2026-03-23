@@ -34,6 +34,10 @@ model Restaurant {
   isPremium   Boolean  @default(false)
   plan        String   @default("free") // free | pro | business
 
+  // Stripe
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
   // Opening hours
   openMonday    String? // "12:00-23:00"
   openTuesday   String?

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
 import { LogOut, Users, Clock, CheckCircle, XCircle, RefreshCw, Plus } from 'lucide-react'
@@ -173,13 +174,21 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <button
-          onClick={logout}
-          className="flex items-center gap-2 text-sm text-muted hover:text-text transition-colors"
-        >
-          <LogOut size={16} />
-          Wyloguj
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/billing"
+            className="text-xs text-muted hover:text-accent border border-border hover:border-accent/50 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            💳 Plany
+          </Link>
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 text-sm text-muted hover:text-text transition-colors"
+          >
+            <LogOut size={16} />
+            Wyloguj
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 px-6 py-8 max-w-5xl mx-auto w-full">
