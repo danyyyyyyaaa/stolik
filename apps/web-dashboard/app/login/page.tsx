@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -97,6 +98,13 @@ export default function LoginPage() {
           >
             {loading ? 'Logowanie…' : 'Zaloguj się'}
           </button>
+
+          <p className="text-center text-xs text-muted pt-1">
+            Nie masz konta?{' '}
+            <Link href="/register" className="text-accent hover:text-accent-hover transition-colors">
+              Zarejestruj restaurację →
+            </Link>
+          </p>
         </form>
 
       </div>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restauracja Różana — Stolik widget demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1c3a1e 0%, #2d6a35 100%);
+      color: #fff;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      opacity: .7;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 56px);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      font-size: 16px;
+      opacity: .75;
+      max-width: 420px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+    .hero-meta {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+      font-size: 13px;
+      opacity: .65;
+      margin-bottom: 40px;
+    }
+    .hero-meta span::before { margin-right: 6px; }
+
+    /* ── Section ── */
+    .section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #2d6a35;
+      margin-bottom: 8px;
+    }
+    .section h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 32px;
+      letter-spacing: -.02em;
+    }
+
+    /* ── Menu cards ── */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    .menu-card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .menu-card-img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+    .menu-card-body { padding: 16px; }
+    .menu-card-body h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .menu-card-body p  { font-size: 13px; color: #888; margin-bottom: 8px; }
+    .menu-card-body .price { font-size: 14px; font-weight: 700; color: #2d6a35; }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #ece8e3;
+      margin: 0 24px;
+    }
+
+    /* ── CTA section ── */
+    .cta {
+      text-align: center;
+      padding: 64px 24px;
+      background: #fff;
+    }
+    .cta h2 {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -.02em;
+    }
+    .cta p {
+      color: #888;
+      font-size: 15px;
+      max-width: 360px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #bbb;
+      border-top: 1px solid #ece8e3;
+    }
+    footer a { color: #2d6a35; text-decoration: none; }
+
+    /* ── Dev badge ── */
+    .dev-badge {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      padding: 6px 12px;
+      border-radius: 20px;
+      opacity: .75;
+      pointer-events: none;
+      z-index: 99999;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero with embedded widget trigger -->
+  <section class="hero">
+    <p class="hero-eyebrow">Mokotów · Warszawa</p>
+    <h1>Restauracja<br>Różana</h1>
+    <p>Polska kuchnia w nowoczesnym wydaniu. Sezonowe menu, lokalne produkty, wyjątkowa atmosfera.</p>
+    <div class="hero-meta">
+      <span>📍 ul. Różana 12, Warszawa</span>
+      <span>🕐 Pon–Ndz 12:00–22:00</span>
+      <span>💰 $$</span>
+    </div>
+
+    <!-- ✦ Widget trigger is inserted right here by stolik.js -->
+    <script src="./stolik.js" data-restaurant="rozana-mokotow" data-lang="pl"></script>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Menu preview -->
+  <section class="section">
+    <p class="section-title">Menu</p>
+    <h2>Polecamy dziś</h2>
+    <div class="menu-grid">
+      <div class="menu-card">
+        <div class="menu-card-img">🥩</div>
+        <div class="menu-card-body">
+          <h3>Żeberka wieprzowe</h3>
+          <p>Z grilla, glazura miodowo-musztardowa, purée ziemniaczane</p>
+          <span class="price">68 zł</span>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="menu-card-img">🐟</div>
+        <div class="menu-card-body">
+          <h3>Pstrąg z pieca</h3>
+          <p>Cytrynowe masło, szparagi, młode ziemniaki</p>
+          <span class="price">72 zł</span>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="menu-card-img">🍄</div>
+        <div class="menu-card-body">
+          <h3>Risotto z borowikami</h3>
+          <p>Parmezan, świeże zioła, truflowy olej</p>
+          <span class="price">54 zł</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Second CTA -->
+  <section class="cta">
+    <h2>Zarezerwuj już dziś</h2>
+    <p>Zapewniamy ciszę i intymność — idealne miejsce na rodzinny obiad lub romantyczną kolację.</p>
+    <!-- Second button — same widget, separate trigger -->
+    <script src="./stolik.js" data-restaurant="rozana-mokotow" data-lang="pl"></script>
+  </section>
+
+  <footer>
+    Restauracja Różana · <a href="#">stolik.pl</a> — system rezerwacji
+  </footer>
+
+  <!-- Dev helper badge -->
+  <div class="dev-badge">widget demo · stolik.js</div>
+
+</body>
+</html>

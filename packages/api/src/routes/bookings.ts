@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
+import { sendBookingConfirmation, scheduleReminders } from '../services/sms'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -46,11 +47,10 @@ router.post('/', async (req, res) => {
       include: { restaurant: true, table: true }
     })
 
-    // TODO: Send SMS via Twilio
-    // await sendConfirmationSMS(booking)
-
-    // TODO: Schedule reminder 24h before
-    // await scheduleReminder(booking)
+    sendBookingConfirmation(booking).catch(err =>
+      console.error('[SMS] Confirmation failed:', err)
+    )
+    scheduleReminders(booking)
 
     res.json({ success: true, booking })
   } catch (err) {
