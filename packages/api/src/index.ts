@@ -20,7 +20,16 @@ const io = new Server(httpServer, {
   cors: { origin: '*' }
 })
 
-app.use(cors())
+app.use(cors({
+  origin: [
+    'https://stolik-dashboard.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
 
 // ⚠️  Stripe webhook MUST be registered before express.json()
 // so the raw body is preserved for signature verification
