@@ -118,6 +118,49 @@ router.get('/today/:restaurantId', requireAuth, async (req, res) => {
   res.json(bookings)
 })
 
+// ─── RESTAURANT: STATS (yesterday counts + 7-day daily totals) ───────────────
+router.get('/stats/:restaurantId', requireAuth, async (req, res) => {
+  const { restaurantId } = req.params
+
+  const now       = new Date()
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0)
+
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+  const yesterdayEnd   = new Date(todayStart); yesterdayEnd.setMilliseconds(-1)
+
+  const sevenDaysAgo = new Date(todayStart); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+
+  const [yesterdayBookings, weekBookings] = await Promise.all([
+    prisma.booking.findMany({
+      where: { restaurantId, date: { gte: yesterdayStart, lte: yesterdayEnd } },
+      select: { status: true },
+    }),
+    prisma.booking.findMany({
+      where: { restaurantId, date: { gte: sevenDaysAgo } },
+      select: { date: true, status: true },
+    }),
+  ])
+
+  const yesterday = {
+    total:     yesterdayBookings.length,
+    confirmed: yesterdayBookings.filter(b => b.status === 'confirmed').length,
+    pending:   yesterdayBookings.filter(b => b.status === 'pending').length,
+    noShow:    yesterdayBookings.filter(b => b.status === 'no_show').length,
+  }
+
+  // Build daily counts for last 7 days (including today)
+  const daily: { date: string; count: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(todayStart)
+    d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const count = weekBookings.filter(b => b.date.toISOString().slice(0, 10) === dateStr).length
+    daily.push({ date: dateStr, count })
+  }
+
+  res.json({ yesterday, daily })
+})
+
 // ─── CANCEL / UPDATE STATUS ───────────────────────────────────────────────────
 router.patch('/:id/status', requireAuth, async (req, res) => {
   const { status } = req.body

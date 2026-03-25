@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Stolik",
+    "slug": "stolik-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "stolik",
+    "web": {
+      "bundler": "metro"
+    },
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0D1117"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pl.stolik.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D1117"
+      },
+      "package": "pl.stolik.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

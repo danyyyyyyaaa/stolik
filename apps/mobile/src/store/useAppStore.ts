@@ -41,23 +41,26 @@ export interface Booking {
 }
 
 interface AppState {
-  token:       string | null
-  user:        User | null
-  restaurants: Restaurant[]
-  myBookings:  Booking[]
+  token:              string | null
+  user:               User | null
+  restaurants:        Restaurant[]
+  myBookings:         Booking[]
+  lastBooking:        Booking | null
 
-  setToken:       (token: string | null) => Promise<void>
-  setUser:        (user: User | null) => void
-  setRestaurants: (restaurants: Restaurant[]) => void
-  setMyBookings:  (bookings: Booking[]) => void
-  logout:         () => Promise<void>
+  setToken:           (token: string | null) => Promise<void>
+  setUser:            (user: User | null) => void
+  setRestaurants:     (restaurants: Restaurant[]) => void
+  setMyBookings:      (bookings: Booking[]) => void
+  setLastBooking:     (booking: Booking | null) => void
+  logout:             () => Promise<void>
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  token:       null,
-  user:        null,
-  restaurants: [],
-  myBookings:  [],
+  token:              null,
+  user:               null,
+  restaurants:        [],
+  myBookings:         [],
+  lastBooking:        null,
 
   setToken: async (token) => {
     try {
@@ -77,6 +80,8 @@ export const useAppStore = create<AppState>((set) => ({
   setRestaurants: (restaurants) => set({ restaurants }),
 
   setMyBookings: (myBookings) => set({ myBookings }),
+
+  setLastBooking: (lastBooking) => set({ lastBooking }),
 
   logout: async () => {
     try {

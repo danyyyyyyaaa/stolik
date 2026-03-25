@@ -10,11 +10,19 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=packages/api",
     "dev:web": "npm run dev --workspace=apps/web-dashboard",
-    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "dev:mobile": "EXPO_USE_METRO_WORKSPACE_ROOT=1 npm run start --workspace=apps/mobile",
     "build:api": "npm run build --workspace=packages/api",
     "build:web": "npm run build --workspace=apps/web-dashboard"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "expo": "^55.0.8",
+    "react": "19.2.0",
+    "react-native": "0.83.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10"
   }
 }

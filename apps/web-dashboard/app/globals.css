@@ -2,7 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Color tokens (dark by default) ─────────────────────────────────────── */
+:root {
+  --bg:           13 17 23;
+  --surface:      22 27 34;
+  --surface-2:    33 38 45;
+  --border:       48 54 61;
+  --accent:       35 134 54;
+  --accent-hover: 46 160 67;
+  --muted:        139 148 158;
+  --text:         230 237 243;
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:           255 255 255;
+  --surface:      246 248 250;
+  --surface-2:    234 238 242;
+  --border:       208 215 222;
+  --accent:       35 134 54;
+  --accent-hover: 46 160 67;
+  --muted:        99 108 118;
+  --text:         31 35 40;
+}
+
 body {
-  background-color: #131A14;
-  color: #E8F0E9;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) rgb(var(--surface));
+}
+*::-webkit-scrollbar       { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: rgb(var(--surface)); }
+*::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted)); }
+
+/* ── Form controls ───────────────────────────────────────────────────────── */
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+[data-theme="light"] input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.2);
+}
+
+select option {
+  background-color: rgb(var(--surface-2));
+  color: rgb(var(--text));
 }
