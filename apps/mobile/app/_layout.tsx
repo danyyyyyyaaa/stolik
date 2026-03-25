@@ -9,6 +9,7 @@ import { useAppStore } from '../src/store/useAppStore'
 import { TOKEN_KEY } from '../src/api/client'
 import { getMe } from '../src/api/auth'
 import OnboardingScreen from '../src/screens/OnboardingScreen'
+import { requestPermissions, getAndRegisterPushToken } from '../src/notifications'
 
 const ONBOARDING_KEY = 'onboarding_completed'
 
@@ -58,7 +59,7 @@ type AppState = 'splash' | 'onboarding' | 'main'
 
 function RootStack() {
   const { th, themeKey } = useTheme()
-  const { setToken, setUser } = useAppStore()
+  const { setToken, setUser, token } = useAppStore()
 
   const [appState, setAppState] = useState<AppState>('splash')
 
@@ -73,16 +74,20 @@ function RootStack() {
     }).catch(() => {/* ignore — this is best-effort only */})
 
     async function init() {
+      let restoredToken: string | null = null
+
       // Restore session
       try {
         const tok = await SecureStore.getItemAsync(TOKEN_KEY)
         if (tok) {
+          restoredToken = tok
           setToken(tok)
           try {
             const user = await getMe()
             setUser(user)
           } catch {
             setToken(null)
+            restoredToken = null
           }
         }
       } catch {}
@@ -97,6 +102,13 @@ function RootStack() {
       // Respect minimum splash duration
       await splashTimer
 
+      if (onboardingDone) {
+        // Request notification permissions and register push token (non-blocking)
+        requestPermissions().then(granted => {
+          if (granted && restoredToken) getAndRegisterPushToken(restoredToken)
+        })
+      }
+
       setAppState(onboardingDone ? 'main' : 'onboarding')
     }
 
@@ -107,6 +119,10 @@ function RootStack() {
     try {
       await SecureStore.setItemAsync(ONBOARDING_KEY, '1')
     } catch {}
+    // Request permissions now that the user has completed onboarding
+    requestPermissions().then(granted => {
+      if (granted && token) getAndRegisterPushToken(token)
+    })
     setAppState('main')
   }
 

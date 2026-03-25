@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -6,12 +6,12 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
-import * as SecureStore from 'expo-secure-store'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
 import { login, register } from '../../src/api/auth'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
+import { isEnabled, setEnabled, requestPermissions } from '../../src/notifications'
 
 type AuthMode = 'login' | 'register'
 
@@ -279,11 +279,16 @@ function ProfileView({ th, t }: { th: any; t: any }) {
   const [changePwdOpen,     setChangePwdOpen]     = useState(false)
   const [notificationsOn,   setNotificationsOn]   = useState(true)
 
+  // Load persisted notification preference on mount
+  useEffect(() => {
+    isEnabled().then(v => setNotificationsOn(v))
+  }, [])
+
   async function toggleNotifications(v: boolean) {
     setNotificationsOn(v)
-    try {
-      await SecureStore.setItemAsync('stolik_notifications', v ? '1' : '0')
-    } catch {}
+    await setEnabled(v)
+    // Re-request permissions when user enables notifications
+    if (v) requestPermissions()
   }
 
   const initials = user

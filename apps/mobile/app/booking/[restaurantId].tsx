@@ -13,6 +13,7 @@ import { getSlots } from '../../src/api/restaurants'
 import { createBooking } from '../../src/api/bookings'
 import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
+import { notifyBookingConfirmed, scheduleReminder } from '../../src/notifications'
 
 export default function BookingScreen() {
   const { th }     = useTheme()
@@ -76,6 +77,12 @@ export default function BookingScreen() {
       const booking = { ...result.booking, restaurant: r }
       setLastBooking(booking)
       setMyBookings([booking, ...myBookings])
+
+      // Fire local notifications (non-blocking)
+      const restName = nr?.name ?? r?.name ?? 'restaurant'
+      notifyBookingConfirmed({ restaurantName: restName, date, time: selectedTime })
+      scheduleReminder({ bookingId: result.booking.id, restaurantName: restName, date, time: selectedTime })
+
       router.replace('/confirmed')
     } catch (e: any) {
       setError(e.message || t.booking_error as string)

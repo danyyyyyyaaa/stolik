@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
 } from 'react-native'
@@ -10,6 +10,7 @@ import { useLang } from '../../src/i18n'
 import { useAppStore, type Booking } from '../../src/store/useAppStore'
 import { getMyBookings } from '../../src/api/bookings'
 import { normalizeRestaurant } from '../../src/utils/restaurant'
+import { notifyBookingCancelled, cancelReminder } from '../../src/notifications'
 
 const STATUS_COLOR: Record<string, string> = {
   confirmed:  '#238636',
@@ -77,6 +78,7 @@ export default function BookingsScreen() {
   const { th }       = useTheme()
   const { t, lang }  = useLang()
   const { token, myBookings, setMyBookings } = useAppStore()
+  const prevBookingsRef = useRef<Booking[]>([])
 
   const [loading,    setLoading]    = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -86,6 +88,21 @@ export default function BookingsScreen() {
     setLoading(true)
     try {
       const data = await getMyBookings()
+
+      // Detect bookings that were newly cancelled since last fetch
+      const prev = prevBookingsRef.current
+      if (prev.length > 0) {
+        for (const updated of data) {
+          if (updated.status !== 'cancelled') continue
+          const old = prev.find(b => b.id === updated.id)
+          if (old && old.status !== 'cancelled') {
+            const rest = normalizeRestaurant((updated as any).restaurant ?? { id: updated.restaurantId })
+            notifyBookingCancelled({ restaurantName: rest.name ?? 'restaurant', date: updated.date })
+            cancelReminder(updated.id)
+          }
+        }
+      }
+      prevBookingsRef.current = data
       setMyBookings(data)
     } catch (e) {
       console.warn('[Bookings] load:', e)
