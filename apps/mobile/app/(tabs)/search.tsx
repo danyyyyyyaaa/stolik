@@ -12,6 +12,8 @@ import { useAppStore } from '../../src/store/useAppStore'
 import { getRestaurants } from '../../src/api/restaurants'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
+import FilterModal from '../../src/components/FilterModal'
+import { type FilterState, DEFAULT_FILTERS, countActiveFilters, applyFilters } from '../../src/utils/filters'
 
 // ─── Cuisine chip data ────────────────────────────────────────────────────────
 
@@ -109,8 +111,12 @@ export default function SearchScreen() {
   const { setRestaurants } = useAppStore()
 
   const inputRef = useRef<TextInput>(null)
-  const [query,         setQuery]         = useState('')
-  const [cuisineFilter, setCuisine]       = useState<string | null>(null)
+  const [query,           setQuery]           = useState('')
+  const [cuisineFilter,   setCuisine]         = useState<string | null>(null)
+  const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS)
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
+
+  const activeFilterCount = countActiveFilters(filters)
 
   // If the home screen hasn't loaded restaurants yet, load them here
   useEffect(() => {
@@ -133,8 +139,8 @@ export default function SearchScreen() {
       ? (storeRests as NormalizedRestaurant[])
       : (MOCK_RESTAURANTS as unknown as NormalizedRestaurant[])
 
-  // Filter
-  const filtered = allRests.filter(r => {
+  // Text + cuisine chip filter
+  const textAndChipFiltered = allRests.filter(r => {
     const matchText = query === '' ||
       r.name.toLowerCase().includes(query.toLowerCase()) ||
       (r.district ?? '').toLowerCase().includes(query.toLowerCase()) ||
@@ -142,6 +148,9 @@ export default function SearchScreen() {
     const matchCuisine = !cuisineFilter || r.cuisine === cuisineFilter
     return matchText && matchCuisine
   })
+
+  // Then apply advanced filters (price, rating, available now, modal cuisine)
+  const filtered = applyFilters(textAndChipFiltered, filters)
 
   const isEmpty = query === '' && !cuisineFilter
 
@@ -153,6 +162,7 @@ export default function SearchScreen() {
   const handleClear = useCallback(() => {
     setQuery('')
     setCuisine(null)
+    setFilters(DEFAULT_FILTERS)
   }, [])
 
   const cuisineLabel: Record<string, Record<string, string>> = {
@@ -162,7 +172,7 @@ export default function SearchScreen() {
     french:   { pl: 'Francuska',en: 'French',   ru: 'Французская', uk: 'Французька' },
   }
 
-  const hasInput = query.length > 0 || !!cuisineFilter
+  const hasInput = query.length > 0 || !!cuisineFilter || activeFilterCount > 0
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: th.bg }]} edges={['top']}>
@@ -171,24 +181,42 @@ export default function SearchScreen() {
         {/* Title */}
         <Text style={[styles.title, { color: th.text }]}>{t.search_label}</Text>
 
-        {/* Search bar */}
-        <View style={[styles.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }]}>
-          <Feather name="search" size={16} color={th.textMuted} />
-          <TextInput
-            ref={inputRef}
-            value={query}
-            onChangeText={text => { setQuery(text) }}
-            placeholder={t.search_placeholder}
-            placeholderTextColor={th.textMuted}
-            returnKeyType="search"
-            autoCapitalize="none"
-            style={[styles.input, { color: th.text }]}
-          />
-          {hasInput && (
-            <TouchableOpacity onPress={handleClear} hitSlop={8}>
-              <Feather name="x" size={16} color={th.textMuted} />
-            </TouchableOpacity>
-          )}
+        {/* Search bar + Filter button */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+            <Feather name="search" size={16} color={th.textMuted} />
+            <TextInput
+              ref={inputRef}
+              value={query}
+              onChangeText={text => { setQuery(text) }}
+              placeholder={t.search_placeholder}
+              placeholderTextColor={th.textMuted}
+              returnKeyType="search"
+              autoCapitalize="none"
+              style={[styles.input, { color: th.text }]}
+            />
+            {hasInput && (
+              <TouchableOpacity onPress={handleClear} hitSlop={8}>
+                <Feather name="x" size={16} color={th.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={() => setFilterModalOpen(true)}
+            activeOpacity={0.8}
+            style={[
+              styles.filterBtn,
+              {
+                backgroundColor: activeFilterCount > 0 ? th.accent : th.bgCard,
+                borderColor:     activeFilterCount > 0 ? th.accent : th.border,
+              },
+            ]}
+          >
+            <Feather name="sliders" size={14} color={activeFilterCount > 0 ? '#fff' : th.textSub} />
+            <Text style={[styles.filterBtnTxt, { color: activeFilterCount > 0 ? '#fff' : th.textSub }]}>
+              {activeFilterCount > 0 ? `${t.filters} • ${activeFilterCount}` : t.filters}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Cuisine chips */}
@@ -223,6 +251,14 @@ export default function SearchScreen() {
             {t.popular.toUpperCase()}
           </Text>
         )}
+
+        {/* Filter modal */}
+        <FilterModal
+          visible={filterModalOpen}
+          initialFilters={filters}
+          onClose={() => setFilterModalOpen(false)}
+          onApply={setFilters}
+        />
 
         {/* Results */}
         <FlatList
@@ -266,12 +302,19 @@ const styles = StyleSheet.create({
   container:    { flex: 1, paddingHorizontal: 16, paddingTop: 20 },
   title:        { fontSize: 24, fontWeight: '800', marginBottom: 16, paddingHorizontal: 4 },
 
+  searchRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   searchBar:    {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    borderRadius: 12, borderWidth: 1, marginBottom: 14,
+    borderRadius: 12, borderWidth: 1,
   },
   input:        { flex: 1, fontSize: 15, padding: 0 },
+  filterBtn:    {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 12,
+    borderRadius: 12, borderWidth: 1, flexShrink: 0,
+  },
+  filterBtnTxt: { fontSize: 13, fontWeight: '600' },
 
   chips:        { flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' },
   chip:         {

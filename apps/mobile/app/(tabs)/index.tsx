@@ -13,6 +13,8 @@ import { getRestaurants } from '../../src/api/restaurants'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
+import FilterModal from '../../src/components/FilterModal'
+import { type FilterState, DEFAULT_FILTERS, countActiveFilters, applyFilters } from '../../src/utils/filters'
 
 const { width: W } = Dimensions.get('window')
 
@@ -239,7 +241,6 @@ function RestaurantCard({
               style={[s.reserveBtn, { backgroundColor: th.accent }]}
             >
               <Text style={s.reserveTxt}>{t.reserve}</Text>
-              <Feather name="arrow-right" size={15} color="#fff" />
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -281,11 +282,14 @@ export default function HomeScreen() {
   const { th, themeKey, toggle } = useTheme()
   const { t }                    = useLang()
   const { restaurants, setRestaurants, user } = useAppStore()
-  const [langPickerOpen, setLangPickerOpen]   = useState(false)
+  const [langPickerOpen,    setLangPickerOpen]    = useState(false)
+  const [filterModalOpen,   setFilterModalOpen]   = useState(false)
+  const [filters,           setFilters]           = useState<FilterState>(DEFAULT_FILTERS)
 
-  const [loading,       setLoading]       = useState(true)
-  const [refreshing,    setRefreshing]    = useState(false)
-  const [cuisineFilter, setCuisineFilter] = useState('all')
+  const [loading,    setLoading]    = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const activeFilterCount = countActiveFilters(filters)
 
   // Screen mount fade-in
   const screenFade = useRef(new Animated.Value(0)).current
@@ -314,9 +318,7 @@ export default function HomeScreen() {
     setRefreshing(false)
   }, [])
 
-  const filtered = (restaurants as NormalizedRestaurant[]).filter(r =>
-    cuisineFilter === 'all' || r.cuisine === cuisineFilter
-  )
+  const filtered = applyFilters(restaurants as NormalizedRestaurant[], filters)
 
   // Top-5 by rating for featured strip
   const featured = [...(restaurants as NormalizedRestaurant[])]
@@ -382,14 +384,32 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {/* ── Search bar (tappable, navigates to search tab) ── */}
-              <Pressable
-                onPress={() => router.navigate('/(tabs)/search')}
-                style={[hs.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }]}
-              >
-                <Feather name="search" size={16} color={th.textMuted} />
-                <Text style={[hs.searchHint, { color: th.textMuted }]}>{t.search_placeholder}</Text>
-              </Pressable>
+              {/* ── Search bar + Filter button ── */}
+              <View style={hs.searchRow}>
+                <Pressable
+                  onPress={() => router.navigate('/(tabs)/search')}
+                  style={[hs.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }]}
+                >
+                  <Feather name="search" size={16} color={th.textMuted} />
+                  <Text style={[hs.searchHint, { color: th.textMuted }]}>{t.search_placeholder}</Text>
+                </Pressable>
+                <TouchableOpacity
+                  onPress={() => setFilterModalOpen(true)}
+                  activeOpacity={0.8}
+                  style={[
+                    hs.filterBtn,
+                    {
+                      backgroundColor: activeFilterCount > 0 ? th.accent   : th.bgCard,
+                      borderColor:     activeFilterCount > 0 ? th.accent   : th.border,
+                    },
+                  ]}
+                >
+                  <Feather name="sliders" size={14} color={activeFilterCount > 0 ? '#fff' : th.textSub} />
+                  <Text style={[hs.filterBtnTxt, { color: activeFilterCount > 0 ? '#fff' : th.textSub }]}>
+                    {activeFilterCount > 0 ? `${t.filters} • ${activeFilterCount}` : t.filters}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               {/* ── Cuisine filter pills ── */}
               <FlatList
@@ -399,11 +419,11 @@ export default function HomeScreen() {
                 keyExtractor={c => c.id}
                 contentContainerStyle={hs.pillsRow}
                 renderItem={({ item }) => {
-                  const active = cuisineFilter === item.id
+                  const active = filters.cuisine === item.id
                   const label  = (t as any)[item.labelKey] ?? item.id
                   return (
                     <TouchableOpacity
-                      onPress={() => setCuisineFilter(item.id)}
+                      onPress={() => setFilters(f => ({ ...f, cuisine: item.id }))}
                       activeOpacity={0.8}
                       style={[hs.pill, {
                         backgroundColor: active ? th.pillActive : th.pill,
@@ -419,7 +439,7 @@ export default function HomeScreen() {
               />
 
               {/* ── Featured / Top Rated (horizontal, only on 'all' filter) ── */}
-              {!loading && featured.length > 0 && cuisineFilter === 'all' && (
+              {!loading && featured.length > 0 && filters.cuisine === 'all' && (
                 <View style={hs.section}>
                   <View style={hs.sectionHead}>
                     <Text style={[hs.sectionTitle, { color: th.text }]}>{t.top_rated}</Text>
@@ -479,6 +499,12 @@ export default function HomeScreen() {
         />
       </Animated.View>
       <LanguagePickerModal visible={langPickerOpen} onClose={() => setLangPickerOpen(false)} />
+      <FilterModal
+        visible={filterModalOpen}
+        initialFilters={filters}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={setFilters}
+      />
     </SafeAreaView>
   )
 }
@@ -499,9 +525,12 @@ const hs = StyleSheet.create({
   avatar:      { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarTxt:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 
-  // Search bar
-  searchBar:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1, marginHorizontal: 4, marginBottom: 18 },
+  // Search row + filter button
+  searchRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 4, marginBottom: 18 },
+  searchBar:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1 },
   searchHint:  { fontSize: 14, flex: 1 },
+  filterBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 14, borderRadius: 14, borderWidth: 1, flexShrink: 0 },
+  filterBtnTxt:{ fontSize: 13, fontWeight: '600' },
 
   // Pills
   pillsRow:    { paddingHorizontal: 4, paddingBottom: 22, gap: 8 },

@@ -54,7 +54,7 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Błąd tworzenia rezerwacji'); return }
+      if (!res.ok) { setError(data.error || t.createBookingError); return }
       onSuccess()
       onClose()
     } catch {
@@ -86,7 +86,7 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className={labelCls}><CalendarDays size={11} /> Data</label>
+              <label className={labelCls}><CalendarDays size={11} /> {t.dateLabel}</label>
               <input
                 type="date" required value={date} min={today}
                 onChange={e => setDate(e.target.value)}
@@ -94,7 +94,7 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
               />
             </div>
             <div className="space-y-1.5">
-              <label className={labelCls}><Clock size={11} /> Godzina</label>
+              <label className={labelCls}><Clock size={11} /> {t.timeLabel}</label>
               <select value={time} onChange={e => setTime(e.target.value)} className={inputCls}>
                 {TIME_SLOTS.map(ts => <option key={ts} value={ts}>{ts}</option>)}
               </select>
@@ -103,7 +103,7 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
 
           {/* Guest count */}
           <div className="space-y-1.5">
-            <label className={labelCls}><Users size={11} /> Liczba gości</label>
+            <label className={labelCls}><Users size={11} /> {t.guestCountLabel}</label>
             <div className="flex items-center gap-2.5">
               <button type="button" onClick={() => setGuestCount(c => Math.max(1, c - 1))}
                 className="w-8 h-8 rounded-lg bg-surface-2 border border-border text-text hover:border-accent/50 transition-colors flex items-center justify-center text-lg leading-none">
@@ -131,14 +131,14 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
 
           {/* Guest name */}
           <div className="space-y-1.5">
-            <label className={labelCls}><User size={11} /> Imię i nazwisko</label>
+            <label className={labelCls}><User size={11} /> {t.fullNameLabel}</label>
             <input type="text" required value={guestName} onChange={e => setGuestName(e.target.value)}
               placeholder="Anna Kowalska" className={inputCls} />
           </div>
 
           {/* Phone */}
           <div className="space-y-1.5">
-            <label className={labelCls}><Phone size={11} /> Telefon</label>
+            <label className={labelCls}><Phone size={11} /> {t.phone}</label>
             <input type="tel" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)}
               placeholder="+48 600 123 456" className={inputCls} />
           </div>
@@ -146,11 +146,11 @@ export default function CreateBookingModal({ restaurantId, onSuccess, onClose }:
           {/* Notes */}
           <div className="space-y-1.5">
             <label className={labelCls}>
-              <MessageSquare size={11} /> Notatka
-              <span className="normal-case text-muted font-normal ml-1">(opcjonalnie)</span>
+              <MessageSquare size={11} /> {t.note}
+              <span className="normal-case text-muted font-normal ml-1">({t.optional})</span>
             </label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Urodziny, alergie, preferencje stolika…" rows={2}
+              placeholder={t.notesPlaceholder} rows={2}
               className={`${inputCls} resize-none`} />
           </div>
 

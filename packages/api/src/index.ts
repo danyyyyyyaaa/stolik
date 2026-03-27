@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
@@ -11,6 +13,8 @@ import { tablesRouter } from './routes/tables'
 import { guestsRouter } from './routes/guests'
 import { widgetRouter } from './routes/widget'
 import { subscriptionsRouter } from './routes/subscriptions'
+import { uploadRouter } from './routes/upload'
+import { adminRouter } from './routes/admin'
 
 dotenv.config()
 
@@ -19,6 +23,24 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
   cors: { origin: '*' }
 })
+
+app.use(helmet())
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+app.use(globalLimiter)
 
 app.use(cors({
   origin: [
@@ -38,12 +60,16 @@ app.use('/api/subscriptions', subscriptionsRouter)
 app.use(express.json())
 
 // Routes
+app.use('/api/auth/login', authLimiter)
+app.use('/api/auth/register', authLimiter)
 app.use('/api/auth', authRouter)
 app.use('/api/restaurants', restaurantsRouter)
 app.use('/api/bookings', bookingsRouter)
 app.use('/api/tables', tablesRouter)
 app.use('/api/guests', guestsRouter)
 app.use('/api/widget', widgetRouter)  // public — no auth needed
+app.use('/api/upload', uploadRouter)
+app.use('/api/admin', adminRouter)
 
 // Health check
 app.get('/health', (req, res) => {

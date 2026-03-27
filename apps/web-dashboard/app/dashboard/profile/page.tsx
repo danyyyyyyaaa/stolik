@@ -38,9 +38,17 @@ const DAY_T_KEYS: Record<DayKey, 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' |
   friday: 'fri', saturday: 'sat', sunday: 'sun',
 }
 
-const CUISINES = [
-  'polska', 'włoska', 'japońska', 'francuska', 'meksykańska',
-  'indyjska', 'chińska', 'śródziemnomorska', 'amerykańska', 'inne',
+const CUISINE_VALUES: { value: string; tKey: string }[] = [
+  { value: 'polska',          tKey: 'cuisinePolish'        },
+  { value: 'włoska',          tKey: 'cuisineItalian'       },
+  { value: 'japońska',        tKey: 'cuisineJapanese'      },
+  { value: 'francuska',       tKey: 'cuisineFrench'        },
+  { value: 'meksykańska',     tKey: 'cuisineMexican'       },
+  { value: 'indyjska',        tKey: 'cuisineIndian'        },
+  { value: 'chińska',         tKey: 'cuisineChinese'       },
+  { value: 'śródziemnomorska',tKey: 'cuisineMediterranean' },
+  { value: 'amerykańska',     tKey: 'cuisineAmerican'      },
+  { value: 'inne',            tKey: 'cuisineOther'         },
 ]
 
 const EMOJIS = ['🍽️', '🍕', '🍣', '🥩', '🍜', '🥗', '🍷', '🍺', '☕', '🧁']
@@ -396,8 +404,8 @@ export default function ProfilePage() {
                   onChange={e => setField('cuisine', e.target.value)}
                   className={inputCls}
                 >
-                  {CUISINES.map(c => (
-                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  {CUISINE_VALUES.map(({ value, tKey }) => (
+                    <option key={value} value={value}>{(t as any)[tKey]}</option>
                   ))}
                 </select>
               </Field>

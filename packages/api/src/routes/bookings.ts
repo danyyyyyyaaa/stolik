@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import jwt from 'jsonwebtoken'
 import { requireAuth } from '../middleware/auth'
 import { sendBookingConfirmation, scheduleReminders } from '../services/sms'
 
@@ -24,11 +25,18 @@ router.post('/', async (req, res) => {
   try {
     const data = createBookingSchema.parse(req.body)
 
-    // Find available table
     const bookingDate = new Date(`${data.date}T${data.time}:00`)
+    const bookingRef  = `#ST${Math.floor(Math.random() * 9000 + 1000)}`
 
-    // Generate booking ref
-    const bookingRef = `#ST${Math.floor(Math.random() * 9000 + 1000)}`
+    // Attach userId if a valid JWT is present (app users)
+    let userId: string | undefined
+    const authHeader = req.headers.authorization
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET!) as any
+        userId = decoded.userId
+      } catch {}
+    }
 
     const booking = await prisma.booking.create({
       data: {
@@ -43,6 +51,7 @@ router.post('/', async (req, res) => {
         notes: data.notes,
         source: data.source,
         status: 'confirmed',
+        ...(userId ? { userId } : {}),
       },
       include: { restaurant: true, table: true }
     })

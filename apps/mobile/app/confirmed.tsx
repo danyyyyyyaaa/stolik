@@ -96,8 +96,13 @@ export default function ConfirmedScreen() {
   const b = lastBooking
   const rest = b?.restaurant ? normalizeRestaurant((b as any).restaurant) : null
 
+  function fmtDate(s: string): string {
+    if (!s) return '—'
+    try { return new Date(s).toISOString().slice(0, 10) } catch { return s }
+  }
+
   const infoRows = b ? [
-    { label: t.date as string,      value: b.date    ?? '—' },
+    { label: t.date as string,      value: fmtDate(b.date) },
     { label: t.time as string,      value: b.time    ?? '—' },
     { label: t.table_for as string, value: `${b.guestCount} ${b.guestCount === 1 ? t.guest : t.guests}` },
     { label: t.booking_id as string,value: b.bookingRef ?? b.id },

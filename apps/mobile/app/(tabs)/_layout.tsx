@@ -107,6 +107,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          title: t.map_label,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="map-pin" color={color} focused={focused} accent={th.accent} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="bookings"
         options={{
           title: t.bookings_label,

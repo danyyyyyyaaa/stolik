@@ -8,10 +8,11 @@ import { Feather } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
-import { useAppStore } from '../../src/store/useAppStore'
+import { useAppStore, type PendingBooking } from '../../src/store/useAppStore'
 import { getSlots, getRestaurant } from '../../src/api/restaurants'
 import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
+import { Stars } from '../../src/components/Stars'
 
 const TABS = ['about', 'menu', 'reviews'] as const
 type TabKey = typeof TABS[number]
@@ -112,7 +113,13 @@ const REVIEWS = [
 
 // ─── Login-required modal ──────────────────────────────────────────────────────
 
-function LoginRequiredModal({ visible, onClose, th, t }: { visible: boolean; onClose: () => void; th: any; t: any }) {
+function LoginRequiredModal({ visible, onClose, onGoToLogin, th, t }: {
+  visible:     boolean
+  onClose:     () => void
+  onGoToLogin: () => void
+  th: any
+  t:  any
+}) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={lrm.backdrop} onPress={onClose}>
@@ -121,7 +128,7 @@ function LoginRequiredModal({ visible, onClose, th, t }: { visible: boolean; onC
           <Text style={[lrm.title, { color: th.text }]}>{t.login_required_title}</Text>
           <Text style={[lrm.sub, { color: th.textSub }]}>{t.login_required_sub}</Text>
           <TouchableOpacity
-            onPress={() => { onClose(); router.navigate('/(tabs)/profile') }}
+            onPress={() => { onClose(); onGoToLogin() }}
             activeOpacity={0.85}
             style={[lrm.btn, { backgroundColor: th.accent }]}
           >
@@ -155,8 +162,9 @@ export default function RestaurantScreen() {
   const { t }       = useLang()
   const insets      = useSafeAreaInsets()
   const { id }      = useLocalSearchParams<{ id: string }>()
-  const restaurants = useAppStore(s => s.restaurants)
-  const token       = useAppStore(s => s.token)
+  const restaurants        = useAppStore(s => s.restaurants)
+  const token              = useAppStore(s => s.token)
+  const setPendingBooking  = useAppStore(s => s.setPendingBooking)
 
   // Try store first, fall back to mock, then fetch from API
   const storeR = restaurants.find(x => x.id === id)
@@ -253,7 +261,7 @@ export default function RestaurantScreen() {
               {mockR?.isOpen !== undefined && (
                 <View style={[s.openBadge, { backgroundColor: mockR.isOpen ? '#238636' : '#8B949E' }]}>
                   <Text style={s.openBadgeText}>
-                    {mockR.isOpen ? '● Open' : '● Closed'}
+                    {mockR.isOpen ? t.open_badge : t.closed_badge}
                   </Text>
                 </View>
               )}
@@ -289,13 +297,13 @@ export default function RestaurantScreen() {
                 <Text style={[s.desc, { color: th.textSub }]}>{nr.desc}</Text>
               ) : null}
               <View style={[s.infoCard, { backgroundColor: th.bgCard, borderColor: th.border }]}>
-                <Text style={[s.infoCardLabel, { color: th.textMuted }]}>INFO</Text>
+                <Text style={[s.infoCardLabel, { color: th.textMuted }]}>{t.info_label}</Text>
                 {[
                   [t.open_until,      nr.open],
                   [t.district,        nr.district],
                   [t.cuisine_label,   getCuisineName(cuisine, t)],
                   [t.address,         nr.address],
-                  ['Tel',             (r as any)?.phone],
+                  [t.tel,             (r as any)?.phone],
                 ].filter(([, v]) => v).map(([k, v]) => (
                   <View key={String(k)} style={[s.infoRow, { borderBottomColor: th.border }]}>
                     <Text style={[s.infoKey, { color: th.textSub }]}>{k}</Text>
@@ -323,9 +331,7 @@ export default function RestaurantScreen() {
                   ))}
                 </View>
               ))}
-              <Text style={[s.menuNote, { color: th.textMuted }]}>
-                * Menu może ulec zmianie. Zapytaj obsługę o aktualne propozycje.
-              </Text>
+              <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
             </View>
           )}
 
@@ -336,12 +342,7 @@ export default function RestaurantScreen() {
               <View style={[s.ratingBar, { backgroundColor: th.bgCard, borderColor: th.border }]}>
                 <Text style={[s.ratingBig, { color: th.text }]}>{nr.rating.toFixed(1)}</Text>
                 <View>
-                  <View style={s.starsRow}>
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <Feather key={i} name="star" size={16}
-                        color={i <= Math.round(nr.rating) ? '#F0A500' : th.border} />
-                    ))}
-                  </View>
+                  <Stars rating={nr.rating} size={16} emptyColor={th.border} />
                   <Text style={[s.reviewCountText, { color: th.textMuted }]}>
                     {mockR?.reviewCount ?? REVIEWS.length} {t.rating}
                   </Text>
@@ -362,10 +363,8 @@ export default function RestaurantScreen() {
                       <Text style={[s.reviewDate, { color: th.textMuted }]}>{rev.date}</Text>
                     </View>
                     <View style={s.reviewStars}>
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Feather key={i} name="star" size={11}
-                          color={i <= rev.stars ? '#F0A500' : th.border} />
-                      ))}
+                      {/* replaced Feather (outline-only) with Stars component */}
+                      <Stars rating={rev.stars} size={11} emptyColor={th.border} />
                     </View>
                   </View>
                   <Text style={[s.reviewText, { color: th.textSub }]}>{rev.text}</Text>
@@ -387,7 +386,13 @@ export default function RestaurantScreen() {
       </View>
 
       {/* ── Auth gate modal ── */}
-      <LoginRequiredModal visible={loginModal} onClose={() => setLoginModal(false)} th={th} t={t} />
+      <LoginRequiredModal
+        visible={loginModal}
+        onClose={() => setLoginModal(false)}
+        onGoToLogin={() => router.navigate('/(tabs)/profile')}
+        th={th}
+        t={t}
+      />
 
       {/* ── Sticky booking bar ── */}
       <View style={[s.stickyBar, { backgroundColor: th.bg, borderTopColor: th.border, paddingBottom: insets.bottom + 12 }]}>
@@ -456,7 +461,11 @@ export default function RestaurantScreen() {
           </View>
           <TouchableOpacity
             onPress={() => {
-              if (!token) { setLoginModal(true); return }
+              if (!token) {
+                setPendingBooking({ restaurantId: id!, date: date ?? dates[0].value, time, guests })
+                setLoginModal(true)
+                return
+              }
               router.push({
                 pathname: '/booking/[restaurantId]',
                 params: { restaurantId: id!, date: date ?? '', time: time ?? '', guests: String(guests) },

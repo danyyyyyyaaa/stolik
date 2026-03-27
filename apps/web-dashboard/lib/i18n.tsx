@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export type Lang = 'PL' | 'EN' | 'RU' | 'UK'
-export const LANGS: Lang[] = ['PL', 'EN', 'RU', 'UK']
+export const LANGS: Lang[] = ['EN', 'PL', 'RU', 'UK']
 
 export const T = {
   PL: {
@@ -191,6 +191,43 @@ export const T = {
     trustCancelDesc:   'Żadnych umów. Subskrypcja odnawia się miesięcznie i można ją anulować.',
     trustSupportTitle: 'Wsparcie 24/7',
     trustSupportDesc:  'W planie Pro i Business masz dostęp do priorytetowego wsparcia przez chat.',
+    // Login / Register
+    appTagline: 'Panel zarządzania restauracją',
+    allRightsReserved: 'Wszelkie prawa zastrzeżone.',
+    regTagline: 'Rejestracja restauracji',
+    stepAccount: 'Konto', stepRestaurant: 'Restauracja',
+    accountDetails: 'Dane konta', restaurantDetails: 'Informacje o restauracji',
+    workSettings: 'Ustawienia pracy',
+    slotDurationLabel: 'Długość slotu', maxGuestsPerSlotLabel: 'Maks. gości na slot',
+    back: '← Wstecz', nextArrow: 'Dalej →', finishRegistration: 'Zakończ rejestrację',
+    registering: 'Rejestracja…', regError: 'Błąd rejestracji',
+    restaurantSaveError: 'Błąd zapisu restauracji', priceRangeLabel: 'Przedział cenowy',
+    // Booking modal
+    dateLabel: 'Data', timeLabel: 'Godzina', guestCountLabel: 'Liczba gości',
+    fullNameLabel: 'Imię i nazwisko', optional: 'opcjonalnie',
+    createBookingError: 'Błąd tworzenia rezerwacji',
+    notesPlaceholder: 'Urodziny, alergie, preferencje stolika…',
+    // Cuisine names
+    cuisinePolish: 'Polska', cuisineItalian: 'Włoska', cuisineJapanese: 'Japońska',
+    cuisineFrench: 'Francuska', cuisineMexican: 'Meksykańska', cuisineIndian: 'Indyjska',
+    cuisineChinese: 'Chińska', cuisineMediterranean: 'Śródziemnomorska',
+    cuisineAmerican: 'Amerykańska', cuisineOther: 'Inne',
+    // Onboarding wizard
+    goLive:              'Opublikuj →',
+    goingLive:           'Publikowanie…',
+    copyFromMonday:      'Jak pon.',
+    logoPhoto:           'Logo',
+    tableCountLabel:     'Liczba stolików',
+    bookingLeadTimeLabel:'Czas wyprzedzenia (godz.)',
+    stepPhotosLabel:     'Zdjęcia',
+    // Checklist
+    checklistTitle:      'Konfiguracja restauracji',
+    checklistOf:         'z',
+    checklistProfile:    'Profil wypełniony',
+    checklistPhotosItem: 'Zdjęcia wgrane',
+    checklistHoursItem:  'Godziny ustawione',
+    checklistTablesItem: 'Stoły skonfigurowane',
+    checklistBookingItem:'Pierwsza rezerwacja',
   },
   EN: {
     bookings:        'Bookings',
@@ -360,6 +397,38 @@ export const T = {
     trustCancelDesc:   'No contracts. Subscription renews monthly and can be cancelled.',
     trustSupportTitle: 'Support 24/7',
     trustSupportDesc:  'In Pro and Business plans you have access to priority chat support.',
+    appTagline: 'Restaurant management panel',
+    allRightsReserved: 'All rights reserved.',
+    regTagline: 'Restaurant registration',
+    stepAccount: 'Account', stepRestaurant: 'Restaurant',
+    accountDetails: 'Account details', restaurantDetails: 'Restaurant information',
+    workSettings: 'Working settings',
+    slotDurationLabel: 'Slot duration', maxGuestsPerSlotLabel: 'Max guests per slot',
+    back: '← Back', nextArrow: 'Next →', finishRegistration: 'Finish registration',
+    registering: 'Registering…', regError: 'Registration error',
+    restaurantSaveError: 'Error saving restaurant', priceRangeLabel: 'Price range',
+    dateLabel: 'Date', timeLabel: 'Time', guestCountLabel: 'Number of guests',
+    fullNameLabel: 'Full name', optional: 'optional',
+    createBookingError: 'Booking creation error',
+    notesPlaceholder: 'Birthday, allergies, table preferences…',
+    cuisinePolish: 'Polish', cuisineItalian: 'Italian', cuisineJapanese: 'Japanese',
+    cuisineFrench: 'French', cuisineMexican: 'Mexican', cuisineIndian: 'Indian',
+    cuisineChinese: 'Chinese', cuisineMediterranean: 'Mediterranean',
+    cuisineAmerican: 'American', cuisineOther: 'Other',
+    goLive:              'Go live →',
+    goingLive:           'Publishing…',
+    copyFromMonday:      'Same as Mon',
+    logoPhoto:           'Logo',
+    tableCountLabel:     'Number of tables',
+    bookingLeadTimeLabel:'Lead time (hours)',
+    stepPhotosLabel:     'Photos',
+    checklistTitle:      'Set up your restaurant',
+    checklistOf:         'of',
+    checklistProfile:    'Profile complete',
+    checklistPhotosItem: 'Photos uploaded',
+    checklistHoursItem:  'Hours set',
+    checklistTablesItem: 'Tables configured',
+    checklistBookingItem:'First booking received',
   },
   RU: {
     bookings:        'Бронирования',
@@ -529,6 +598,38 @@ export const T = {
     trustCancelDesc:   'Никаких договоров. Подписка обновляется ежемесячно и её можно отменить.',
     trustSupportTitle: 'Поддержка 24/7',
     trustSupportDesc:  'В тарифах Pro и Business у вас есть доступ к приоритетной поддержке через чат.',
+    appTagline: 'Панель управления рестораном',
+    allRightsReserved: 'Все права защищены.',
+    regTagline: 'Регистрация ресторана',
+    stepAccount: 'Аккаунт', stepRestaurant: 'Ресторан',
+    accountDetails: 'Данные аккаунта', restaurantDetails: 'Информация о ресторане',
+    workSettings: 'Настройки работы',
+    slotDurationLabel: 'Длительность слота', maxGuestsPerSlotLabel: 'Макс. гостей на слот',
+    back: '← Назад', nextArrow: 'Далее →', finishRegistration: 'Завершить регистрацию',
+    registering: 'Регистрация…', regError: 'Ошибка регистрации',
+    restaurantSaveError: 'Ошибка сохранения ресторана', priceRangeLabel: 'Ценовой диапазон',
+    dateLabel: 'Дата', timeLabel: 'Время', guestCountLabel: 'Количество гостей',
+    fullNameLabel: 'Имя и фамилия', optional: 'необязательно',
+    createBookingError: 'Ошибка создания бронирования',
+    notesPlaceholder: 'День рождения, аллергии, предпочтения по столику…',
+    cuisinePolish: 'Польская', cuisineItalian: 'Итальянская', cuisineJapanese: 'Японская',
+    cuisineFrench: 'Французская', cuisineMexican: 'Мексиканская', cuisineIndian: 'Индийская',
+    cuisineChinese: 'Китайская', cuisineMediterranean: 'Средиземноморская',
+    cuisineAmerican: 'Американская', cuisineOther: 'Другая',
+    goLive:              'Запустить →',
+    goingLive:           'Публикация…',
+    copyFromMonday:      'Как пн.',
+    logoPhoto:           'Логотип',
+    tableCountLabel:     'Количество столиков',
+    bookingLeadTimeLabel:'Время заявки (часы)',
+    stepPhotosLabel:     'Фото',
+    checklistTitle:      'Настройка ресторана',
+    checklistOf:         'из',
+    checklistProfile:    'Профиль заполнен',
+    checklistPhotosItem: 'Фото загружены',
+    checklistHoursItem:  'Часы указаны',
+    checklistTablesItem: 'Столики настроены',
+    checklistBookingItem:'Первое бронирование',
   },
   UK: {
     bookings:        'Бронювання',
@@ -698,6 +799,38 @@ export const T = {
     trustCancelDesc:   'Жодних договорів. Підписка поновлюється щомісяця і її можна скасувати.',
     trustSupportTitle: 'Підтримка 24/7',
     trustSupportDesc:  'У тарифах Pro і Business у вас є доступ до пріоритетної підтримки через чат.',
+    appTagline: 'Панель управління рестораном',
+    allRightsReserved: 'Усі права захищені.',
+    regTagline: 'Реєстрація ресторану',
+    stepAccount: 'Акаунт', stepRestaurant: 'Ресторан',
+    accountDetails: 'Дані акаунту', restaurantDetails: 'Інформація про ресторан',
+    workSettings: 'Налаштування роботи',
+    slotDurationLabel: 'Тривалість слота', maxGuestsPerSlotLabel: 'Макс. гостей на слот',
+    back: '← Назад', nextArrow: 'Далі →', finishRegistration: 'Завершити реєстрацію',
+    registering: 'Реєстрація…', regError: 'Помилка реєстрації',
+    restaurantSaveError: 'Помилка збереження ресторану', priceRangeLabel: 'Ціновий діапазон',
+    dateLabel: 'Дата', timeLabel: 'Час', guestCountLabel: 'Кількість гостей',
+    fullNameLabel: "Ім'я та прізвище", optional: "необов'язково",
+    createBookingError: 'Помилка створення бронювання',
+    notesPlaceholder: 'День народження, алергії, уподобання щодо столика…',
+    cuisinePolish: 'Польська', cuisineItalian: 'Італійська', cuisineJapanese: 'Японська',
+    cuisineFrench: 'Французька', cuisineMexican: 'Мексиканська', cuisineIndian: 'Індійська',
+    cuisineChinese: 'Китайська', cuisineMediterranean: 'Середземноморська',
+    cuisineAmerican: 'Американська', cuisineOther: 'Інша',
+    goLive:              'Запустити →',
+    goingLive:           'Публікація…',
+    copyFromMonday:      'Як пн.',
+    logoPhoto:           'Лого',
+    tableCountLabel:     'Кількість столиків',
+    bookingLeadTimeLabel:'Час заявки (год.)',
+    stepPhotosLabel:     'Фото',
+    checklistTitle:      'Налаштування ресторану',
+    checklistOf:         'з',
+    checklistProfile:    'Профіль заповнено',
+    checklistPhotosItem: 'Фото завантажено',
+    checklistHoursItem:  'Години вказані',
+    checklistTablesItem: 'Столики налаштовано',
+    checklistBookingItem:'Перше бронювання',
   },
 }
 
@@ -758,6 +891,27 @@ export type Translations = {
   trustPayTitle: string; trustPayDesc: string;
   trustCancelTitle: string; trustCancelDesc: string;
   trustSupportTitle: string; trustSupportDesc: string;
+  // Login / Register
+  appTagline: string; allRightsReserved: string;
+  regTagline: string; stepAccount: string; stepRestaurant: string;
+  accountDetails: string; restaurantDetails: string; workSettings: string;
+  slotDurationLabel: string; maxGuestsPerSlotLabel: string;
+  back: string; nextArrow: string; finishRegistration: string; registering: string;
+  regError: string; restaurantSaveError: string; priceRangeLabel: string;
+  // Booking modal
+  dateLabel: string; timeLabel: string; guestCountLabel: string;
+  fullNameLabel: string; optional: string; createBookingError: string; notesPlaceholder: string;
+  // Cuisine names
+  cuisinePolish: string; cuisineItalian: string; cuisineJapanese: string;
+  cuisineFrench: string; cuisineMexican: string; cuisineIndian: string;
+  cuisineChinese: string; cuisineMediterranean: string; cuisineAmerican: string; cuisineOther: string;
+  // Onboarding wizard
+  goLive: string; goingLive: string; copyFromMonday: string;
+  logoPhoto: string; tableCountLabel: string; bookingLeadTimeLabel: string; stepPhotosLabel: string;
+  // Checklist
+  checklistTitle: string; checklistOf: string;
+  checklistProfile: string; checklistPhotosItem: string;
+  checklistHoursItem: string; checklistTablesItem: string; checklistBookingItem: string;
 }
 
 interface LangContextType {
@@ -767,13 +921,13 @@ interface LangContextType {
 }
 
 const LangContext = createContext<LangContextType>({
-  lang: 'PL',
+  lang: 'EN',
   setLang: () => {},
-  t: T.PL as Translations,
+  t: T.EN as Translations,
 })
 
 export function LangProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('PL')
+  const [lang, setLangState] = useState<Lang>('EN')
 
   useEffect(() => {
     const saved = localStorage.getItem('stolik_lang') as Lang | null

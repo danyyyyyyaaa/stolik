@@ -109,6 +109,7 @@ const updateRestaurantSchema = z.object({
   priceRange:      z.enum(['$', '$$', '$$$', '$$$$']).optional(),
   emoji:           z.string().optional(),
   coverImage:      z.string().optional(),
+  images:          z.array(z.string()).optional(),
   isActive:        z.boolean().optional(),
   slotDuration:    z.number().int().positive().optional(),
   maxGuestsPerSlot:z.number().int().positive().optional(),
@@ -138,10 +139,14 @@ router.patch('/:id', requireAuth, async (req, res) => {
 
   try {
     const data = updateRestaurantSchema.parse(req.body)
+    const { images, ...rest } = data
 
     const restaurant = await prisma.restaurant.update({
       where: { id: req.params.id },
-      data,
+      data: {
+        ...rest,
+        ...(images !== undefined ? { images: { set: images } } : {}),
+      },
     })
 
     res.json(restaurant)

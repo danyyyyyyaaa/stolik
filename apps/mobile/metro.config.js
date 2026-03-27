@@ -32,4 +32,17 @@ config.resolver.blockList = [
   new RegExp(`^${escapeRegExp(path.join(rootNM, 'react'))}(/.*)?$`),
 ];
 
+// react-native-maps has no web support — return an empty module when bundling for web.
+// expo-location also has no web build; guard it the same way.
+const WEB_NATIVE_ONLY = ['react-native-maps', 'expo-location'];
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web') {
+    const base = moduleName.split('/')[0];
+    if (WEB_NATIVE_ONLY.includes(base)) {
+      return { type: 'empty' };
+    }
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;

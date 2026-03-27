@@ -22,7 +22,7 @@ interface Props {
 
 export default function LanguagePickerModal({ visible, onClose }: Props) {
   const { th }           = useTheme()
-  const { lang, setLang } = useLang()
+  const { lang, setLang, t } = useLang()
   const insets           = useSafeAreaInsets()
   const translateY       = useRef(new Animated.Value(300)).current
   const backdropOpacity  = useRef(new Animated.Value(0)).current
@@ -66,7 +66,7 @@ export default function LanguagePickerModal({ visible, onClose }: Props) {
         <View style={[s.handle, { backgroundColor: th.border }]} />
 
         {/* Title */}
-        <Text style={[s.title, { color: th.text }]}>🌐  Language</Text>
+        <Text style={[s.title, { color: th.text }]}>🌐  {t.language}</Text>
 
         {/* Options */}
         {LANGS.map((l, i) => {

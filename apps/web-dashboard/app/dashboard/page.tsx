@@ -11,7 +11,7 @@ import {
   CheckCircle, XCircle, RefreshCw, Plus,
   Users, Clock, CalendarCheck, AlertCircle, ChevronDown, Download,
   Code2, Copy, X, TrendingUp, TrendingDown, Minus,
-  Camera, LayoutGrid, Bookmark, ChevronRight,
+  Camera, LayoutGrid, Bookmark, ChevronRight, Building2,
 } from 'lucide-react'
 import clsx from 'clsx'
 import CreateBookingModal from '@/components/CreateBookingModal'
@@ -33,6 +33,7 @@ type Booking = {
 
 type Restaurant = {
   id: string; name: string; emoji?: string; slug?: string
+  description?: string | null
   coverImage?: string | null
   openMonday?: string | null; openTuesday?: string | null
   openWednesday?: string | null; openThursday?: string | null
@@ -295,16 +296,20 @@ function OnboardingChecklist({ restaurant, bookingsCount, onDismiss }: {
   bookingsCount: number
   onDismiss: () => void
 }) {
+  const t = useT()
+
+  const hasProfile = !!(restaurant.description && restaurant.description.length > 3)
   const hasPhoto   = !!restaurant.coverImage
   const hasHours   = !!(restaurant.openMonday || restaurant.openFriday || restaurant.openSaturday)
   const hasTables  = (restaurant.tables?.length ?? 0) > 0
   const hasBooking = bookingsCount > 0
 
   const items = [
-    { done: hasPhoto,   icon: Camera,   label: 'Add a cover photo',        hint: 'Upload in restaurant settings' },
-    { done: hasHours,   icon: Clock,    label: 'Set opening hours',        hint: 'So guests know when to book' },
-    { done: hasTables,  icon: LayoutGrid, label: 'Add your tables',        hint: 'Go to Tables tab' },
-    { done: hasBooking, icon: Bookmark, label: 'Receive your first booking', hint: 'Share your widget link' },
+    { done: hasProfile, icon: Building2,  label: t.checklistProfile,    hint: t.descriptionLabel },
+    { done: hasPhoto,   icon: Camera,     label: t.checklistPhotosItem,  hint: t.uploadPhoto },
+    { done: hasHours,   icon: Clock,      label: t.checklistHoursItem,   hint: t.tabHours },
+    { done: hasTables,  icon: LayoutGrid, label: t.checklistTablesItem,  hint: t.tables },
+    { done: hasBooking, icon: Bookmark,   label: t.checklistBookingItem, hint: t.embedWidget },
   ]
 
   const completed = items.filter(i => i.done).length
@@ -326,8 +331,8 @@ function OnboardingChecklist({ restaurant, bookingsCount, onDismiss }: {
           <ChevronRight size={15} className="text-accent" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-text">Set up your restaurant</h3>
-          <p className="text-xs text-muted mt-0.5">{completed} of {items.length} done</p>
+          <h3 className="text-sm font-semibold text-text">{t.checklistTitle}</h3>
+          <p className="text-xs text-muted mt-0.5">{completed} {t.checklistOf} {items.length}</p>
         </div>
         <div className="ml-auto text-sm font-bold text-accent">{pct}%</div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -8,7 +8,7 @@ import { router } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore, type Booking } from '../../src/store/useAppStore'
-import { getMyBookings } from '../../src/api/bookings'
+import { getMyBookings, cancelBooking } from '../../src/api/bookings'
 import { normalizeRestaurant } from '../../src/utils/restaurant'
 import { notifyBookingCancelled, cancelReminder } from '../../src/notifications'
 
@@ -18,18 +18,35 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled:  '#F85149',
   completed:  '#8B949E',
 }
-const STATUS_LABEL: Record<string, Record<string, string>> = {
-  confirmed:  { pl: 'Potwierdzona', en: 'Confirmed', ru: 'Подтверждена', uk: 'Підтверджена' },
-  pending:    { pl: 'Oczekująca',   en: 'Pending',   ru: 'Ожидает',      uk: 'Очікує'       },
-  cancelled:  { pl: 'Anulowana',    en: 'Cancelled',  ru: 'Отменена',     uk: 'Скасована'    },
-  completed:  { pl: 'Zakończona',   en: 'Completed',  ru: 'Завершена',    uk: 'Завершена'    },
+
+function fmtDate(s: string): string {
+  if (!s) return '—'
+  try {
+    return new Date(s).toISOString().slice(0, 10)
+  } catch { return s }
 }
 
-function BookingCard({ b, th, lang }: { b: Booking; th: any; lang: string }) {
-  const rest    = normalizeRestaurant((b as any).restaurant ?? { id: b.restaurantId })
-  const status  = b.status ?? 'pending'
-  const color   = STATUS_COLOR[status] ?? STATUS_COLOR.pending
-  const label   = STATUS_LABEL[status]?.[lang] ?? status
+function BookingCard({ b, th, t, onCancelled }: {
+  b:           Booking
+  th:          any
+  t:           any
+  onCancelled: (id: string) => void
+}) {
+  const rest       = normalizeRestaurant((b as any).restaurant ?? { id: b.restaurantId })
+  const status     = b.status ?? 'pending'
+  const color      = STATUS_COLOR[status] ?? STATUS_COLOR.pending
+  const label      = t[`status_${status}`] ?? status
+  const isUpcoming = status === 'confirmed' || status === 'pending'
+  const [cancelling, setCancelling] = useState(false)
+
+  async function handleCancel() {
+    setCancelling(true)
+    try {
+      await cancelBooking(b.id)
+      onCancelled(b.id)
+    } catch {}
+    finally { setCancelling(false) }
+  }
 
   return (
     <TouchableOpacity
@@ -43,7 +60,7 @@ function BookingCard({ b, th, lang }: { b: Booking; th: any; lang: string }) {
         </View>
         <View style={styles.cardInfo}>
           <Text style={[styles.cardName, { color: th.text }]} numberOfLines={1}>
-            {rest.name || 'Restauracja'}
+            {rest.name || t.restaurant}
           </Text>
           <Text style={[styles.cardDistrict, { color: th.textSub }]}>
             {rest.district}
@@ -56,7 +73,7 @@ function BookingCard({ b, th, lang }: { b: Booking; th: any; lang: string }) {
       <View style={styles.cardMeta}>
         <View style={styles.metaItem}>
           <Feather name="calendar" size={12} color={th.textMuted} />
-          <Text style={[styles.metaText, { color: th.textSub }]}>{b.date ?? '—'}</Text>
+          <Text style={[styles.metaText, { color: th.textSub }]}>{fmtDate(b.date)}</Text>
         </View>
         <View style={styles.metaItem}>
           <Feather name="clock" size={12} color={th.textMuted} />
@@ -70,6 +87,19 @@ function BookingCard({ b, th, lang }: { b: Booking; th: any; lang: string }) {
       {b.bookingRef && (
         <Text style={[styles.ref, { color: th.textMuted }]}>#{b.bookingRef}</Text>
       )}
+      {isUpcoming && (
+        <TouchableOpacity
+          onPress={handleCancel}
+          disabled={cancelling}
+          activeOpacity={0.7}
+          style={[styles.cancelRow, { borderTopColor: th.border }]}
+        >
+          {cancelling
+            ? <ActivityIndicator size="small" color={th.textMuted} />
+            : <Text style={styles.cancelRowText}>{t.cancel}</Text>
+          }
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   )
 }
@@ -78,6 +108,10 @@ export default function BookingsScreen() {
   const { th }       = useTheme()
   const { t, lang }  = useLang()
   const { token, myBookings, setMyBookings } = useAppStore()
+
+  function handleCancelled(id: string) {
+    setMyBookings(myBookings.map(b => b.id === id ? { ...b, status: 'cancelled' as const } : b))
+  }
   const prevBookingsRef = useRef<Booking[]>([])
 
   const [loading,    setLoading]    = useState(false)
@@ -166,7 +200,7 @@ export default function BookingsScreen() {
               {section.title.toUpperCase()}
             </Text>
             {section.data.map(b => (
-              <BookingCard key={b.id} b={b} th={th} lang={lang} />
+              <BookingCard key={b.id} b={b} th={th} t={t} onCancelled={handleCancelled} />
             ))}
           </View>
         )}
@@ -207,6 +241,8 @@ const styles = StyleSheet.create({
   metaItem:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText:     { fontSize: 12 },
   ref:          { fontSize: 11, marginTop: 8 },
+  cancelRow:    { marginTop: 10, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center' },
+  cancelRowText:{ fontSize: 13, color: '#F85149', fontWeight: '500' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptySmall:   { alignItems: 'center', paddingTop: 60 },
   emptyTitle:   { fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 20 },

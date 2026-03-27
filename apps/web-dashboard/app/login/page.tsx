@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Utensils, Eye, EyeOff } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
 export default function LoginPage() {
   const router = useRouter()
+  const t      = useT()
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -29,14 +31,14 @@ export default function LoginPage() {
       })
       const data = await res.json()
 
-      if (!res.ok) { setError(data.error || 'Błąd logowania'); return }
+      if (!res.ok) { setError(data.error || t.loginError); return }
 
       localStorage.setItem('stolik_token', data.token)
       localStorage.setItem('stolik_user',  JSON.stringify(data.user))
 
       router.push('/dashboard')
     } catch {
-      setError('Nie można połączyć się z serwerem')
+      setError(t.serverError)
     } finally {
       setLoading(false)
     }
@@ -52,18 +54,18 @@ export default function LoginPage() {
             <Utensils size={22} className="text-accent" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-text">Stolik</h1>
-          <p className="mt-1.5 text-sm text-muted">Panel zarządzania restauracją</p>
+          <p className="mt-1.5 text-sm text-muted">{t.appTagline}</p>
         </div>
 
         {/* Card */}
         <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-base font-bold text-text mb-6">Zaloguj się</h2>
+          <h2 className="text-base font-bold text-text mb-6">{t.login}</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-                Email
+                {t.email}
               </label>
               <input
                 type="email"
@@ -78,7 +80,7 @@ export default function LoginPage() {
             {/* Password */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-                Hasło
+                {t.password}
               </label>
               <div className="relative">
                 <input
@@ -112,20 +114,20 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full mt-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg px-4 py-2.5 text-sm transition-colors shadow-md shadow-accent/20"
             >
-              {loading ? 'Logowanie…' : 'Zaloguj się'}
+              {loading ? t.loggingIn : t.login}
             </button>
           </form>
 
           <p className="mt-6 text-center text-xs text-muted">
-            Nie masz konta?{' '}
+            {t.noAccount}{' '}
             <Link href="/register" className="text-accent hover:text-accent-hover font-semibold transition-colors">
-              Zarejestruj restaurację
+              {t.register}
             </Link>
           </p>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted/50">
-          © {new Date().getFullYear()} Stolik. Wszelkie prawa zastrzeżone.
+          © {new Date().getFullYear()} Stolik. {t.allRightsReserved}
         </p>
       </div>
     </div>

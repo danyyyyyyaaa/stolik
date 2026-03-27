@@ -44,6 +44,17 @@ export interface Translations {
   current_password: string; new_password: string
   // search
   no_restaurants: string; try_another_filter: string; popular: string; clear_filters: string
+  // filters
+  filters: string; filter_price: string; filter_rating: string
+  apply_filters: string; reset: string
+  // map
+  map_label: string
+  map_search_placeholder: string
+  // restaurant detail extras
+  saved: string; open_badge: string; closed_badge: string
+  info_label: string; tel: string; menu_note: string
+  // booking statuses
+  status_confirmed: string; status_pending: string; status_cancelled: string; status_completed: string
   // auth gate
   login_required_title: string; login_required_sub: string
   // onboarding
@@ -96,6 +107,15 @@ const T: Record<LangKey, Translations> = {
     current_password: 'Current password', new_password: 'New password',
     no_restaurants: 'No restaurants', try_another_filter: 'Try another filter',
     popular: 'Popular', clear_filters: 'Clear filters',
+    filters: 'Filters', filter_price: 'Price level', filter_rating: 'Min. rating',
+    apply_filters: 'Apply filters', reset: 'Reset',
+    map_label: 'Map',
+    map_search_placeholder: 'Search by name or district…',
+    saved: 'Saved',
+    open_badge: '● Open', closed_badge: '● Closed',
+    info_label: 'INFO', tel: 'Tel',
+    menu_note: '* Menu may change. Ask our staff for current offerings.',
+    status_confirmed: 'Confirmed', status_pending: 'Pending', status_cancelled: 'Cancelled', status_completed: 'Completed',
     login_required_title: 'Sign in to book',
     login_required_sub: 'Create a free account to reserve tables at the best restaurants in Warsaw.',
     onb_skip: 'Skip', onb_next: 'Next', onb_start: 'Get Started',
@@ -148,6 +168,15 @@ const T: Record<LangKey, Translations> = {
     current_password: 'Obecne hasło', new_password: 'Nowe hasło',
     no_restaurants: 'Brak restauracji', try_another_filter: 'Spróbuj innego filtra',
     popular: 'Popularne', clear_filters: 'Wyczyść filtry',
+    filters: 'Filtry', filter_price: 'Poziom cen', filter_rating: 'Min. ocena',
+    apply_filters: 'Zastosuj filtry', reset: 'Resetuj',
+    map_label: 'Mapa',
+    map_search_placeholder: 'Szukaj po nazwie lub dzielnicy…',
+    saved: 'Zapisano',
+    open_badge: '● Otwarte', closed_badge: '● Zamknięte',
+    info_label: 'INFO', tel: 'Tel',
+    menu_note: '* Menu może ulec zmianie. Zapytaj obsługę o aktualne propozycje.',
+    status_confirmed: 'Potwierdzona', status_pending: 'Oczekująca', status_cancelled: 'Anulowana', status_completed: 'Zakończona',
     login_required_title: 'Zaloguj się, aby zarezerwować',
     login_required_sub: 'Utwórz darmowe konto, aby rezerwować stoliki w najlepszych restauracjach Warszawy.',
     onb_skip: 'Pomiń', onb_next: 'Dalej', onb_start: 'Rozpocznij',
@@ -200,6 +229,15 @@ const T: Record<LangKey, Translations> = {
     current_password: 'Текущий пароль', new_password: 'Новый пароль',
     no_restaurants: 'Нет ресторанов', try_another_filter: 'Попробуйте другой фильтр',
     popular: 'Популярные', clear_filters: 'Сбросить фильтры',
+    filters: 'Фильтры', filter_price: 'Уровень цен', filter_rating: 'Мин. рейтинг',
+    apply_filters: 'Применить фильтры', reset: 'Сбросить',
+    map_label: 'Карта',
+    map_search_placeholder: 'Поиск по названию или району…',
+    saved: 'Сохранено',
+    open_badge: '● Открыто', closed_badge: '● Закрыто',
+    info_label: 'INFO', tel: 'Тел.',
+    menu_note: '* Меню может меняться. Уточняйте у персонала актуальные предложения.',
+    status_confirmed: 'Подтверждена', status_pending: 'Ожидает', status_cancelled: 'Отменена', status_completed: 'Завершена',
     login_required_title: 'Войдите, чтобы забронировать',
     login_required_sub: 'Создайте бесплатный аккаунт, чтобы бронировать столики в лучших ресторанах Варшавы.',
     onb_skip: 'Пропустить', onb_next: 'Далее', onb_start: 'Начать',
@@ -252,6 +290,15 @@ const T: Record<LangKey, Translations> = {
     current_password: 'Поточний пароль', new_password: 'Новий пароль',
     no_restaurants: 'Немає ресторанів', try_another_filter: 'Спробуйте інший фільтр',
     popular: 'Популярні', clear_filters: 'Скинути фільтри',
+    filters: 'Фільтри', filter_price: 'Рівень цін', filter_rating: 'Мін. рейтинг',
+    apply_filters: 'Застосувати фільтри', reset: 'Скинути',
+    map_label: 'Карта',
+    map_search_placeholder: 'Пошук за назвою або районом…',
+    saved: 'Збережено',
+    open_badge: '● Відкрито', closed_badge: '● Зачинено',
+    info_label: 'INFO', tel: 'Тел.',
+    menu_note: '* Меню може змінюватись. Уточнюйте у персоналу актуальні пропозиції.',
+    status_confirmed: 'Підтверджена', status_pending: 'Очікує', status_cancelled: 'Скасована', status_completed: 'Завершена',
     login_required_title: 'Увійдіть, щоб забронювати',
     login_required_sub: 'Створіть безкоштовний акаунт, щоб бронювати столики в найкращих ресторанах Варшави.',
     onb_skip: 'Пропустити', onb_next: 'Далі', onb_start: 'Почати',

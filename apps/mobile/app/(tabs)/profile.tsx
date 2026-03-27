@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
@@ -17,7 +18,7 @@ type AuthMode = 'login' | 'register'
 
 // ─── Login / Register form ─────────────────────────────────────────────────────
 function AuthForm({ th, t }: { th: any; t: any }) {
-  const { setToken, setUser } = useAppStore()
+  const { setToken, setUser, pendingBooking, setPendingBooking } = useAppStore()
   const [mode,      setMode]      = useState<AuthMode>('login')
   const [firstName, setFirstName] = useState('')
   const [lastName,  setLastName]  = useState('')
@@ -36,6 +37,21 @@ function AuthForm({ th, t }: { th: any; t: any }) {
         : await register(firstName.trim(), lastName.trim(), email.trim(), password)
       await setToken(res.token)
       setUser(res.user)
+
+      // Resume pending booking if user was redirected from restaurant screen
+      if (pendingBooking) {
+        const p = pendingBooking
+        setPendingBooking(null)
+        router.replace({
+          pathname: '/booking/[restaurantId]',
+          params: {
+            restaurantId: p.restaurantId,
+            date:    p.date,
+            time:    p.time   ?? '',
+            guests:  String(p.guests),
+          },
+        })
+      }
     } catch (e: any) {
       setError(e.message ?? t.booking_error)
     } finally {
@@ -235,7 +251,7 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
     <View style={[epf.wrap, { backgroundColor: th.bgCard, borderColor: th.border }]}>
       <Text style={[epf.label, { color: th.textMuted }]}>{t.change_password.toUpperCase()}</Text>
       {done ? (
-        <Text style={{ color: th.success, textAlign: 'center', paddingVertical: 8 }}>✓ Saved</Text>
+        <Text style={{ color: th.success, textAlign: 'center', paddingVertical: 8 }}>✓ {t.saved}</Text>
       ) : (
         <>
           <TextInput

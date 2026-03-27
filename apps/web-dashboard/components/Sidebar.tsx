@@ -66,8 +66,8 @@ export default function Sidebar() {
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'U'
     : 'U'
   const userName = user
-    ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || 'Użytkownik'
-    : 'Użytkownik'
+    ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || t.guest
+    : t.guest
   const activeRestaurant = restaurants.find(r => r.id === activeId)
 
   const NAV = [

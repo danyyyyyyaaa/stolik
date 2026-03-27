@@ -9,6 +9,13 @@ export interface User {
   lastName:  string
 }
 
+export interface PendingBooking {
+  restaurantId: string
+  date:         string
+  time:         string | null
+  guests:       number
+}
+
 export interface Restaurant {
   id:         string
   name:       string
@@ -46,12 +53,14 @@ interface AppState {
   restaurants:        Restaurant[]
   myBookings:         Booking[]
   lastBooking:        Booking | null
+  pendingBooking:     PendingBooking | null
 
   setToken:           (token: string | null) => Promise<void>
   setUser:            (user: User | null) => void
   setRestaurants:     (restaurants: Restaurant[]) => void
   setMyBookings:      (bookings: Booking[]) => void
   setLastBooking:     (booking: Booking | null) => void
+  setPendingBooking:  (booking: PendingBooking | null) => void
   logout:             () => Promise<void>
 }
 
@@ -61,6 +70,7 @@ export const useAppStore = create<AppState>((set) => ({
   restaurants:        [],
   myBookings:         [],
   lastBooking:        null,
+  pendingBooking:     null,
 
   setToken: async (token) => {
     try {
@@ -82,6 +92,8 @@ export const useAppStore = create<AppState>((set) => ({
   setMyBookings: (myBookings) => set({ myBookings }),
 
   setLastBooking: (lastBooking) => set({ lastBooking }),
+
+  setPendingBooking: (pendingBooking) => set({ pendingBooking }),
 
   logout: async () => {
     try {

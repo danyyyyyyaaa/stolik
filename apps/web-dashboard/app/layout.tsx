@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { ThemeProvider } from '@/lib/theme'
+import { LangProvider } from '@/lib/i18n'
 import './globals.css'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans min-h-screen bg-bg text-text antialiased">
         <ThemeProvider>
-          {children}
+          <LangProvider>
+            {children}
+          </LangProvider>
         </ThemeProvider>
       </body>
     </html>

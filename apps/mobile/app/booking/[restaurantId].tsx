@@ -25,7 +25,7 @@ export default function BookingScreen() {
     time?:        string
     guests?:      string
   }>()
-  const { restaurants, setLastBooking, myBookings, setMyBookings } = useAppStore()
+  const { restaurants, setLastBooking, myBookings, setMyBookings, user } = useAppStore()
 
   const r  = restaurants.find(x => x.id === params.restaurantId)
           ?? MOCK_RESTAURANTS.find(m => m.id === params.restaurantId)
@@ -36,7 +36,9 @@ export default function BookingScreen() {
   const [date,      setDate]      = useState<string>(params.date || dates[0].value)
   const [time,      setTime]      = useState<string | null>(params.time || null)
   const [guests,    setGuests]    = useState(parseInt(params.guests ?? '2', 10) || 2)
-  const [name,      setName]      = useState('')
+  const [name,      setName]      = useState(
+    user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : ''
+  )
   const [phone,     setPhone]     = useState('')
   const [slots,     setSlots]     = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
