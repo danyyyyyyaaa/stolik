@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
-  Modal, Pressable,
+  Modal, Pressable, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -102,6 +102,25 @@ const MENUS: Record<string, { category: string; items: { name: string; desc: str
   ],
 }
 
+// ─── API menu types ───────────────────────────────────────────────────────────
+
+const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
+
+type ApiMenuItem = {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  imageUrl: string | null
+  available: boolean
+}
+
+type ApiMenuCategory = {
+  id: string
+  name: string
+  items: ApiMenuItem[]
+}
+
 // ─── Mock reviews ─────────────────────────────────────────────────────────────
 
 const REVIEWS = [
@@ -188,12 +207,27 @@ export default function RestaurantScreen() {
   const imageUrl = mockR?.image ?? `https://picsum.photos/seed/stolik-${id}/800/400`
 
   const [activeTab,    setActiveTab]    = useState<TabKey>('about')
+  const [apiMenu,      setApiMenu]      = useState<ApiMenuCategory[] | null>(null)
+  const [menuLoading,  setMenuLoading]  = useState(false)
   const [date,         setDate]         = useState<string | null>(null)
   const [time,         setTime]         = useState<string | null>(null)
   const [guests,       setGuests]       = useState(2)
   const [slots,        setSlots]        = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [loginModal,   setLoginModal]   = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'menu' || !id || apiMenu !== null) return
+    setMenuLoading(true)
+    fetch(`${API}/api/menu/${id}`)
+      .then(r => r.json())
+      .then((data: ApiMenuCategory[]) => {
+        if (Array.isArray(data)) setApiMenu(data)
+        else setApiMenu([])
+      })
+      .catch(() => setApiMenu([]))
+      .finally(() => setMenuLoading(false))
+  }, [activeTab, id])
 
   const dates = buildDates(t.tonight, t.tomorrow)
 
@@ -317,21 +351,67 @@ export default function RestaurantScreen() {
           {/* Menu */}
           {activeTab === 'menu' && (
             <View>
-              {menuSections.map(section => (
-                <View key={section.category} style={s.menuSection}>
-                  <Text style={[s.menuCategory, { color: th.text }]}>{section.category}</Text>
-                  {section.items.map(item => (
-                    <View key={item.name} style={[s.menuItem, { borderBottomColor: th.border }]}>
-                      <View style={s.menuItemLeft}>
-                        <Text style={[s.menuItemName, { color: th.text }]}>{item.name}</Text>
-                        <Text style={[s.menuItemDesc, { color: th.textMuted }]}>{item.desc}</Text>
-                      </View>
-                      <Text style={[s.menuItemPrice, { color: th.accent }]}>{item.price}</Text>
+              {menuLoading ? (
+                <ActivityIndicator size="small" color={th.accent} style={{ marginTop: 24 }} />
+              ) : apiMenu && apiMenu.length > 0 ? (
+                <>
+                  {apiMenu.map(section => (
+                    <View key={section.id} style={s.menuSection}>
+                      <Text style={[s.menuCategory, { color: th.text }]}>{section.name}</Text>
+                      {section.items.map(item => (
+                        <View
+                          key={item.id}
+                          style={[
+                            s.menuItem,
+                            { borderBottomColor: th.border, opacity: item.available ? 1 : 0.45 },
+                          ]}
+                        >
+                          {item.imageUrl ? (
+                            <Image
+                              source={{ uri: item.imageUrl }}
+                              style={s.menuItemPhoto}
+                              resizeMode="cover"
+                            />
+                          ) : null}
+                          <View style={s.menuItemLeft}>
+                            <Text style={[s.menuItemName, { color: th.text }]}>{item.name}</Text>
+                            {item.description ? (
+                              <Text style={[s.menuItemDesc, { color: th.textMuted }]}>{item.description}</Text>
+                            ) : null}
+                            {!item.available && (
+                              <Text style={[s.menuItemUnavailable, { color: th.textMuted }]}>
+                                {t.unavailable ?? 'Niedostępne'}
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={[s.menuItemPrice, { color: th.accent }]}>
+                            {item.price.toFixed(2)} zł
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   ))}
-                </View>
-              ))}
-              <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
+                  <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
+                </>
+              ) : (
+                <>
+                  {menuSections.map(section => (
+                    <View key={section.category} style={s.menuSection}>
+                      <Text style={[s.menuCategory, { color: th.text }]}>{section.category}</Text>
+                      {section.items.map(item => (
+                        <View key={item.name} style={[s.menuItem, { borderBottomColor: th.border }]}>
+                          <View style={s.menuItemLeft}>
+                            <Text style={[s.menuItemName, { color: th.text }]}>{item.name}</Text>
+                            <Text style={[s.menuItemDesc, { color: th.textMuted }]}>{item.desc}</Text>
+                          </View>
+                          <Text style={[s.menuItemPrice, { color: th.accent }]}>{item.price}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                  <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
+                </>
+              )}
             </View>
           )}
 
@@ -520,11 +600,13 @@ function makeStyles(th: any) {
     menuSection:      { marginBottom: 20 },
     menuCategory:     { fontSize: 13, fontWeight: '700', letterSpacing: 0.6, marginBottom: 10, textTransform: 'uppercase' },
     menuItem:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
-    menuItemLeft:     { flex: 1 },
-    menuItemName:     { fontSize: 14, fontWeight: '500', marginBottom: 2 },
-    menuItemDesc:     { fontSize: 12, lineHeight: 17 },
-    menuItemPrice:    { fontSize: 14, fontWeight: '700', minWidth: 48, textAlign: 'right' },
-    menuNote:         { fontSize: 11, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
+    menuItemLeft:        { flex: 1 },
+    menuItemName:        { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+    menuItemDesc:        { fontSize: 12, lineHeight: 17 },
+    menuItemPrice:       { fontSize: 14, fontWeight: '700', minWidth: 48, textAlign: 'right' },
+    menuItemPhoto:       { width: 52, height: 52, borderRadius: 10, marginRight: 10 },
+    menuItemUnavailable: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
+    menuNote:            { fontSize: 11, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
 
     // Reviews
     ratingBar:        { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 16 },

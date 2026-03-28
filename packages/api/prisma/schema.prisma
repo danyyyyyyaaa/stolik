@@ -64,8 +64,9 @@ model Restaurant {
   tables    Table[]
   bookings  Booking[]
   guests    GuestProfile[]
-  reviews   Review[]
-  staff     StaffMember[]
+  reviews        Review[]
+  staff          StaffMember[]
+  menuCategories MenuCategory[]
 
   @@map("restaurants")
 }
@@ -198,6 +199,34 @@ model Review {
   userId       String
 
   @@map("reviews")
+}
+
+// ─── MENU ────────────────────────────────────────────────────────────────────
+model MenuCategory {
+  id           String     @id @default(cuid())
+  restaurantId String
+  name         String
+  sortOrder    Int        @default(0)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  items        MenuItem[]
+  createdAt    DateTime   @default(now())
+
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  available   Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  category    MenuCategory @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@map("menu_items")
 }
 
 // ─── STAFF ───────────────────────────────────────────────────────────────────

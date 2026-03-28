@@ -228,6 +228,27 @@ export const T = {
     checklistHoursItem:  'Godziny ustawione',
     checklistTablesItem: 'Stoły skonfigurowane',
     checklistBookingItem:'Pierwsza rezerwacja',
+    // Menu
+    menu:             'Menu',
+    addCategory:      '+ Dodaj kategorię',
+    editCategory:     'Edytuj kategorię',
+    deleteCategory:   'Usuń kategorię',
+    addItem:          '+ Dodaj pozycję',
+    editItem:         'Edytuj pozycję',
+    deleteItem:       'Usuń pozycję',
+    categoryNameLabel:'Nazwa kategorii',
+    itemNameLabel:    'Nazwa',
+    itemDescLabel:    'Opis',
+    itemPriceLabel:   'Cena (PLN)',
+    itemCategoryLabel:'Kategoria',
+    itemAvailableLabel:'Dostępna',
+    available:        'Dostępna',
+    unavailable:      'Niedostępna',
+    noCategories:     'Brak kategorii. Dodaj pierwszą kategorię menu.',
+    confirmDeleteCategory: 'Czy na pewno chcesz usunąć tę kategorię i wszystkie jej pozycje?',
+    confirmDeleteItem:'Czy na pewno chcesz usunąć tę pozycję?',
+    photoLabel:       'Zdjęcie',
+    uploadingPhoto:   'Wgrywanie…',
   },
   EN: {
     bookings:        'Bookings',
@@ -429,6 +450,27 @@ export const T = {
     checklistHoursItem:  'Hours set',
     checklistTablesItem: 'Tables configured',
     checklistBookingItem:'First booking received',
+    // Menu
+    menu:             'Menu',
+    addCategory:      '+ Add category',
+    editCategory:     'Edit category',
+    deleteCategory:   'Delete category',
+    addItem:          '+ Add item',
+    editItem:         'Edit item',
+    deleteItem:       'Delete item',
+    categoryNameLabel:'Category name',
+    itemNameLabel:    'Name',
+    itemDescLabel:    'Description',
+    itemPriceLabel:   'Price (PLN)',
+    itemCategoryLabel:'Category',
+    itemAvailableLabel:'Available',
+    available:        'Available',
+    unavailable:      'Unavailable',
+    noCategories:     'No categories yet. Add your first menu category.',
+    confirmDeleteCategory: 'Are you sure you want to delete this category and all its items?',
+    confirmDeleteItem:'Are you sure you want to delete this item?',
+    photoLabel:       'Photo',
+    uploadingPhoto:   'Uploading…',
   },
   RU: {
     bookings:        'Бронирования',
@@ -630,6 +672,27 @@ export const T = {
     checklistHoursItem:  'Часы указаны',
     checklistTablesItem: 'Столики настроены',
     checklistBookingItem:'Первое бронирование',
+    // Menu
+    menu:             'Меню',
+    addCategory:      '+ Добавить категорию',
+    editCategory:     'Редактировать категорию',
+    deleteCategory:   'Удалить категорию',
+    addItem:          '+ Добавить позицию',
+    editItem:         'Редактировать позицию',
+    deleteItem:       'Удалить позицию',
+    categoryNameLabel:'Название категории',
+    itemNameLabel:    'Название',
+    itemDescLabel:    'Описание',
+    itemPriceLabel:   'Цена (PLN)',
+    itemCategoryLabel:'Категория',
+    itemAvailableLabel:'Доступно',
+    available:        'Доступно',
+    unavailable:      'Недоступно',
+    noCategories:     'Категорий нет. Добавьте первую категорию меню.',
+    confirmDeleteCategory: 'Удалить эту категорию и все её позиции?',
+    confirmDeleteItem:'Удалить эту позицию?',
+    photoLabel:       'Фото',
+    uploadingPhoto:   'Загрузка…',
   },
   UK: {
     bookings:        'Бронювання',
@@ -831,6 +894,27 @@ export const T = {
     checklistHoursItem:  'Години вказані',
     checklistTablesItem: 'Столики налаштовано',
     checklistBookingItem:'Перше бронювання',
+    // Menu
+    menu:             'Меню',
+    addCategory:      '+ Додати категорію',
+    editCategory:     'Редагувати категорію',
+    deleteCategory:   'Видалити категорію',
+    addItem:          '+ Додати позицію',
+    editItem:         'Редагувати позицію',
+    deleteItem:       'Видалити позицію',
+    categoryNameLabel:'Назва категорії',
+    itemNameLabel:    'Назва',
+    itemDescLabel:    'Опис',
+    itemPriceLabel:   'Ціна (PLN)',
+    itemCategoryLabel:'Категорія',
+    itemAvailableLabel:'Доступно',
+    available:        'Доступно',
+    unavailable:      'Недоступно',
+    noCategories:     'Категорій немає. Додайте першу категорію меню.',
+    confirmDeleteCategory: 'Видалити цю категорію та всі її позиції?',
+    confirmDeleteItem:'Видалити цю позицію?',
+    photoLabel:       'Фото',
+    uploadingPhoto:   'Завантаження…',
   },
 }
 
@@ -912,6 +996,14 @@ export type Translations = {
   checklistTitle: string; checklistOf: string;
   checklistProfile: string; checklistPhotosItem: string;
   checklistHoursItem: string; checklistTablesItem: string; checklistBookingItem: string;
+  // Menu
+  menu: string; addCategory: string; editCategory: string; deleteCategory: string;
+  addItem: string; editItem: string; deleteItem: string;
+  categoryNameLabel: string; itemNameLabel: string; itemDescLabel: string;
+  itemPriceLabel: string; itemCategoryLabel: string; itemAvailableLabel: string;
+  available: string; unavailable: string; noCategories: string;
+  confirmDeleteCategory: string; confirmDeleteItem: string;
+  photoLabel: string; uploadingPhoto: string;
 }
 
 interface LangContextType {

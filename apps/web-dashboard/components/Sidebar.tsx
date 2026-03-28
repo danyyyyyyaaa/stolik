@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   CalendarDays, Users, LayoutGrid, CreditCard,
   LogOut, ChevronDown, Utensils, ChevronRight,
-  Settings, Store, Sun, Moon,
+  Settings, Store, Sun, Moon, BookOpen,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang, LANGS, type Lang } from '@/lib/i18n'
@@ -74,6 +74,7 @@ export default function Sidebar() {
     { href: '/dashboard',          icon: CalendarDays, label: t.bookings },
     { href: '/dashboard/guests',   icon: Users,        label: t.guests   },
     { href: '/dashboard/tables',   icon: LayoutGrid,   label: t.tables   },
+    { href: '/menu',               icon: BookOpen,     label: t.menu     },
     { href: '/dashboard/billing',  icon: CreditCard,   label: t.billing  },
     { href: '/dashboard/profile',  icon: Store,        label: t.profile  },
     { href: '/dashboard/settings', icon: Settings,     label: t.settings },

@@ -15,6 +15,7 @@ import { widgetRouter } from './routes/widget'
 import { subscriptionsRouter } from './routes/subscriptions'
 import { uploadRouter } from './routes/upload'
 import { adminRouter } from './routes/admin'
+import { menuRouter } from './routes/menu'
 
 dotenv.config()
 
@@ -70,6 +71,7 @@ app.use('/api/guests', guestsRouter)
 app.use('/api/widget', widgetRouter)  // public — no auth needed
 app.use('/api/upload', uploadRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/menu', menuRouter)
 
 // Health check
 app.get('/health', (req, res) => {

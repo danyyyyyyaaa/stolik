@@ -1,4 +1,5 @@
-import { Router } from 'express'
+/// <reference types="multer" />
+import { Router, Request } from 'express'
 import multer from 'multer'
 import jwt from 'jsonwebtoken'
 import { uploadFile } from '../lib/r2'
@@ -8,7 +9,7 @@ const router = Router()
 const upload = multer({
   storage: multer.memoryStorage(),
   limits:  { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile?: boolean) => void) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
     if (allowed.includes(file.mimetype)) {
       cb(null, true)
