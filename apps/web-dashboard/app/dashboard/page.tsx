@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
-import { pl, enUS, ru, uk } from 'date-fns/locale'
+import { pl, enUS } from 'date-fns/locale'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'

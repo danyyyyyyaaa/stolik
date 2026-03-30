@@ -110,6 +110,7 @@ function PhotoUpload({
   aspectClass?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const t        = useT()
 
   return (
     <div className="space-y-2">
@@ -137,7 +138,7 @@ function PhotoUpload({
           ) : (
             <Upload size={20} />
           )}
-          <span className="text-xs font-medium">{uploading ? 'Uploading…' : 'Click to upload'}</span>
+          <span className="text-xs font-medium">{uploading ? t.uploadingPhoto : t.clickToUpload}</span>
         </button>
       )}
       {hint && <p className="text-xs text-muted/70">{hint}</p>}

@@ -71,7 +71,7 @@ router.post('/', requireAuth, async (req, res) => {
   const userId = (req as any).userId
 
   const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user || user.role !== 'owner') {
+  if (!user || (user.role !== 'owner' && user.role !== 'admin')) {
     return res.status(403).json({ error: 'Only restaurant owners can create restaurants' })
   }
 

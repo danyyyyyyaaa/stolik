@@ -3,7 +3,7 @@ import * as Device from 'expo-device'
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 
-const API              = 'https://stolik-production.up.railway.app'
+const API              = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 const NOTIFICATIONS_KEY = 'stolik_notifications'
 
 // Show notifications even when the app is foregrounded

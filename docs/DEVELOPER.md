@@ -35,7 +35,7 @@ npm run dev:api
 # → http://localhost:3001
 # → http://localhost:3001/health — должен вернуть { status: 'ok' }
 ```
-
+ 
 ---
 
 ## Что уже сделано
@@ -121,13 +121,15 @@ POST   /api/upload                 # Загрузка изображений в 
 
 | Переменная | Описание |
 |------------|----------|
+| `PORT` | Порт API сервера (по умолчанию `3001`) |
 | `DATABASE_URL` | PostgreSQL connection string (Railway) |
 | `JWT_SECRET` | Секрет для подписи JWT токенов |
+| `DASHBOARD_URL` | URL веб-дашборда (например `https://stolik-dashboard.vercel.app`, default: `http://localhost:3000`) |
 | `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_…` или `sk_test_…`) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) |
 | `TWILIO_ACCOUNT_SID` | Twilio Account SID |
 | `TWILIO_AUTH_TOKEN` | Twilio Auth Token |
-| `TWILIO_FROM` | Twilio номер отправителя SMS |
+| `TWILIO_FROM_NUMBER` | Twilio номер отправителя SMS (например `+48XXXXXXXXX`) |
 | `R2_ACCOUNT_ID` | Cloudflare Account ID (найти в Cloudflare Dashboard → правый sidebar) |
 | `R2_ACCESS_KEY_ID` | R2 API Token Access Key ID |
 | `R2_SECRET_ACCESS_KEY` | R2 API Token Secret Access Key |

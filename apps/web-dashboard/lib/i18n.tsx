@@ -249,6 +249,7 @@ export const T = {
     confirmDeleteItem:'Czy na pewno chcesz usunąć tę pozycję?',
     photoLabel:       'Zdjęcie',
     uploadingPhoto:   'Wgrywanie…',
+    clickToUpload:    'Kliknij, aby przesłać',
   },
   EN: {
     bookings:        'Bookings',
@@ -471,6 +472,7 @@ export const T = {
     confirmDeleteItem:'Are you sure you want to delete this item?',
     photoLabel:       'Photo',
     uploadingPhoto:   'Uploading…',
+    clickToUpload:    'Click to upload',
   },
   RU: {
     bookings:        'Бронирования',
@@ -693,6 +695,7 @@ export const T = {
     confirmDeleteItem:'Удалить эту позицию?',
     photoLabel:       'Фото',
     uploadingPhoto:   'Загрузка…',
+    clickToUpload:    'Нажмите для загрузки',
   },
   UK: {
     bookings:        'Бронювання',
@@ -915,6 +918,7 @@ export const T = {
     confirmDeleteItem:'Видалити цю позицію?',
     photoLabel:       'Фото',
     uploadingPhoto:   'Завантаження…',
+    clickToUpload:    'Натисніть для завантаження',
   },
 }
 
@@ -1003,7 +1007,7 @@ export type Translations = {
   itemPriceLabel: string; itemCategoryLabel: string; itemAvailableLabel: string;
   available: string; unavailable: string; noCategories: string;
   confirmDeleteCategory: string; confirmDeleteItem: string;
-  photoLabel: string; uploadingPhoto: string;
+  photoLabel: string; uploadingPhoto: string; clickToUpload: string;
 }
 
 interface LangContextType {

@@ -10,20 +10,12 @@ import { useTheme } from '../theme'
 import { useLang } from '../i18n'
 import { useAppStore } from '../store/useAppStore'
 import { getSlots } from '../api/restaurants'
+import { createBooking } from '../api/bookings'
+import { buildDates } from '../utils/restaurant'
 import type { RootStackParamList } from '../navigation/AppNavigator'
 
 type NavProp   = NativeStackNavigationProp<RootStackParamList, 'Restaurant'>
 type RouteProp2 = RouteProp<RootStackParamList, 'Restaurant'>
-
-function buildDates(tonight: string, tomorrow: string) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    const iso   = d.toISOString().split('T')[0]
-    const label = i === 0 ? tonight : i === 1 ? tomorrow : d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-    return { label, value: iso }
-  })
-}
 
 const TABS = ['about', 'menu', 'reviews'] as const
 
@@ -49,7 +41,6 @@ export default function RestaurantScreen() {
   const [bookingError,  setBookingError]  = useState('')
 
   const { setLastBooking, setMyBookings, myBookings } = useAppStore()
-  const { createBooking } = require('../api/bookings')
 
   const dates = buildDates(t.tonight, t.tomorrow)
 

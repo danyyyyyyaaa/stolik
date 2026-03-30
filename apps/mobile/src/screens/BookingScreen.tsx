@@ -11,20 +11,11 @@ import { useLang } from '../i18n'
 import { useAppStore } from '../store/useAppStore'
 import { getSlots } from '../api/restaurants'
 import { createBooking } from '../api/bookings'
+import { buildDates } from '../utils/restaurant'
 import type { RootStackParamList } from '../navigation/AppNavigator'
 
 type NavProp    = NativeStackNavigationProp<RootStackParamList, 'Booking'>
 type RouteProp2 = RouteProp<RootStackParamList, 'Booking'>
-
-function buildDates(tonight: string, tomorrow: string) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    const iso   = d.toISOString().split('T')[0]
-    const label = i === 0 ? tonight : i === 1 ? tomorrow : d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-    return { label, value: iso }
-  })
-}
 
 export default function BookingScreen() {
   const { th }       = useTheme()

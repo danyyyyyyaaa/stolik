@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store'
 export const TOKEN_KEY = 'stolik_token'
 
 const client = axios.create({
-  baseURL: 'https://stolik-production.up.railway.app',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app',
   timeout: 30_000,
   headers: { 'Content-Type': 'application/json' },
 })
