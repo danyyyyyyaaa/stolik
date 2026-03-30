@@ -11,15 +11,15 @@ const jakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Stolik — Panel restauracji',
-  description: 'System zarządzania rezerwacjami',
+  title: 'Stolik — Restaurant Dashboard',
+  description: 'Restaurant booking management system',
 }
 
 const antiFlashScript = `(function(){try{var t=localStorage.getItem('stolik-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})()`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={jakarta.variable} suppressHydrationWarning>
+    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: antiFlashScript }} />
       </head>

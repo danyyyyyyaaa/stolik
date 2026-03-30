@@ -327,14 +327,14 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<LangKey>('en')   // default = English
 
   useEffect(() => {
-    SecureStore.getItemAsync('stolik_lang').then(v => {
+    SecureStore.getItemAsync('stolik_lang_v2').then(v => {
       if (v && v in T) setLangState(v as LangKey)
     }).catch(() => {})
   }, [])
 
   function setLang(l: LangKey) {
     setLangState(l)
-    SecureStore.setItemAsync('stolik_lang', l).catch(() => {})
+    SecureStore.setItemAsync('stolik_lang_v2', l).catch(() => {})
   }
 
   return (

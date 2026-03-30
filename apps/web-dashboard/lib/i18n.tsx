@@ -1026,13 +1026,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>('EN')
 
   useEffect(() => {
-    const saved = localStorage.getItem('stolik_lang') as Lang | null
+    const saved = localStorage.getItem('stolik_lang_v2') as Lang | null
     if (saved && LANGS.includes(saved)) setLangState(saved)
   }, [])
 
   function setLang(l: Lang) {
     setLangState(l)
-    localStorage.setItem('stolik_lang', l)
+    localStorage.setItem('stolik_lang_v2', l)
   }
 
   return (
