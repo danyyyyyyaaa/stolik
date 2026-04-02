@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import CreateBookingModal from '@/components/CreateBookingModal'
+import BookingsCalendarView from '@/components/BookingsCalendarView'
 import { useT, useLang } from '@/lib/i18n'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
@@ -407,6 +408,7 @@ export default function DashboardPage() {
   const [showModal,       setShowModal]       = useState(false)
   const [showRestDrop,    setShowRestDrop]    = useState(false)
   const [showEmbed,       setShowEmbed]       = useState(false)
+  const [viewMode,        setViewMode]        = useState<'list' | 'calendar'>('list')
   const [statusFilter,    setStatusFilter]    = useState<StatusFilter>('all')
   const [weekData,        setWeekData]        = useState<DailyPoint[]>([])
   const [yesterday,       setYesterday]       = useState<YesterdayCounts>({ total: 0, confirmed: 0, pending: 0, noShow: 0 })
@@ -669,8 +671,30 @@ export default function DashboardPage() {
           />
         )}
 
+        {/* Bookings — view toggle + table/calendar */}
+        <div className="flex items-center gap-2 mb-1">
+          {(['list', 'calendar'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+                viewMode === mode
+                  ? 'bg-accent/15 text-accent border-accent/30'
+                  : 'text-muted border-border hover:text-text hover:bg-surface-2',
+              )}
+            >
+              {mode === 'list' ? '☰ List' : '📅 Calendar'}
+            </button>
+          ))}
+        </div>
+
+        {viewMode === 'calendar' && activeId && token && (
+          <BookingsCalendarView restaurantId={activeId} token={token} />
+        )}
+
         {/* Bookings table */}
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        {viewMode === 'list' && <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-1">
               {filterTabs.map(tab => (
@@ -799,7 +823,7 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Create booking modal */}
