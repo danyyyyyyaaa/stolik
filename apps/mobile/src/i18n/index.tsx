@@ -34,6 +34,12 @@ export interface Translations {
   // auth
   sign_in: string; email: string; password: string
   sign_in_btn: string; no_account: string; register: string
+  create_account: string; have_account: string
+  email_taken: string; password_min: string; network_error: string
+  // new onboarding
+  choose_language: string
+  push_title: string; push_desc: string; push_allow: string
+  ready_title: string; ready_desc: string; ready_btn: string
   // restaurant detail
   menu_soon: string; reviews_soon: string; district: string; address: string
   cuisine_label: string
@@ -98,6 +104,11 @@ const T: Record<LangKey, Translations> = {
     booking_error: 'Booking failed. Please try again.',
     sign_in: 'Sign in', email: 'Email', password: 'Password',
     sign_in_btn: 'Sign in', no_account: "Don't have an account?", register: 'Register',
+    create_account: 'Create account', have_account: 'Already have an account?',
+    email_taken: 'This email is already registered', password_min: 'Password must be at least 6 characters', network_error: 'Check your internet connection',
+    choose_language: 'Choose your language',
+    push_title: 'Stay updated', push_desc: 'Allow notifications to receive booking reminders and updates', push_allow: 'Allow notifications',
+    ready_title: "You're all set!", ready_desc: 'Find the best restaurants in Warsaw', ready_btn: 'Explore restaurants',
     menu_soon: 'Menu coming soon...', reviews_soon: 'Reviews coming soon...',
     district: 'District', address: 'Address', cuisine_label: 'Cuisine',
     first_name: 'First name', last_name: 'Last name', fill_fields: 'Please fill in all fields',
@@ -159,6 +170,11 @@ const T: Record<LangKey, Translations> = {
     booking_error: 'Błąd rezerwacji. Spróbuj ponownie.',
     sign_in: 'Zaloguj się', email: 'E-mail', password: 'Hasło',
     sign_in_btn: 'Zaloguj', no_account: 'Nie masz konta?', register: 'Zarejestruj się',
+    create_account: 'Utwórz konto', have_account: 'Masz już konto?',
+    email_taken: 'Ten email jest już zarejestrowany', password_min: 'Hasło musi mieć co najmniej 6 znaków', network_error: 'Sprawdź połączenie z internetem',
+    choose_language: 'Wybierz język',
+    push_title: 'Bądź na bieżąco', push_desc: 'Zezwól na powiadomienia, aby otrzymywać przypomnienia o rezerwacjach', push_allow: 'Zezwól na powiadomienia',
+    ready_title: 'Gotowe!', ready_desc: 'Znajdź najlepsze restauracje w Warszawie', ready_btn: 'Przeglądaj restauracje',
     menu_soon: 'Menu wkrótce...', reviews_soon: 'Opinie wkrótce...',
     district: 'Dzielnica', address: 'Adres', cuisine_label: 'Kuchnia',
     first_name: 'Imię', last_name: 'Nazwisko', fill_fields: 'Wypełnij wszystkie pola',
@@ -220,6 +236,11 @@ const T: Record<LangKey, Translations> = {
     booking_error: 'Ошибка бронирования. Попробуйте ещё раз.',
     sign_in: 'Войти', email: 'Email', password: 'Пароль',
     sign_in_btn: 'Войти', no_account: 'Нет аккаунта?', register: 'Зарегистрироваться',
+    create_account: 'Создать аккаунт', have_account: 'Уже есть аккаунт?',
+    email_taken: 'Этот email уже зарегистрирован', password_min: 'Пароль должен быть не менее 6 символов', network_error: 'Проверьте подключение к интернету',
+    choose_language: 'Выберите язык',
+    push_title: 'Будьте в курсе', push_desc: 'Разрешите уведомления, чтобы получать напоминания о бронях', push_allow: 'Разрешить уведомления',
+    ready_title: 'Всё готово!', ready_desc: 'Найдите лучшие рестораны Варшавы', ready_btn: 'Смотреть рестораны',
     menu_soon: 'Меню скоро...', reviews_soon: 'Отзывы скоро...',
     district: 'Район', address: 'Адрес', cuisine_label: 'Кухня',
     first_name: 'Имя', last_name: 'Фамилия', fill_fields: 'Заполните все поля',
@@ -281,6 +302,11 @@ const T: Record<LangKey, Translations> = {
     booking_error: 'Помилка бронювання. Спробуйте ще раз.',
     sign_in: 'Увійти', email: 'Email', password: 'Пароль',
     sign_in_btn: 'Увійти', no_account: 'Немає акаунту?', register: 'Зареєструватись',
+    create_account: 'Створити акаунт', have_account: 'Вже є акаунт?',
+    email_taken: 'Цей email вже зареєстровано', password_min: 'Пароль має бути не менше 6 символів', network_error: 'Перевірте підключення до інтернету',
+    choose_language: 'Оберіть мову',
+    push_title: 'Будьте в курсі', push_desc: 'Дозвольте сповіщення, щоб отримувати нагадування про бронювання', push_allow: 'Дозволити сповіщення',
+    ready_title: 'Все готово!', ready_desc: 'Знайдіть найкращі ресторани Варшави', ready_btn: 'Переглянути ресторани',
     menu_soon: 'Меню скоро...', reviews_soon: 'Відгуки скоро...',
     district: 'Район', address: 'Адреса', cuisine_label: 'Кухня',
     first_name: "Ім'я", last_name: 'Прізвище', fill_fields: 'Заповніть усі поля',

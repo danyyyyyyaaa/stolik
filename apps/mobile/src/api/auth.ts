@@ -33,10 +33,11 @@ export async function register(
   lastName: string,
   email: string,
   password: string,
+  phone?: string,
 ): Promise<AuthResponse> {
   return withRetry(async () => {
     const { data } = await client.post<AuthResponse>('/api/auth/register', {
-      firstName, lastName, email, password,
+      firstName, lastName, email, password, ...(phone ? { phone } : {}),
     })
     return data
   })

@@ -1,167 +1,196 @@
-import React, { useRef, useState } from 'react'
-import {
-  View, Text, StyleSheet, TouchableOpacity, Animated,
-  Dimensions, ScrollView,
-} from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLang } from '../i18n'
+import { useTheme } from '../theme'
+import { useLang, LangKey } from '../i18n'
+import { requestPermissions, getAndRegisterPushToken } from '../notifications'
+import { useAppStore } from '../store/useAppStore'
 
-const { width: SCREEN_W } = Dimensions.get('window')
+type Step = 'language' | 'push' | 'done'
 
-const SLIDE_BG_COLORS = ['#1B3A2A', '#1B2E42', '#2E1B3A']
+const LANGUAGES: { key: LangKey; native: string; label: string }[] = [
+  { key: 'en', native: 'English',     label: 'English'    },
+  { key: 'pl', native: 'Polski',      label: 'Polish'     },
+  { key: 'ru', native: 'Русский',     label: 'Russian'    },
+  { key: 'uk', native: 'Українська',  label: 'Ukrainian'  },
+]
 
 interface Props {
   onComplete: () => void
 }
 
 export default function OnboardingScreen({ onComplete }: Props) {
-  const insets        = useSafeAreaInsets()
-  const { t }         = useLang()
-  const [index, setIndex] = useState(0)
-  const scrollRef     = useRef<ScrollView>(null)
-  const dotAnims      = useRef([0, 1, 2].map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current
+  const { th } = useTheme()
+  const { t, lang, setLang } = useLang()
+  const { token } = useAppStore()
+  const insets = useSafeAreaInsets()
 
-  const slides = [
-    { emoji: '🍽️', bgColor: SLIDE_BG_COLORS[0], title: t.onb_title_1, subtitle: t.onb_sub_1 },
-    { emoji: '⚡',  bgColor: SLIDE_BG_COLORS[1], title: t.onb_title_2, subtitle: t.onb_sub_2 },
-    { emoji: '✅',  bgColor: SLIDE_BG_COLORS[2], title: t.onb_title_3, subtitle: t.onb_sub_3 },
-  ]
+  const [step, setStep] = useState<Step>('language')
+  const [selectedLang, setSelectedLang] = useState<LangKey>(lang)
 
-  const isLast = index === slides.length - 1
-  const slide  = slides[index]
-
-  function goTo(next: number) {
-    if (next < 0 || next >= slides.length) return
-    scrollRef.current?.scrollTo({ x: next * SCREEN_W, animated: true })
-    animateDots(next)
-    setIndex(next)
+  function handleLangNext() {
+    setLang(selectedLang)
+    setStep('push')
   }
 
-  function animateDots(next: number) {
-    slides.forEach((_, i) => {
-      Animated.spring(dotAnims[i], {
-        toValue: i === next ? 1 : 0,
-        useNativeDriver: false,
-        tension: 160,
-        friction: 12,
-      }).start()
-    })
-  }
-
-  function handleScroll(e: any) {
-    const x    = e.nativeEvent.contentOffset.x
-    const next = Math.round(x / SCREEN_W)
-    if (next !== index) {
-      animateDots(next)
-      setIndex(next)
+  async function handlePushAllow() {
+    try {
+      const granted = await requestPermissions()
+      if (granted && token) {
+        getAndRegisterPushToken(token).catch(() => {})
+      }
+    } catch {
+      // ignore — not critical
     }
+    setStep('done')
   }
 
-  return (
-    <View style={[styles.root, { backgroundColor: slide.bgColor }]}>
+  const padTop = insets.top + 32
+  const padBot = insets.bottom + 32
 
-      {/* Skip button */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={onComplete} hitSlop={12} activeOpacity={0.7}>
-          <Text style={styles.skipText}>{t.onb_skip}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Slides */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        scrollEventThrottle={16}
-        style={styles.slidesScroll}
-      >
-        {slides.map((s, i) => (
-          <View key={i} style={[styles.slide, { width: SCREEN_W }]}>
-            {/* Illustration circle */}
-            <View style={[styles.illustrationCircle, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
-              <View style={[styles.illustrationInner, { backgroundColor: 'rgba(255,255,255,0.10)' }]}>
-                <Text style={styles.emoji}>{s.emoji}</Text>
-              </View>
-            </View>
-            <Text style={styles.title}>{s.title}</Text>
-            <Text style={styles.subtitle}>{s.subtitle}</Text>
+  // ── Step 1: Language selection ─────────────────────────────────────────────
+  if (step === 'language') {
+    return (
+      <View style={[styles.root, { backgroundColor: '#1B3A2A', paddingTop: padTop, paddingBottom: padBot }]}>
+        <View style={styles.content}>
+          <Text style={styles.stepEmoji}>🌐</Text>
+          <Text style={styles.stepTitle}>{t.choose_language}</Text>
+          <View style={styles.langGrid}>
+            {LANGUAGES.map(l => (
+              <TouchableOpacity
+                key={l.key}
+                onPress={() => setSelectedLang(l.key)}
+                activeOpacity={0.8}
+                style={[
+                  styles.langCard,
+                  {
+                    backgroundColor: selectedLang === l.key
+                      ? th.accent
+                      : 'rgba(255,255,255,0.08)',
+                  },
+                ]}
+              >
+                <Text style={styles.langNative}>{l.native}</Text>
+                <Text style={styles.langLabel}>{l.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ))}
-      </ScrollView>
-
-      {/* Bottom controls */}
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + 24 }]}>
-        {/* Dots */}
-        <View style={styles.dots}>
-          {slides.map((_, i) => {
-            const width = dotAnims[i].interpolate({
-              inputRange:  [0, 1],
-              outputRange: [8, 24],
-            })
-            const opacity = dotAnims[i].interpolate({
-              inputRange:  [0, 1],
-              outputRange: [0.35, 1],
-            })
-            return (
-              <Animated.View
-                key={i}
-                style={[styles.dot, { width, opacity }]}
-              />
-            )
-          })}
         </View>
-
-        {/* Next / Get Started */}
-        <TouchableOpacity
-          onPress={isLast ? onComplete : () => goTo(index + 1)}
-          activeOpacity={0.85}
-          style={styles.nextBtn}
-        >
-          <Text style={styles.nextBtnText}>
-            {isLast ? t.onb_start : t.onb_next}
-          </Text>
+        <TouchableOpacity onPress={handleLangNext} activeOpacity={0.85} style={styles.nextBtn}>
+          <Text style={styles.nextBtnText}>{t.onb_next}</Text>
         </TouchableOpacity>
       </View>
+    )
+  }
+
+  // ── Step 2: Push notifications ─────────────────────────────────────────────
+  if (step === 'push') {
+    return (
+      <View style={[styles.root, { backgroundColor: '#1B2E42', paddingTop: padTop, paddingBottom: padBot }]}>
+        <View style={styles.content}>
+          <Text style={styles.stepEmoji}>🔔</Text>
+          <Text style={styles.stepTitle}>{t.push_title}</Text>
+          <Text style={styles.stepSubtitle}>{t.push_desc}</Text>
+        </View>
+        <View style={styles.pushBtns}>
+          <TouchableOpacity onPress={handlePushAllow} activeOpacity={0.85} style={styles.nextBtn}>
+            <Text style={styles.nextBtnText}>{t.push_allow}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setStep('done')} activeOpacity={0.7} style={styles.skipLink}>
+            <Text style={styles.skipText}>{t.onb_skip}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // ── Step 3: Done ───────────────────────────────────────────────────────────
+  return (
+    <View style={[styles.root, { backgroundColor: '#2E1B3A', paddingTop: padTop, paddingBottom: padBot }]}>
+      <View style={styles.content}>
+        <Text style={styles.stepEmoji}>✅</Text>
+        <Text style={styles.stepTitle}>{t.ready_title}</Text>
+        <Text style={styles.stepSubtitle}>{t.ready_desc}</Text>
+      </View>
+      <TouchableOpacity onPress={onComplete} activeOpacity={0.85} style={styles.nextBtn}>
+        <Text style={styles.nextBtnText}>{t.ready_btn}</Text>
+      </TouchableOpacity>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root:               { flex: 1 },
-  topBar:             { paddingHorizontal: 24, alignItems: 'flex-end' },
-  skipText:           { color: 'rgba(255,255,255,0.55)', fontSize: 15, fontWeight: '500' },
-
-  slidesScroll:       { flex: 1 },
-  slide:              { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-
-  illustrationCircle: {
-    width: 220, height: 220, borderRadius: 110,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 44,
+  root: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'space-between',
   },
-  illustrationInner:  {
-    width: 160, height: 160, borderRadius: 80,
-    alignItems: 'center', justifyContent: 'center',
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  emoji:              { fontSize: 72 },
-
-  title:              {
-    fontSize: 28, fontWeight: '800', color: '#fff',
-    textAlign: 'center', marginBottom: 16, letterSpacing: -0.5,
+  stepEmoji: {
+    fontSize: 64,
+    marginBottom: 24,
   },
-  subtitle:           {
-    fontSize: 16, color: 'rgba(255,255,255,0.65)',
-    textAlign: 'center', lineHeight: 24,
+  stepTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
-
-  bottom:             { paddingHorizontal: 24, alignItems: 'center', gap: 24 },
-  dots:               { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  dot:                { height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  nextBtn:            {
-    width: '100%', paddingVertical: 16, borderRadius: 16,
-    backgroundColor: '#238636', alignItems: 'center',
+  stepSubtitle: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 280,
   },
-  nextBtnText:        { color: '#fff', fontSize: 17, fontWeight: '700' },
+  langGrid: {
+    width: '100%',
+    gap: 10,
+    marginTop: 20,
+  },
+  langCard: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  langNative: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  langLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  nextBtn: {
+    backgroundColor: '#238636',
+    paddingVertical: 17,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  nextBtnText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  pushBtns: {
+    gap: 8,
+  },
+  skipLink: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  skipText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 15,
+  },
 })
