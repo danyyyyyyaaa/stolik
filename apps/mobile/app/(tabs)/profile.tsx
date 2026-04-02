@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Switch,
+  Switch, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -10,7 +10,7 @@ import { router } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
-import { login, register } from '../../src/api/auth'
+import { login, register, changePassword, deleteAccount } from '../../src/api/auth'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
 import { isEnabled, setEnabled, requestPermissions } from '../../src/notifications'
 
@@ -233,15 +233,17 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
 
   async function handleSave() {
     if (!current.trim() || !next.trim()) { setError(t.fill_fields); return }
+    if (next.trim().length < 6) { setError(t.password_min); return }
     setLoading(true)
     setError('')
     try {
-      // Placeholder: real API call would go here
-      await new Promise(r => setTimeout(r, 600))
+      await changePassword(current.trim(), next.trim())
       setDone(true)
-      setTimeout(onClose, 1200)
+      setTimeout(onClose, 1500)
     } catch (e: any) {
-      setError(e.message ?? t.booking_error)
+      setError(e.message?.includes('401') || e.message?.includes('wrong') || e.message?.includes('current')
+        ? t.wrong_password
+        : e.message ?? t.booking_error)
     } finally {
       setLoading(false)
     }
@@ -251,7 +253,7 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
     <View style={[epf.wrap, { backgroundColor: th.bgCard, borderColor: th.border }]}>
       <Text style={[epf.label, { color: th.textMuted }]}>{t.change_password.toUpperCase()}</Text>
       {done ? (
-        <Text style={{ color: th.success, textAlign: 'center', paddingVertical: 8 }}>✓ {t.saved}</Text>
+        <Text style={{ color: th.success, textAlign: 'center', paddingVertical: 8 }}>✓ {t.password_changed}</Text>
       ) : (
         <>
           <TextInput
@@ -289,6 +291,32 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
 function ProfileView({ th, t }: { th: any; t: any }) {
   const { themeKey, toggle } = useTheme()
   const { user, logout }     = useAppStore()
+  const [deletingAccount,  setDeletingAccount]  = useState(false)
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      t.delete_account,
+      t.delete_account_confirm,
+      [
+        { text: t.cancel, style: 'cancel' },
+        {
+          text: t.delete_account,
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingAccount(true)
+            try {
+              await deleteAccount()
+              await logout()
+            } catch {
+              Alert.alert(t.booking_error)
+            } finally {
+              setDeletingAccount(false)
+            }
+          },
+        },
+      ]
+    )
+  }
 
   const [langPickerOpen,    setLangPickerOpen]    = useState(false)
   const [editProfileOpen,   setEditProfileOpen]   = useState(false)
@@ -415,14 +443,32 @@ function ProfileView({ th, t }: { th: any; t: any }) {
       </View>
 
       {/* Danger zone */}
+      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{t.danger_zone.toUpperCase()}</Text>
       <TouchableOpacity
         onPress={() => logout()}
         activeOpacity={0.8}
-        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: th.error + '50' }]}
+        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: th.error + '50', marginBottom: 10 }]}
       >
         <Feather name="log-out" size={16} color={th.error} />
         <Text style={[pv.logoutText, { color: th.error }]}>{t.logout}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={handleDeleteAccount}
+        disabled={deletingAccount}
+        activeOpacity={0.8}
+        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: th.border, opacity: deletingAccount ? 0.5 : 1 }]}
+      >
+        {deletingAccount
+          ? <ActivityIndicator size="small" color={th.textMuted} />
+          : <>
+              <Feather name="trash-2" size={16} color={th.textMuted} />
+              <Text style={[pv.logoutText, { color: th.textMuted }]}>{t.delete_account}</Text>
+            </>
+        }
+      </TouchableOpacity>
+
+      <Text style={[pv.versionText, { color: th.textMuted }]}>{t.app_version} 1.0.0</Text>
 
       <View style={{ height: 40 }} />
 
@@ -446,6 +492,7 @@ const pv = StyleSheet.create({
   rowValue:      { fontSize: 13 },
   logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, borderWidth: 1.5 },
   logoutText:    { fontSize: 15, fontWeight: '600' },
+  versionText:   { fontSize: 12, textAlign: 'center', marginTop: 16 },
 })
 
 // ─── Screen export ─────────────────────────────────────────────────────────────

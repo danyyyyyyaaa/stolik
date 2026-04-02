@@ -48,6 +48,8 @@ export interface Translations {
   not_found: string; sign_in_required: string
   notifications: string; edit_profile: string; change_password: string; account: string
   current_password: string; new_password: string
+  delete_account: string; delete_account_confirm: string; wrong_password: string
+  app_version: string; danger_zone: string; password_changed: string
   // search
   no_restaurants: string; try_another_filter: string; popular: string; clear_filters: string
   // filters
@@ -116,6 +118,9 @@ const T: Record<LangKey, Translations> = {
     notifications: 'Notifications', edit_profile: 'Edit profile',
     change_password: 'Change password', account: 'Account',
     current_password: 'Current password', new_password: 'New password',
+    delete_account: 'Delete account', delete_account_confirm: 'Are you sure? This action cannot be undone.',
+    wrong_password: 'Incorrect current password', app_version: 'Version', danger_zone: 'Danger zone',
+    password_changed: 'Password changed successfully',
     no_restaurants: 'No restaurants', try_another_filter: 'Try another filter',
     popular: 'Popular', clear_filters: 'Clear filters',
     filters: 'Filters', filter_price: 'Price level', filter_rating: 'Min. rating',
@@ -182,6 +187,9 @@ const T: Record<LangKey, Translations> = {
     notifications: 'Powiadomienia', edit_profile: 'Edytuj profil',
     change_password: 'Zmień hasło', account: 'Konto',
     current_password: 'Obecne hasło', new_password: 'Nowe hasło',
+    delete_account: 'Usuń konto', delete_account_confirm: 'Jesteś pewien? Ta operacja jest nieodwracalna.',
+    wrong_password: 'Nieprawidłowe hasło', app_version: 'Wersja', danger_zone: 'Strefa niebezpieczna',
+    password_changed: 'Hasło zostało zmienione',
     no_restaurants: 'Brak restauracji', try_another_filter: 'Spróbuj innego filtra',
     popular: 'Popularne', clear_filters: 'Wyczyść filtry',
     filters: 'Filtry', filter_price: 'Poziom cen', filter_rating: 'Min. ocena',
@@ -248,6 +256,9 @@ const T: Record<LangKey, Translations> = {
     notifications: 'Уведомления', edit_profile: 'Редактировать профиль',
     change_password: 'Сменить пароль', account: 'Аккаунт',
     current_password: 'Текущий пароль', new_password: 'Новый пароль',
+    delete_account: 'Удалить аккаунт', delete_account_confirm: 'Вы уверены? Это действие нельзя отменить.',
+    wrong_password: 'Неверный текущий пароль', app_version: 'Версия', danger_zone: 'Опасная зона',
+    password_changed: 'Пароль успешно изменён',
     no_restaurants: 'Нет ресторанов', try_another_filter: 'Попробуйте другой фильтр',
     popular: 'Популярные', clear_filters: 'Сбросить фильтры',
     filters: 'Фильтры', filter_price: 'Уровень цен', filter_rating: 'Мин. рейтинг',
@@ -314,6 +325,9 @@ const T: Record<LangKey, Translations> = {
     notifications: 'Сповіщення', edit_profile: 'Редагувати профіль',
     change_password: 'Змінити пароль', account: 'Акаунт',
     current_password: 'Поточний пароль', new_password: 'Новий пароль',
+    delete_account: 'Видалити акаунт', delete_account_confirm: 'Ви впевнені? Цю дію неможливо скасувати.',
+    wrong_password: 'Неправильний пароль', app_version: 'Версія', danger_zone: 'Небезпечна зона',
+    password_changed: 'Пароль успішно змінено',
     no_restaurants: 'Немає ресторанів', try_another_filter: 'Спробуйте інший фільтр',
     popular: 'Популярні', clear_filters: 'Скинути фільтри',
     filters: 'Фільтри', filter_price: 'Рівень цін', filter_rating: 'Мін. рейтинг',

@@ -47,3 +47,11 @@ export async function getMe(): Promise<User> {
   const { data } = await client.get<User>('/api/auth/me')
   return data
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await client.patch('/api/auth/change-password', { currentPassword, newPassword })
+}
+
+export async function deleteAccount(): Promise<void> {
+  await client.delete('/api/auth/account')
+}
