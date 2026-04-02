@@ -17,14 +17,12 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {
-    "expo": "^55.0.8",
-    "expo-location": "~55.1.4",
-    "react": "19.2.0",
-    "react-native": "0.83.2",
-    "react-native-maps": "1.27.2"
+  "overrides": {
+    "expo": "~54.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   },
-  "devDependencies": {
-    "@types/react": "~19.2.10"
+  "dependencies": {
+    "expo": "~54.0.0"
   }
 }
