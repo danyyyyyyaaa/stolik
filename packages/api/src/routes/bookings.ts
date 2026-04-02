@@ -111,6 +111,39 @@ router.get('/slots', async (req, res) => {
   res.json({ slots: availableSlots, date })
 })
 
+// ─── GET BOOKINGS BY DATE RANGE (owner) ──────────────────────────────────────
+router.get('/', requireAuth, async (req, res) => {
+  const { restaurantId, date, from, to } = req.query
+
+  if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
+
+  let dateFilter: { gte: Date; lte: Date }
+  if (from && to) {
+    dateFilter = {
+      gte: new Date(`${from}T00:00:00`),
+      lte: new Date(`${to}T23:59:59`),
+    }
+  } else if (date) {
+    dateFilter = {
+      gte: new Date(`${date}T00:00:00`),
+      lte: new Date(`${date}T23:59:59`),
+    }
+  } else {
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const end = new Date(today); end.setHours(23,59,59,999)
+    dateFilter = { gte: today, lte: end }
+  }
+
+  const bookings = await prisma.booking.findMany({
+    where: { restaurantId: restaurantId as string, date: dateFilter },
+    include: { table: true },
+    orderBy: [{ date: 'asc' }, { time: 'asc' }],
+  })
+
+  res.json(bookings)
+})
+
 // ─── GET MY BOOKINGS (authenticated user) ────────────────────────────────────
 router.get('/my', requireAuth, async (req, res) => {
   const bookings = await prisma.booking.findMany({

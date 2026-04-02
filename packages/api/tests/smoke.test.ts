@@ -164,8 +164,8 @@ async function run() {
 
     // 8. GET bookings (booking visible in list)
     if (bookingId) {
-      await step('GET /bookings?restaurantId&date → booking in list', async () => {
-        const { status, data } = await req('GET', `/api/bookings?restaurantId=${restaurantId}&date=${today}`, undefined, accessToken)
+      await step('GET /bookings/today/:restaurantId → booking in list', async () => {
+        const { status, data } = await req('GET', `/api/bookings/today/${restaurantId}`, undefined, accessToken)
         assert.equal(status, 200, `Expected 200, got ${status}`)
         assert.ok(Array.isArray(data), 'Expected array')
         const found = data.find((b: any) => b.id === bookingId)

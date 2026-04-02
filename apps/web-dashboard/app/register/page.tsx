@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Utensils } from 'lucide-react'
-import { useT } from '@/lib/i18n'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
@@ -22,7 +21,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function RegisterPage() {
   const router = useRouter()
-  const t      = useT()
 
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
@@ -42,15 +40,14 @@ export default function RegisterPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        // Show the real API error message; fall back to generic only if absent
-        setError(data.error || data.message || t.regError)
+        setError(data.error || data.message || 'Registration failed')
         return
       }
       localStorage.setItem('stolik_token', data.token)
       localStorage.setItem('stolik_user',  JSON.stringify(data.user))
       router.push('/onboarding')
     } catch {
-      setError(t.serverError)
+      setError('Cannot connect to server')
     } finally {
       setLoading(false)
     }
@@ -66,31 +63,31 @@ export default function RegisterPage() {
             <Utensils size={22} className="text-accent" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-text">Stolik</h1>
-          <p className="mt-1.5 text-sm text-muted">{t.regTagline}</p>
+          <p className="mt-1.5 text-sm text-muted">Restaurant registration</p>
         </div>
 
         {/* Card */}
         <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <h2 className="text-base font-bold text-text mb-5">{t.accountDetails}</h2>
+            <h2 className="text-base font-bold text-text mb-5">Account details</h2>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label={t.firstName}>
+              <Field label="First name">
                 <input type="text" required value={firstName} onChange={e => setFirstName(e.target.value)}
-                  placeholder="Marek" className={inputCls} />
+                  placeholder="John" className={inputCls} />
               </Field>
-              <Field label={t.lastName}>
+              <Field label="Last name">
                 <input type="text" required value={lastName} onChange={e => setLastName(e.target.value)}
-                  placeholder="Kowalski" className={inputCls} />
+                  placeholder="Smith" className={inputCls} />
               </Field>
             </div>
 
-            <Field label={t.email}>
+            <Field label="Email">
               <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="marek@restauracja.pl" className={inputCls} />
+                placeholder="you@restaurant.com" className={inputCls} />
             </Field>
 
-            <Field label={t.password}>
+            <Field label="Password">
               <input type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Min. 8 characters" className={inputCls} />
             </Field>
@@ -106,13 +103,13 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full mt-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg px-4 py-2.5 text-sm transition-colors"
             >
-              {loading ? t.registering : t.nextArrow}
+              {loading ? 'Registering…' : 'Next →'}
             </button>
 
             <p className="text-center text-xs text-muted pt-1">
-              {t.hasAccount}{' '}
+              Already have an account?{' '}
               <Link href="/login" className="text-accent hover:text-accent-hover font-semibold transition-colors">
-                {t.login}
+                Sign in
               </Link>
             </p>
           </form>

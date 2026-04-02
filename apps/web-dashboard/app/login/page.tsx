@@ -4,13 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Utensils, Eye, EyeOff } from 'lucide-react'
-import { useT } from '@/lib/i18n'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
 export default function LoginPage() {
   const router = useRouter()
-  const t      = useT()
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -31,14 +29,14 @@ export default function LoginPage() {
       })
       const data = await res.json()
 
-      if (!res.ok) { setError(data.error || t.loginError); return }
+      if (!res.ok) { setError(data.error || data.message || 'Login failed'); return }
 
       localStorage.setItem('stolik_token', data.token)
       localStorage.setItem('stolik_user',  JSON.stringify(data.user))
 
       router.push('/dashboard')
     } catch {
-      setError(t.serverError)
+      setError('Cannot connect to server')
     } finally {
       setLoading(false)
     }
@@ -54,25 +52,25 @@ export default function LoginPage() {
             <Utensils size={22} className="text-accent" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-text">Stolik</h1>
-          <p className="mt-1.5 text-sm text-muted">{t.appTagline}</p>
+          <p className="mt-1.5 text-sm text-muted">Restaurant management panel</p>
         </div>
 
         {/* Card */}
         <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-base font-bold text-text mb-6">{t.login}</h2>
+          <h2 className="text-base font-bold text-text mb-6">Sign in</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-                {t.email}
+                Email
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="marek@restauracja.pl"
+                placeholder="you@restaurant.com"
                 className="w-full bg-surface-2 border border-border rounded-lg px-3.5 py-2.5 text-sm text-text placeholder-muted focus:outline-none focus:border-accent transition-colors"
               />
             </div>
@@ -80,7 +78,7 @@ export default function LoginPage() {
             {/* Password */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-                {t.password}
+                Password
               </label>
               <div className="relative">
                 <input
@@ -114,20 +112,20 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full mt-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg px-4 py-2.5 text-sm transition-colors shadow-md shadow-accent/20"
             >
-              {loading ? t.loggingIn : t.login}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-xs text-muted">
-            {t.noAccount}{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-accent hover:text-accent-hover font-semibold transition-colors">
-              {t.register}
+              Register
             </Link>
           </p>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted/50">
-          © {new Date().getFullYear()} Stolik. {t.allRightsReserved}
+          © {new Date().getFullYear()} Stolik. All rights reserved.
         </p>
       </div>
     </div>
