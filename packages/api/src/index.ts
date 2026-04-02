@@ -63,6 +63,7 @@ app.use(express.json())
 // Routes
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/register', authLimiter)
+app.use('/api/auth/refresh', authLimiter)
 app.use('/api/auth', authRouter)
 app.use('/api/restaurants', restaurantsRouter)
 app.use('/api/bookings', bookingsRouter)
