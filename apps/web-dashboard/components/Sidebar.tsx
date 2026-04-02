@@ -11,6 +11,7 @@ import {
 import clsx from 'clsx'
 import { useLang, LANGS, type Lang } from '@/lib/i18n'
 import { useTheme } from '@/lib/theme'
+import { useNotifications } from '@/lib/notifications'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const router                = useRouter()
   const { lang, setLang, t }  = useLang()
   const { theme, toggleTheme } = useTheme()
+  const { badge, clearBadge } = useNotifications()
 
   const [user,          setUser]          = useState<User | null>(null)
   const [restaurants,   setRestaurants]   = useState<Restaurant[]>([])
@@ -144,6 +146,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={() => { if (href === '/dashboard') clearBadge() }}
               className={clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                 active
@@ -152,7 +155,12 @@ export default function Sidebar() {
               )}
             >
               <Icon size={16} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === '/dashboard' && badge > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
             </Link>
           )
         })}

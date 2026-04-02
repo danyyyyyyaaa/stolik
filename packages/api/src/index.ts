@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 
+import { setIo } from './lib/socket'
 import { authRouter } from './routes/auth'
 import { restaurantsRouter } from './routes/restaurants'
 import { bookingsRouter } from './routes/bookings'
@@ -80,6 +81,8 @@ app.get('/health', (req, res) => {
 })
 
 // Realtime — socket.io для обновления слотов в реальном времени
+setIo(io)
+
 io.on('connection', (socket) => {
   socket.on('join_restaurant', (restaurantId: string) => {
     socket.join(`restaurant:${restaurantId}`)

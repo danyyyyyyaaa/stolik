@@ -250,6 +250,8 @@ export const T = {
     photoLabel:       'Zdjęcie',
     uploadingPhoto:   'Wgrywanie…',
     clickToUpload:    'Kliknij, aby przesłać',
+    notifNewBooking: 'Nowa rezerwacja', notifCancelled: 'Rezerwacja anulowana', notifUpdated: 'Status rezerwacji zmieniony', notifOffline: 'Offline',
+    verifyEmailBanner: 'Potwierdź adres email. Sprawdź skrzynkę lub', verifyEmailResend: 'wyślij ponownie', verifyEmailSent: 'Link wysłany!',
   },
   EN: {
     bookings:        'Bookings',
@@ -473,6 +475,8 @@ export const T = {
     photoLabel:       'Photo',
     uploadingPhoto:   'Uploading…',
     clickToUpload:    'Click to upload',
+    notifNewBooking: 'New booking', notifCancelled: 'Booking cancelled', notifUpdated: 'Booking status updated', notifOffline: 'Offline',
+    verifyEmailBanner: 'Please verify your email. Check your inbox or', verifyEmailResend: 'resend link', verifyEmailSent: 'Link sent!',
   },
   RU: {
     bookings:        'Бронирования',
@@ -696,6 +700,8 @@ export const T = {
     photoLabel:       'Фото',
     uploadingPhoto:   'Загрузка…',
     clickToUpload:    'Нажмите для загрузки',
+    notifNewBooking: 'Новая бронь', notifCancelled: 'Бронь отменена', notifUpdated: 'Статус брони изменён', notifOffline: 'Офлайн',
+    verifyEmailBanner: 'Подтвердите email. Проверьте почту или', verifyEmailResend: 'отправить повторно', verifyEmailSent: 'Ссылка отправлена!',
   },
   UK: {
     bookings:        'Бронювання',
@@ -919,6 +925,8 @@ export const T = {
     photoLabel:       'Фото',
     uploadingPhoto:   'Завантаження…',
     clickToUpload:    'Натисніть для завантаження',
+    notifNewBooking: 'Нове бронювання', notifCancelled: 'Бронювання скасовано', notifUpdated: 'Статус бронювання змінено', notifOffline: 'Офлайн',
+    verifyEmailBanner: 'Підтвердіть email. Перевірте пошту або', verifyEmailResend: 'надіслати повторно', verifyEmailSent: 'Посилання надіслано!',
   },
 }
 
@@ -1008,6 +1016,10 @@ export type Translations = {
   available: string; unavailable: string; noCategories: string;
   confirmDeleteCategory: string; confirmDeleteItem: string;
   photoLabel: string; uploadingPhoto: string; clickToUpload: string;
+  // Notifications
+  notifNewBooking: string; notifCancelled: string; notifUpdated: string; notifOffline: string;
+  // Email verification
+  verifyEmailBanner: string; verifyEmailResend: string; verifyEmailSent: string;
 }
 
 interface LangContextType {

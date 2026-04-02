@@ -4,6 +4,7 @@ import { z } from 'zod'
 import jwt from 'jsonwebtoken'
 import { requireAuth } from '../middleware/auth'
 import { sendBookingConfirmation, scheduleReminders } from '../services/sms'
+import { getIo } from '../lib/socket'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -60,6 +61,17 @@ router.post('/', async (req, res) => {
       console.error('[SMS] Confirmation failed:', err)
     )
     scheduleReminders(booking)
+
+    // Real-time: notify restaurant owner
+    getIo()?.to(`restaurant:${booking.restaurantId}`).emit('booking:new', {
+      bookingId:  booking.id,
+      bookingRef: booking.bookingRef,
+      guestName:  booking.guestName,
+      date:       booking.date,
+      time:       booking.time,
+      guests:     booking.guestCount,
+      tableName:  booking.table?.name ?? null,
+    })
 
     res.json({ success: true, booking })
   } catch (err) {
@@ -175,8 +187,20 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
   const { status } = req.body
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
-    data: { status }
+    data:  { status },
+    include: { restaurant: true },
   })
+
+  const io = getIo()
+  if (io) {
+    const room = `restaurant:${booking.restaurantId}`
+    if (status === 'cancelled') {
+      io.to(room).emit('booking:cancelled', { bookingId: booking.id, guestName: booking.guestName })
+    } else {
+      io.to(room).emit('booking:updated', { bookingId: booking.id, status })
+    }
+  }
+
   res.json(booking)
 })
 
