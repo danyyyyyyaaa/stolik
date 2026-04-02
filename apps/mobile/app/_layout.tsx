@@ -86,10 +86,12 @@ function RootStack() {
     const splashTimer = new Promise<void>(r => setTimeout(r, 1500))
 
     // Wake the Railway server — free-tier sleeps after inactivity
+    const wakeController = new AbortController()
+    const wakeTimeout = setTimeout(() => wakeController.abort(), 25_000)
     fetch('https://stolik-production.up.railway.app/api/restaurants', {
       method: 'GET',
-      signal: AbortSignal.timeout(25_000),
-    }).catch(() => {})
+      signal: wakeController.signal,
+    }).finally(() => clearTimeout(wakeTimeout)).catch(() => {})
 
     async function init() {
       let restoredToken: string | null = null
