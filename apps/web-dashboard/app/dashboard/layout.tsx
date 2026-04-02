@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '@/components/Sidebar'
 import ToastContainer, { OfflineIndicator } from '@/components/ToastNotification'
+import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import { NotificationProvider } from '@/lib/notifications'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -23,6 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex h-screen bg-bg overflow-hidden">
         <Sidebar />
         <main className="flex-1 min-w-0 overflow-y-auto flex flex-col">
+          <VerifyEmailBanner />
           {children}
         </main>
       </div>
