@@ -281,6 +281,67 @@ async function run() {
     await req('DELETE', '/api/auth/account', undefined, p2Token).catch(() => {})
   }
 
+  await new Promise(r => setTimeout(r, 300))
+
+  // ─── Owner flow ────────────────────────────────────────────────────────────
+  let ownerToken = ''
+  let ownerRestaurantId = ''
+  const ownerEmail = `owner+${Date.now()}@stolik-test.dev`
+
+  await step('POST /auth/register (role=owner) → 201', async () => {
+    const { status, data } = await req('POST', '/api/auth/register', {
+      firstName: 'Owner', lastName: 'Smoke', email: ownerEmail, password: testPassword, role: 'owner',
+    })
+    assert.ok(status === 200 || status === 201, `Expected 201, got ${status}: ${JSON.stringify(data)}`)
+    assert.equal(data.user?.role, 'owner', `Expected role=owner, got ${data.user?.role}`)
+    ownerToken = data.accessToken || data.token
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 19. Owner: quick-create restaurant
+  await step('POST /restaurants/quick-create → 201', async () => {
+    const { status, data } = await req('POST', '/api/restaurants/quick-create', {
+      googlePlaceId: 'ChIJsmoke_test_place_id_123',
+      tables: [{ capacity: 2, count: 2 }, { capacity: 4, count: 1 }],
+    }, ownerToken)
+    assert.ok(status === 200 || status === 201, `Expected 201, got ${status}: ${JSON.stringify(data)}`)
+    assert.ok(data.restaurant?.id, 'No restaurant.id in response')
+    ownerRestaurantId = data.restaurant.id
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 20. Owner: GET bookings for their restaurant (terminal endpoint)
+  if (ownerRestaurantId) {
+    const today = new Date().toISOString().slice(0, 10)
+    await step('GET /bookings?restaurantId&date → 200 (terminal feed)', async () => {
+      const { status, data } = await req(
+        'GET', `/api/bookings?restaurantId=${ownerRestaurantId}&date=${today}`, undefined, ownerToken
+      )
+      assert.equal(status, 200, `Expected 200, got ${status}: ${JSON.stringify(data)}`)
+      assert.ok(Array.isArray(data), 'Expected bookings array')
+    })
+  }
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 21. Admin stats with admin credentials
+  await step('GET /admin/stats with admin login → 200', async () => {
+    const loginRes = await req('POST', '/api/auth/login', { email: 'admin@stolik.pl', password: 'admin123' })
+    if (loginRes.status !== 200) { console.log('  (admin user not seeded — skipping)'); return }
+    const adminToken = loginRes.data.accessToken || loginRes.data.token
+    const { status, data } = await req('GET', '/api/admin/stats', undefined, adminToken)
+    assert.equal(status, 200, `Expected 200, got ${status}`)
+    assert.ok(typeof data.totalRestaurants === 'number', 'Expected totalRestaurants')
+    assert.ok(typeof data.totalUsers === 'number', 'Expected totalUsers')
+  })
+
+  // Cleanup owner account
+  if (ownerToken) {
+    await req('DELETE', '/api/auth/account', undefined, ownerToken).catch(() => {})
+  }
+
   // ─── Summary ───────────────────────────────────────────────────────────────
   console.log(`\n${passed + failed} checks — ${passed} passed, ${failed} failed\n`)
   if (failed > 0) process.exit(1)
