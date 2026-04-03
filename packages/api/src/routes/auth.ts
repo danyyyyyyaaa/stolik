@@ -295,19 +295,24 @@ router.post('/forgot-password', async (req, res) => {
 
       const dashboardUrl = process.env.DASHBOARD_URL || 'https://stolik-dashboard.vercel.app'
       console.log(`[PasswordReset] Reset link: ${dashboardUrl}/reset-password?token=${token}`)
-      // Try to send email if Resend configured
-      try {
-        const { Resend } = await import('resend').catch(() => ({ Resend: null }))
-        if (Resend && process.env.RESEND_API_KEY) {
-          const resend = new Resend(process.env.RESEND_API_KEY)
-          await resend.emails.send({
-            from: 'Stolik <noreply@stolik.pl>',
-            to: email,
-            subject: 'Reset your Stolik password',
-            html: `<p>Hi ${user.firstName},</p><p>Click below to reset your password:</p><p><a href="${dashboardUrl}/reset-password?token=${token}">Reset Password</a></p><p>Link expires in 1 hour.</p>`,
+      // Try to send email via Resend REST API if configured
+      if (process.env.RESEND_API_KEY) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || 'Stolik <no-reply@stolik.pl>',
+              to: email,
+              subject: 'Reset your Stolik password',
+              html: `<p>Hi ${user.firstName},</p><p>Click below to reset your password:</p><p><a href="${dashboardUrl}/reset-password?token=${token}">Reset Password</a></p><p>Link expires in 1 hour.</p>`,
+            }),
           })
-        }
-      } catch {}
+        } catch {}
+      }
     }
     // Always return 200 for security
     res.json({ success: true, message: 'If that email exists, a reset link has been sent.' })
