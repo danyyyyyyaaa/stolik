@@ -14,6 +14,8 @@
     "date-fns": "^3.6.0",
     "expo": "~54.0.0",
     "expo-device": "~8.0.10",
+    "expo-image-picker": "~16.0.6",
+    "expo-linking": "~8.0.11",
     "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.23",
@@ -37,7 +39,9 @@
   },
   "expo": {
     "install": {
-      "exclude": ["@react-navigation/native"]
+      "exclude": [
+        "@react-navigation/native"
+      ]
     }
   }
 }

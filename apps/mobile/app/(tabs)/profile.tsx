@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Switch, Alert,
+  Switch, Alert, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -10,22 +10,26 @@ import { router } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
-import { login, register, changePassword, deleteAccount } from '../../src/api/auth'
+import { login, register, changePassword, deleteAccount, updateProfile, uploadAvatar } from '../../src/api/auth'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
 import { isEnabled, setEnabled, requestPermissions } from '../../src/notifications'
+import ForgotPasswordScreen from '../../src/screens/ForgotPasswordScreen'
 
 type AuthMode = 'login' | 'register'
 
 // ─── Login / Register form ─────────────────────────────────────────────────────
 function AuthForm({ th, t }: { th: any; t: any }) {
   const { setToken, setUser, pendingBooking, setPendingBooking } = useAppStore()
-  const [mode,      setMode]      = useState<AuthMode>('login')
-  const [firstName, setFirstName] = useState('')
-  const [lastName,  setLastName]  = useState('')
-  const [email,     setEmail]     = useState('')
-  const [password,  setPassword]  = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState('')
+  const [mode,       setMode]       = useState<AuthMode>('login')
+  const [firstName,  setFirstName]  = useState('')
+  const [lastName,   setLastName]   = useState('')
+  const [email,      setEmail]      = useState('')
+  const [password,   setPassword]   = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [error,      setError]      = useState('')
+  const [showForgot, setShowForgot] = useState(false)
+
+  if (showForgot) return <ForgotPasswordScreen onBack={() => setShowForgot(false)} />
 
   async function handleSubmit() {
     if (!email.trim() || !password.trim()) { setError(t.fill_fields); return }
@@ -122,6 +126,12 @@ function AuthForm({ th, t }: { th: any; t: any }) {
           secureTextEntry
           style={[af.input, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text }]}
         />
+
+        {mode === 'login' && (
+          <TouchableOpacity onPress={() => setShowForgot(true)} style={{ alignSelf: 'flex-end', marginBottom: 8, marginTop: -4 }}>
+            <Text style={{ fontSize: 13, color: th.accent }}>{t.forgot_password}</Text>
+          </TouchableOpacity>
+        )}
 
         {error ? (
           <View style={[af.errorBox, { backgroundColor: th.error + '18' }]}>
@@ -322,6 +332,7 @@ function ProfileView({ th, t }: { th: any; t: any }) {
   const [editProfileOpen,   setEditProfileOpen]   = useState(false)
   const [changePwdOpen,     setChangePwdOpen]     = useState(false)
   const [notificationsOn,   setNotificationsOn]   = useState(true)
+  const [avatarUploading,   setAvatarUploading]   = useState(false)
 
   // Load persisted notification preference on mount
   useEffect(() => {
@@ -335,6 +346,72 @@ function ProfileView({ th, t }: { th: any; t: any }) {
     if (v) requestPermissions()
   }
 
+  async function handleAvatarTap() {
+    const options = ['Take Photo', 'Choose from Library', 'Remove Photo', 'Cancel']
+    const destructiveIndex = 2
+    const cancelIndex = 3
+    Alert.alert('Profile Photo', undefined, [
+      {
+        text: 'Take Photo',
+        onPress: () => pickImage('camera'),
+      },
+      {
+        text: 'Choose from Library',
+        onPress: () => pickImage('library'),
+      },
+      {
+        text: 'Remove Photo',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const updated = await updateProfile({ avatarUrl: null })
+            setUser({ ...user!, ...updated })
+          } catch {}
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
+  async function pickImage(source: 'camera' | 'library') {
+    try {
+      // Dynamically import expo-image-picker to avoid crash if not installed
+      const ImagePicker = await import('expo-image-picker').catch(() => null)
+      if (!ImagePicker) { Alert.alert('Feature not available'); return }
+
+      let result: any
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync()
+        if (status !== 'granted') { Alert.alert('Camera permission required'); return }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true, aspect: [1, 1], quality: 0.7,
+        })
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (status !== 'granted') { Alert.alert('Photo library permission required'); return }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'images',
+          allowsEditing: true, aspect: [1, 1], quality: 0.7,
+        })
+      }
+
+      if (result.canceled || !result.assets?.[0]?.uri) return
+
+      setAvatarUploading(true)
+      try {
+        const url = await uploadAvatar(result.assets[0].uri)
+        const updated = await updateProfile({ avatarUrl: url })
+        setUser({ ...user!, ...updated })
+      } catch (e: any) {
+        Alert.alert('Upload failed', e.message ?? 'Try again')
+      } finally {
+        setAvatarUploading(false)
+      }
+    } catch {
+      Alert.alert('Feature not available')
+    }
+  }
+
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'U'
     : 'U'
@@ -344,9 +421,23 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 
       {/* Avatar + info */}
       <View style={pv.userRow}>
-        <View style={[pv.avatar, { backgroundColor: th.accent }]}>
-          <Text style={pv.avatarText}>{initials}</Text>
-        </View>
+        <TouchableOpacity onPress={handleAvatarTap} activeOpacity={0.8} style={pv.avatarWrap}>
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={pv.avatar} />
+          ) : (
+            <View style={[pv.avatar, { backgroundColor: th.accent }]}>
+              <Text style={pv.avatarText}>{initials}</Text>
+            </View>
+          )}
+          {avatarUploading && (
+            <View style={pv.avatarOverlay}>
+              <ActivityIndicator color="#fff" size="small" />
+            </View>
+          )}
+          <View style={[pv.avatarBadge, { backgroundColor: th.accent }]}>
+            <Feather name="camera" size={10} color="#fff" />
+          </View>
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[pv.userName, { color: th.text }]}>
             {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : t.user}
@@ -480,7 +571,10 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 const pv = StyleSheet.create({
   scroll:        { paddingHorizontal: 16, paddingTop: 20 },
   userRow:       { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, paddingHorizontal: 4 },
+  avatarWrap:    { position: 'relative', width: 64, height: 64 },
   avatar:        { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  avatarOverlay: { position: 'absolute', inset: 0, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' } as any,
+  avatarBadge:   { position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   avatarText:    { color: '#fff', fontSize: 24, fontWeight: '700' },
   userName:      { fontSize: 18, fontWeight: '700', marginBottom: 2 },
   userEmail:     { fontSize: 13 },

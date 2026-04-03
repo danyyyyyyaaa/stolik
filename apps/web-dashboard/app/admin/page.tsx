@@ -1,280 +1,112 @@
 'use client'
-
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import {
-  ShieldCheck, CheckCircle, XCircle, ExternalLink,
-  RefreshCw, Store, Users,
-} from 'lucide-react'
+import Link from 'next/link'
+import { Building2, Users, CalendarCheck, TrendingUp, Activity } from 'lucide-react'
+import clsx from 'clsx'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
-type Owner = { id: string; email: string; firstName: string; lastName: string }
-
-type Restaurant = {
-  id:         string
-  name:       string
-  slug:       string
-  cuisine:    string
-  city:       string
-  address:    string
-  isActive:   boolean
-  isPremium:  boolean
-  plan:       string
-  emoji:      string | null
-  coverImage: string | null
-  createdAt:  string
-  owner:      Owner
-}
-
-function StatusBadge({ active }: { active: boolean }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-      active
-        ? 'bg-green-500/15 text-green-400'
-        : 'bg-surface-2 text-muted border border-border'
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-400' : 'bg-muted'}`} />
-      {active ? 'Active' : 'Inactive'}
-    </span>
-  )
-}
-
-function PlanBadge({ plan }: { plan: string }) {
-  const map: Record<string, string> = {
-    free:     'bg-surface-2 text-muted border border-border',
-    pro:      'bg-blue-500/15 text-blue-400',
-    business: 'bg-amber-500/15 text-amber-400',
-  }
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${map[plan] ?? map.free}`}>
-      {plan}
-    </span>
-  )
-}
+type Stats = { totalRestaurants: number; activeRestaurants: number; totalBookings: number; totalUsers: number; bookingsToday: number }
+type Restaurant = { id: string; name: string; emoji?: string; isActive: boolean; plan: string; createdAt: string; owner?: { email: string } }
 
 export default function AdminPage() {
-  const router = useRouter()
-
-  const [token,       setToken]       = useState<string | null>(null)
+  const [tok, setTok] = useState<string | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
-  const [loading,     setLoading]     = useState(true)
-  const [updating,    setUpdating]    = useState<string | null>(null)
-  const [error,       setError]       = useState('')
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState<string | null>(null)
 
   useEffect(() => {
-    const tok  = localStorage.getItem('stolik_token')
-    const user = localStorage.getItem('stolik_user')
-    if (!tok) { router.push('/login'); return }
-    try {
-      const parsed = JSON.parse(user ?? '{}')
-      if (parsed.role !== 'admin') { router.push('/dashboard'); return }
-    } catch { router.push('/dashboard'); return }
-    setToken(tok)
-  }, [router])
+    const t = localStorage.getItem('stolik_token')
+    setTok(t)
+    if (!t) return
+    Promise.all([
+      fetch(`${API}/api/admin/stats`, { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()),
+      fetch(`${API}/api/admin/restaurants`, { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()),
+    ]).then(([s, r]) => {
+      if (s && typeof s === 'object' && !s.error) setStats(s)
+      setRestaurants(Array.isArray(r) ? r : [])
+    }).finally(() => setLoading(false))
+  }, [])
 
-  useEffect(() => {
-    if (!token) return
-    fetchRestaurants()
-  }, [token])
-
-  async function fetchRestaurants() {
-    setLoading(true); setError('')
-    try {
-      const res  = await fetch(`${API}/api/admin/restaurants`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) { setError('Failed to load restaurants'); return }
-      setRestaurants(await res.json())
-    } catch {
-      setError('Cannot connect to server')
-    } finally {
-      setLoading(false)
-    }
+  async function toggleActive(id: string, active: boolean) {
+    if (!tok) return
+    setActionId(id)
+    const ep = active ? 'deactivate' : 'approve'
+    await fetch(`${API}/api/admin/restaurants/${id}/${ep}`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${tok}` }
+    })
+    setRestaurants(p => p.map(r => r.id === id ? { ...r, isActive: !active } : r))
+    setActionId(null)
   }
 
-  async function toggleActive(id: string, activate: boolean) {
-    setUpdating(id)
-    try {
-      const action = activate ? 'approve' : 'deactivate'
-      const res = await fetch(`${API}/api/admin/restaurants/${id}/${action}`, {
-        method:  'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      setRestaurants(prev =>
-        prev.map(r => r.id === id ? { ...r, isActive: activate } : r)
-      )
-    } finally {
-      setUpdating(null)
-    }
-  }
+  if (loading) return <div className="flex items-center justify-center h-full"><span className="text-muted text-sm animate-pulse">Loading…</span></div>
 
-  const active   = restaurants.filter(r => r.isActive).length
-  const inactive = restaurants.filter(r => !r.isActive).length
+  const CARDS = stats ? [
+    { label: 'Restaurants', value: stats.totalRestaurants, icon: Building2,    color: 'text-blue-400 bg-blue-400/10'   },
+    { label: 'Active',      value: stats.activeRestaurants, icon: Activity,     color: 'text-green-400 bg-green-400/10' },
+    { label: 'Bookings',    value: stats.totalBookings,     icon: CalendarCheck, color: 'text-purple-400 bg-purple-400/10' },
+    { label: 'Users',       value: stats.totalUsers,        icon: Users,        color: 'text-amber-400 bg-amber-400/10' },
+    { label: 'Today',       value: stats.bookingsToday,     icon: TrendingUp,   color: 'text-accent bg-accent/10'       },
+  ] : []
 
   return (
-    <div className="min-h-screen bg-bg">
-      {/* Top bar */}
-      <div className="border-b border-border bg-surface px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-accent/10 border border-accent/20 rounded-lg">
-            <ShieldCheck size={18} className="text-accent" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-text">Stolik Admin</h1>
-            <p className="text-xs text-muted">Restaurant management</p>
-          </div>
-        </div>
-        <button
-          onClick={fetchRestaurants}
-          className="flex items-center gap-2 px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm text-muted hover:text-text hover:border-muted/50 transition-colors"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { icon: Store, label: 'Total restaurants', value: restaurants.length, color: 'text-accent' },
-            { icon: CheckCircle, label: 'Active', value: active, color: 'text-green-400' },
-            { icon: XCircle, label: 'Inactive / pending', value: inactive, color: 'text-muted' },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div key={label} className="bg-surface border border-border rounded-xl px-5 py-4 flex items-center gap-4">
-              <Icon size={20} className={color} />
-              <div>
-                <p className="text-xs text-muted">{label}</p>
-                <p className="text-2xl font-bold text-text">{value}</p>
+    <div className="flex flex-col min-h-full">
+      <header className="border-b border-border bg-surface px-8 py-5">
+        <h1 className="text-xl font-bold text-text">Platform Overview</h1>
+        <p className="text-sm text-muted mt-0.5">All restaurants and users on Stolik</p>
+      </header>
+      <div className="flex-1 px-8 py-6 space-y-6">
+        {CARDS.length > 0 && (
+          <div className="grid grid-cols-5 gap-4">
+            {CARDS.map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="bg-surface border border-border rounded-xl p-5 flex items-center gap-3">
+                <div className={clsx('p-2.5 rounded-lg shrink-0', color)}><Icon size={18} /></div>
+                <div>
+                  <p className="text-2xl font-bold text-text tabular-nums">{value}</p>
+                  <p className="text-xs text-muted mt-0.5">{label}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="text-sm text-red-400 bg-red-400/8 border border-red-400/20 rounded-lg px-4 py-3">
-            {error}
+            ))}
           </div>
         )}
-
-        {/* Table */}
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-sm font-semibold text-text">All Restaurants</h2>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-muted text-sm gap-2">
-              <RefreshCw size={14} className="animate-spin" /> Loading…
-            </div>
-          ) : restaurants.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-muted text-sm">
-              No restaurants found
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-surface-2/50">
-                    {['Restaurant', 'Owner', 'City', 'Plan', 'Status', 'Created', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {restaurants.map(r => (
-                    <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-2/30 transition-colors">
-
-                      {/* Restaurant */}
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2.5">
-                          {r.coverImage ? (
-                            <img src={r.coverImage} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-base shrink-0">
-                              {r.emoji ?? '🍽️'}
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-text">{r.name}</p>
-                            <p className="text-xs text-muted">{r.cuisine}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Owner */}
-                      <td className="px-5 py-3">
-                        <p className="text-text">{r.owner.firstName} {r.owner.lastName}</p>
-                        <p className="text-xs text-muted">{r.owner.email}</p>
-                      </td>
-
-                      {/* City */}
-                      <td className="px-5 py-3 text-muted">{r.city}</td>
-
-                      {/* Plan */}
-                      <td className="px-5 py-3"><PlanBadge plan={r.plan} /></td>
-
-                      {/* Status */}
-                      <td className="px-5 py-3"><StatusBadge active={r.isActive} /></td>
-
-                      {/* Created */}
-                      <td className="px-5 py-3 text-muted text-xs">
-                        {new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          {r.isActive ? (
-                            <button
-                              onClick={() => toggleActive(r.id, false)}
-                              disabled={updating === r.id}
-                              className="px-2.5 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-red-400/50 hover:text-red-400 transition-colors disabled:opacity-40"
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => toggleActive(r.id, true)}
-                              disabled={updating === r.id}
-                              className="px-2.5 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors disabled:opacity-40"
-                            >
-                              {updating === r.id ? '…' : 'Approve'}
-                            </button>
-                          )}
-                          <a
-                            href={`/dashboard`}
-                            className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
-                            title="View dashboard"
-                          >
-                            <ExternalLink size={13} />
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Seed hint */}
-        <div className="bg-surface-2 border border-border rounded-xl px-5 py-4">
-          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Admin setup</p>
-          <p className="text-xs text-muted leading-relaxed">
-            To create the admin account on a fresh server, call:{' '}
-            <code className="font-mono text-accent bg-surface px-1.5 py-0.5 rounded">
-              POST {API}/api/admin/seed
-            </code>
-            {' '}— works only once (no-op if admin already exists).
-          </p>
+          <div className="px-6 py-4 border-b border-border"><h2 className="font-semibold text-text">Restaurants</h2></div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-surface-2/40">
+                {['Name', 'Owner', 'Plan', 'Status', 'Created', 'Actions'].map((h, i) => (
+                  <th key={h} className={clsx('px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider', i === 5 ? 'text-right' : 'text-left')}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {restaurants.map(r => (
+                <tr key={r.id} className="hover:bg-surface-2/40 transition-colors">
+                  <td className="px-6 py-4"><span className="font-medium text-text text-sm">{r.emoji} {r.name}</span></td>
+                  <td className="px-6 py-4 text-sm text-muted">{r.owner?.email ?? '—'}</td>
+                  <td className="px-6 py-4"><span className="text-xs px-2 py-1 bg-surface-2 border border-border rounded-full text-muted">{r.plan}</span></td>
+                  <td className="px-6 py-4">
+                    <span className={clsx('text-xs font-semibold px-2 py-1 rounded-full border', r.isActive ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20')}>
+                      {r.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-muted">{new Date(r.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => toggleActive(r.id, r.isActive)} disabled={actionId === r.id}
+                        className={clsx('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50',
+                          r.isActive ? 'text-red-400 border-red-500/20 hover:bg-red-500/10' : 'text-green-400 border-green-500/20 hover:bg-green-500/10')}>
+                        {r.isActive ? 'Deactivate' : 'Approve'}
+                      </button>
+                      <Link href={`/admin/restaurants/${r.id}`} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted hover:text-text hover:bg-surface-2 transition-colors">View</Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {restaurants.length === 0 && <tr><td colSpan={6} className="py-16 text-center text-muted text-sm">No restaurants</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -27,6 +27,13 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Stolik needs access to your photo library to update your profile picture.",
+          "cameraPermission": "Stolik needs access to your camera to take a profile picture."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",

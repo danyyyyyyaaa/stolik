@@ -17,17 +17,18 @@ type DayHours = { open: string; close: string; closed: boolean }
 type Hours = Record<string, DayHours>
 
 type RestaurantProfile = {
-  name:        string
-  description: string
-  cuisine:     string
-  city:        string
-  district:    string
-  address:     string
-  phone:       string
-  website:     string
-  instagram:   string
-  emoji:       string
-  hours:       Hours
+  name:          string
+  description:   string
+  cuisine:       string
+  city:          string
+  district:      string
+  address:       string
+  phone:         string
+  website:       string
+  instagram:     string
+  emoji:         string
+  hours:         Hours
+  googlePlaceId: string
 }
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
@@ -119,17 +120,18 @@ export default function ProfilePage() {
   const [activeTab,    setActiveTab]    = useState<'info' | 'hours'>('info')
 
   const [form, setForm] = useState<RestaurantProfile>({
-    name:        '',
-    description: '',
-    cuisine:     'polska',
-    city:        '',
-    district:    '',
-    address:     '',
-    phone:       '',
-    website:     '',
-    instagram:   '',
-    emoji:       '🍽️',
-    hours:       defaultHours(),
+    name:          '',
+    description:   '',
+    cuisine:       'polska',
+    city:          '',
+    district:      '',
+    address:       '',
+    phone:         '',
+    website:       '',
+    instagram:     '',
+    emoji:         '🍽️',
+    hours:         defaultHours(),
+    googlePlaceId: '',
   })
 
   // ── auth + load ──────────────────────────────────────────────────────────────
@@ -150,17 +152,18 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(data => {
         setForm({
-          name:        data.name        ?? '',
-          description: data.description ?? '',
-          cuisine:     data.cuisine     ?? 'polska',
-          city:        data.city        ?? '',
-          district:    data.district    ?? '',
-          address:     data.address     ?? '',
-          phone:       data.phone       ?? '',
-          website:     data.website     ?? '',
-          instagram:   data.instagram   ?? '',
-          emoji:       data.emoji       ?? '🍽️',
-          hours:       data.settings?.hours ?? defaultHours(),
+          name:          data.name          ?? '',
+          description:   data.description   ?? '',
+          cuisine:       data.cuisine       ?? 'polska',
+          city:          data.city          ?? '',
+          district:      data.district      ?? '',
+          address:       data.address       ?? '',
+          phone:         data.phone         ?? '',
+          website:       data.website       ?? '',
+          instagram:     data.instagram     ?? '',
+          emoji:         data.emoji         ?? '🍽️',
+          hours:         data.settings?.hours ?? defaultHours(),
+          googlePlaceId: data.googlePlaceId ?? '',
         })
         if (data.coverPhoto) setCoverPreview(data.coverPhoto)
       })
@@ -194,17 +197,18 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       const payload = {
-        name:        form.name.trim(),
-        description: form.description.trim(),
-        cuisine:     form.cuisine,
-        city:        form.city.trim(),
-        district:    form.district.trim(),
-        address:     form.address.trim(),
-        phone:       form.phone.trim(),
-        website:     form.website.trim(),
-        instagram:   form.instagram.trim(),
-        emoji:       form.emoji,
-        settings:    { hours: form.hours },
+        name:          form.name.trim(),
+        description:   form.description.trim(),
+        cuisine:       form.cuisine,
+        city:          form.city.trim(),
+        district:      form.district.trim(),
+        address:       form.address.trim(),
+        phone:         form.phone.trim(),
+        website:       form.website.trim(),
+        instagram:     form.instagram.trim(),
+        emoji:         form.emoji,
+        settings:      { hours: form.hours },
+        googlePlaceId: form.googlePlaceId.trim(),
       }
 
       const res = await fetch(`${API}/api/restaurants/${restaurantId}`, {
@@ -462,6 +466,27 @@ export default function ProfilePage() {
                     className={`${inputCls} pl-8`}
                   />
                 </div>
+              </Field>
+
+              <Field label="Google Place ID">
+                <input
+                  type="text" value={form.googlePlaceId}
+                  onChange={e => setField('googlePlaceId', e.target.value)}
+                  placeholder="ChIJ..."
+                  className={inputCls}
+                />
+                <p className="text-xs text-muted mt-1">
+                  Find your Place ID at{' '}
+                  <a
+                    href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline"
+                  >
+                    Google Place ID Finder
+                  </a>
+                  . Used to display Google reviews and ratings.
+                </p>
               </Field>
             </section>
 

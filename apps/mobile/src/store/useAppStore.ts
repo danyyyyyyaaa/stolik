@@ -7,6 +7,8 @@ export interface User {
   email:     string
   firstName: string
   lastName:  string
+  avatarUrl?: string | null
+  phone?:    string | null
 }
 
 export interface PendingBooking {

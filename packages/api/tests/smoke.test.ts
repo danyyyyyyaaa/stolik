@@ -193,6 +193,94 @@ async function run() {
     assert.equal(status, 200, `Expected 200, got ${status}`)
   })
 
+  // ─── Phase 2 additional checks ────────────────────────────────────────────
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // Re-register to test Phase 2 endpoints (account was deleted above)
+  let p2Token = ''
+  await step('POST /auth/register (phase2 user) → 201', async () => {
+    const { status, data } = await req('POST', '/api/auth/register', {
+      firstName: 'Smoke2',
+      lastName:  'Test2',
+      email:     `smoke2+${Date.now()}@stolik-test.dev`,
+      password:  testPassword,
+    })
+    assert.ok(status === 200 || status === 201, `Expected 201, got ${status}: ${JSON.stringify(data)}`)
+    p2Token = data.accessToken || data.token
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 11. Forgot password
+  await step('POST /auth/forgot-password → 200', async () => {
+    const { status } = await req('POST', '/api/auth/forgot-password', {
+      email: 'nonexistent@stolik-test.dev',
+    })
+    assert.equal(status, 200, `Expected 200, got ${status}`)
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 12. Admin stats (skip if no admin token — just check endpoint exists)
+  await step('GET /admin/stats → 200 or 401', async () => {
+    const { status } = await req('GET', '/api/admin/stats', undefined, p2Token)
+    assert.ok(status === 200 || status === 403, `Expected 200 or 403, got ${status}`)
+  })
+
+  // 13. Admin users
+  await step('GET /admin/users → 200 or 403', async () => {
+    const { status, data } = await req('GET', '/api/admin/users', undefined, p2Token)
+    assert.ok(status === 200 || status === 403, `Expected 200 or 403, got ${status}`)
+    if (status === 200) assert.ok(Array.isArray(data) || Array.isArray(data?.users), 'Expected users array')
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 14. Restaurant menu (requires restaurantId from earlier)
+  if (restaurantId) {
+    await step('GET /menu/:restaurantId → 200', async () => {
+      const { status, data } = await req('GET', `/api/menu/${restaurantId}`)
+      assert.equal(status, 200, `Expected 200, got ${status}`)
+      assert.ok(Array.isArray(data), 'Expected menu array')
+    })
+
+    await new Promise(r => setTimeout(r, 300))
+
+    // 15. Restaurant reviews
+    await step('GET /restaurants/:id/reviews → 200', async () => {
+      const { status, data } = await req('GET', `/api/restaurants/${restaurantId}/reviews`)
+      assert.ok(status === 200 || status === 404, `Expected 200 or 404, got ${status}`)
+      if (status === 200) assert.ok(data.rating !== undefined || data.reviews !== undefined, 'Expected reviews data')
+    })
+  } else {
+    console.log('  -  Steps 14-15 skipped (no restaurants in DB)')
+  }
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 16. Google Places search (returns empty array if no key)
+  await step('GET /restaurants/search-google → 200', async () => {
+    const { status, data } = await req('GET', '/api/restaurants/search-google?query=pizza+warszawa')
+    assert.equal(status, 200, `Expected 200, got ${status}`)
+    assert.ok(Array.isArray(data?.places), 'Expected places array')
+  })
+
+  await new Promise(r => setTimeout(r, 300))
+
+  // 17. Push token registration
+  await step('POST /push/register-token → 200', async () => {
+    const { status } = await req('POST', '/api/push/register-token', {
+      expoPushToken: 'ExponentPushToken[smoke-test-token]',
+    }, p2Token)
+    assert.ok(status === 200 || status === 201, `Expected 200/201, got ${status}`)
+  })
+
+  // Cleanup phase2 account
+  if (p2Token) {
+    await req('DELETE', '/api/auth/account', undefined, p2Token).catch(() => {})
+  }
+
   // ─── Summary ───────────────────────────────────────────────────────────────
   console.log(`\n${passed + failed} checks — ${passed} passed, ${failed} failed\n`)
   if (failed > 0) process.exit(1)

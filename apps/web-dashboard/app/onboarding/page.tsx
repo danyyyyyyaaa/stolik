@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Utensils, Check, Upload, X } from 'lucide-react'
+import { Utensils, Check, Upload, X, Search, ArrowLeft, Star, MapPin, Phone, Zap, ClipboardList } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
@@ -176,6 +176,20 @@ function Stepper({
   )
 }
 
+// ─── Quick Connect types ──────────────────────────────────────────────────────
+
+type OnboardingMode = 'quick-choice' | 'quick-search' | 'quick-confirm' | 'quick-tables' | 'manual'
+
+type QPlace = {
+  placeId: string
+  name: string
+  address: string
+  rating: number | null
+  phone: string | null
+  photoUrl: string | null
+  openingHours: string[]
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
@@ -193,6 +207,75 @@ export default function OnboardingPage() {
     }
     setToken(tok)
   }, [router])
+
+  // ── Quick Connect state ───────────────────────────────────────────────────
+  const [mode, setMode] = useState<OnboardingMode>('quick-choice')
+
+  const [qSearch,       setQSearch]       = useState('')
+  const [qResults,      setQResults]      = useState<QPlace[]>([])
+  const [qLoading,      setQLoading]      = useState(false)
+  const [selectedPlace, setSelectedPlace] = useState<QPlace | null>(null)
+
+  const [qTables, setQTables] = useState([
+    { capacity: 2, count: 0 },
+    { capacity: 4, count: 0 },
+    { capacity: 6, count: 0 },
+    { capacity: 8, count: 0 },
+  ])
+
+  const [qError,   setQError]   = useState('')
+  const [qLoading2, setQLoading2] = useState(false)
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const searchPlaces = useCallback((query: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    if (!query.trim()) { setQResults([]); return }
+    searchTimerRef.current = setTimeout(async () => {
+      setQLoading(true)
+      setQError('')
+      try {
+        const res = await fetch(
+          `${API}/api/restaurants/search-google?query=${encodeURIComponent(query)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Search failed')
+        setQResults(Array.isArray(data) ? data : data.results ?? [])
+      } catch (err: any) {
+        setQError(err.message || 'Search failed')
+        setQResults([])
+      } finally {
+        setQLoading(false)
+      }
+    }, 500)
+  }, [token])
+
+  async function handleQuickCreate() {
+    if (!selectedPlace) return
+    const tablesPayload = qTables.filter(t => t.count > 0)
+    if (tablesPayload.length === 0) {
+      setQError('Please add at least one table before launching.')
+      return
+    }
+    setQError(''); setQLoading2(true)
+    try {
+      const res = await fetch(`${API}/api/restaurants/quick-create`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ googlePlaceId: selectedPlace.placeId, tables: tablesPayload }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create restaurant')
+      localStorage.setItem('stolik_restaurant',        JSON.stringify(data))
+      localStorage.setItem('stolik_active_restaurant', JSON.stringify(data))
+      router.push('/dashboard')
+    } catch (err: any) {
+      setQError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setQLoading2(false)
+    }
+  }
 
   const DAYS_T = [
     { key: 'monday'    as DayKey, label: t.mon },
@@ -365,6 +448,259 @@ export default function OnboardingPage() {
 
         {/* Card */}
         <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl">
+
+          {/* ── Quick choice ─────────────────────────────────────────────── */}
+          {mode === 'quick-choice' && (
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-text mb-1">Set up your restaurant</h2>
+              <p className="text-sm text-muted mb-6">Choose how you want to get started.</p>
+
+              <button
+                type="button"
+                onClick={() => { setQError(''); setMode('quick-search') }}
+                className="w-full text-left p-5 rounded-xl border-2 border-accent/40 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center">
+                    <Zap size={20} className="text-accent" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-text group-hover:text-accent transition-colors">Quick Connect</p>
+                    <p className="text-sm text-muted mt-0.5">Find your restaurant in Google Maps — we&apos;ll fill the details automatically.</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setError(''); setMode('manual') }}
+                className="w-full text-left p-5 rounded-xl border border-border bg-surface-2 hover:border-muted/50 transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-border">
+                    <ClipboardList size={20} className="text-muted group-hover:text-text transition-colors" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-text">Manual Setup</p>
+                    <p className="text-sm text-muted mt-0.5">Fill restaurant information step by step.</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* ── Quick search ─────────────────────────────────────────────── */}
+          {mode === 'quick-search' && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setQSearch(''); setQResults([]); setQError(''); setMode('quick-choice') }}
+                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <h2 className="text-base font-bold text-text">Find your restaurant</h2>
+              </div>
+
+              <div className="relative">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                <input
+                  type="text"
+                  value={qSearch}
+                  onChange={e => { setQSearch(e.target.value); searchPlaces(e.target.value) }}
+                  placeholder="Enter restaurant name..."
+                  className={`${inputCls} pl-9`}
+                  autoFocus
+                />
+              </div>
+
+              {qError && <ErrorBox>{qError}</ErrorBox>}
+
+              {qLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!qLoading && qResults.length > 0 && (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {qResults.map(place => (
+                    <button
+                      key={place.placeId}
+                      type="button"
+                      onClick={() => { setSelectedPlace(place); setQError(''); setMode('quick-confirm') }}
+                      className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border bg-surface-2 hover:border-accent/50 hover:bg-accent/5 transition-all"
+                    >
+                      {place.photoUrl ? (
+                        <img
+                          src={place.photoUrl}
+                          alt={place.name}
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center flex-shrink-0 border border-border">
+                          <Utensils size={18} className="text-muted" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-text text-sm truncate">{place.name}</p>
+                        <p className="text-xs text-muted truncate mt-0.5">{place.address}</p>
+                        {place.rating !== null && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star size={11} className="text-yellow-400 fill-yellow-400" />
+                            <span className="text-xs text-muted">{place.rating.toFixed(1)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!qLoading && qSearch.trim() && qResults.length === 0 && (
+                <p className="text-sm text-muted text-center py-6">No results found. Try a different name.</p>
+              )}
+
+              {!qSearch.trim() && (
+                <p className="text-sm text-muted text-center py-6">Start typing to search Google Places.</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Quick confirm ────────────────────────────────────────────── */}
+          {mode === 'quick-confirm' && selectedPlace && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setQError(''); setMode('quick-search') }}
+                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <h2 className="text-base font-bold text-text">Is this your restaurant?</h2>
+              </div>
+
+              {selectedPlace.photoUrl && (
+                <div className="rounded-xl overflow-hidden border border-border">
+                  <img
+                    src={selectedPlace.photoUrl}
+                    alt={selectedPlace.name}
+                    className="w-full h-44 object-cover"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2.5 p-4 rounded-xl bg-surface-2 border border-border">
+                <p className="font-bold text-text text-lg">{selectedPlace.name}</p>
+
+                <div className="flex items-start gap-2 text-sm text-muted">
+                  <MapPin size={14} className="mt-0.5 flex-shrink-0" />
+                  <span>{selectedPlace.address}</span>
+                </div>
+
+                {selectedPlace.phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted">
+                    <Phone size={14} className="flex-shrink-0" />
+                    <span>{selectedPlace.phone}</span>
+                  </div>
+                )}
+
+                {selectedPlace.rating !== null && (
+                  <div className="flex items-center gap-1.5">
+                    <Star size={14} className="text-yellow-400 fill-yellow-400" />
+                    <span className="text-sm font-semibold text-text">{selectedPlace.rating.toFixed(1)}</span>
+                    <span className="text-sm text-muted">/ 5</span>
+                  </div>
+                )}
+              </div>
+
+              {qError && <ErrorBox>{qError}</ErrorBox>}
+
+              <button
+                type="button"
+                onClick={() => { setQError(''); setMode('quick-tables') }}
+                className={`w-full ${btnCls}`}
+              >
+                This is my restaurant
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setQError(''); setMode('quick-search') }}
+                  className="text-sm text-muted hover:text-text transition-colors underline underline-offset-2"
+                >
+                  Not the right place?
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Quick tables ─────────────────────────────────────────────── */}
+          {mode === 'quick-tables' && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setQError(''); setMode('quick-confirm') }}
+                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <h2 className="text-base font-bold text-text">How many tables do you have?</h2>
+              </div>
+
+              <div className="space-y-3">
+                {qTables.map((tbl, idx) => (
+                  <div key={tbl.capacity} className="flex items-center gap-4 p-3.5 rounded-xl bg-surface-2 border border-border">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-text">{tbl.capacity} guests</p>
+                      <p className="text-xs text-muted mt-0.5">Table for {tbl.capacity}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setQTables(prev => prev.map((r, i) => i === idx ? { ...r, count: Math.max(0, r.count - 1) } : r))}
+                        className="w-9 h-9 rounded-lg bg-surface border border-border text-text hover:border-muted/50 transition-colors text-lg flex items-center justify-center"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center text-lg font-bold text-text">{tbl.count}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQTables(prev => prev.map((r, i) => i === idx ? { ...r, count: r.count + 1 } : r))}
+                        className="w-9 h-9 rounded-lg bg-surface border border-border text-text hover:border-muted/50 transition-colors text-lg flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {qError && <ErrorBox>{qError}</ErrorBox>}
+
+              <button
+                type="button"
+                disabled={qLoading2}
+                onClick={handleQuickCreate}
+                className={`w-full ${btnCls}`}
+              >
+                {qLoading2 ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Launching...
+                  </span>
+                ) : 'Launch!'}
+              </button>
+            </div>
+          )}
+
+          {/* ── Manual flow ──────────────────────────────────────────────── */}
+          {mode === 'manual' && (
+            <>
           <ProgressBar step={step} labels={STEP_LABELS} />
 
           {/* ── Step 1: Basic info ──────────────────────────────────────── */}
@@ -598,6 +934,9 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
+            </>
+          )}
+
         </div>
       </div>
     </div>
