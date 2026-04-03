@@ -5,6 +5,22 @@ import { io as socketIo, type Socket } from 'socket.io-client'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
+function playBeep() {
+  try {
+    const ctx  = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 800
+    osc.type = 'sine'
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.5)
+  } catch {}
+}
+
 export interface ToastItem {
   id:      string
   type:    'new' | 'cancelled' | 'updated'
@@ -74,6 +90,7 @@ export function NotificationProvider({ restaurantId, children }: Props) {
     socket.emit('join_restaurant', restaurantId)
 
     socket.on('booking:new', (data: any) => {
+      playBeep()
       const date = data.date ? new Date(data.date).toLocaleDateString() : ''
       enqueueToast({
         id:      `new-${Date.now()}`,

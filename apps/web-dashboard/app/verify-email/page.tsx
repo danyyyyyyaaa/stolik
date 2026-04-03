@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, Loader } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const params = useSearchParams()
   const router = useRouter()
   const token  = params.get('token')
@@ -22,7 +22,6 @@ export default function VerifyEmailPage() {
     })
       .then(res => {
         if (res.status === 200 || res.status === 302 || res.type === 'opaqueredirect') {
-          // Update local user cache
           try {
             const raw = localStorage.getItem('stolik_user')
             if (raw) {
@@ -77,5 +76,17 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <Loader size={40} className="text-accent animate-spin" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }

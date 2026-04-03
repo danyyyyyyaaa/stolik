@@ -414,6 +414,13 @@ export default function DashboardPage() {
   const [yesterday,       setYesterday]       = useState<YesterdayCounts>({ total: 0, confirmed: 0, pending: 0, noShow: 0 })
   const [checklistDismissed, setChecklistDismissed] = useState(false)
 
+  // ── date range ───────────────────────────────────────────────────────────────
+  const todayISO = format(new Date(), 'yyyy-MM-dd')
+  const [rangeFrom,    setRangeFrom]    = useState<string>(todayISO)
+  const [rangeTo,      setRangeTo]      = useState<string>(todayISO)
+  const [activePreset, setActivePreset] = useState<string>('today')
+  const [customRange,  setCustomRange]  = useState(false)
+
   // ── auth ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const tok = localStorage.getItem('stolik_token')
@@ -440,17 +447,18 @@ export default function DashboardPage() {
   }, [token])
 
   // ── bookings + stats ─────────────────────────────────────────────────────────
-  const fetchBookings = useCallback(async (restaurantId: string) => {
+  const fetchBookings = useCallback(async (restaurantId: string, from?: string, to?: string) => {
     if (!token) return
     setLoading(true)
     try {
+      const f = from ?? rangeFrom
+      const t2 = to ?? rangeTo
+      const bookingsUrl = f === t2 && f === todayISO
+        ? `${API}/api/bookings/today/${restaurantId}`
+        : `${API}/api/bookings?restaurantId=${restaurantId}&from=${f}&to=${t2}`
       const [bookingsRes, statsRes] = await Promise.all([
-        fetch(`${API}/api/bookings/today/${restaurantId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API}/api/bookings/stats/${restaurantId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        fetch(bookingsUrl, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/api/bookings/stats/${restaurantId}`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       const [bookingsData, statsData] = await Promise.all([bookingsRes.json(), statsRes.json()])
       setBookings(Array.isArray(bookingsData) ? bookingsData : [])
@@ -458,9 +466,34 @@ export default function DashboardPage() {
       if (statsData?.yesterday) setYesterday(statsData.yesterday)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [token])
+  }, [token, rangeFrom, rangeTo, todayISO])
 
   useEffect(() => { if (activeId) fetchBookings(activeId) }, [activeId, fetchBookings])
+
+  function applyPreset(preset: string) {
+    const now   = new Date()
+    const today = format(now, 'yyyy-MM-dd')
+    let from = today, to = today
+    if (preset === 'yesterday') {
+      const y = new Date(now); y.setDate(y.getDate() - 1)
+      from = to = format(y, 'yyyy-MM-dd')
+    } else if (preset === '7days') {
+      const s = new Date(now); s.setDate(s.getDate() - 6)
+      from = format(s, 'yyyy-MM-dd'); to = today
+    } else if (preset === '30days') {
+      const s = new Date(now); s.setDate(s.getDate() - 29)
+      from = format(s, 'yyyy-MM-dd'); to = today
+    } else if (preset === 'month') {
+      from = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd'); to = today
+    } else if (preset === 'lastmonth') {
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lme = new Date(now.getFullYear(), now.getMonth(), 0)
+      from = format(lm, 'yyyy-MM-dd'); to = format(lme, 'yyyy-MM-dd')
+    }
+    setRangeFrom(from); setRangeTo(to); setActivePreset(preset)
+    setCustomRange(false)
+    if (activeId) fetchBookings(activeId, from, to)
+  }
 
   // ── export CSV ───────────────────────────────────────────────────────────────
   function exportCsv() {
@@ -670,6 +703,63 @@ export default function DashboardPage() {
             }}
           />
         )}
+
+        {/* Date range presets */}
+        <div className="flex flex-wrap items-center gap-2">
+          {([
+            { key: 'today',     label: 'Today'      },
+            { key: 'yesterday', label: 'Yesterday'  },
+            { key: '7days',     label: '7 days'     },
+            { key: '30days',    label: '30 days'    },
+            { key: 'month',     label: 'This month' },
+            { key: 'lastmonth', label: 'Last month' },
+          ] as const).map(p => (
+            <button
+              key={p.key}
+              onClick={() => applyPreset(p.key)}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border',
+                activePreset === p.key && !customRange
+                  ? 'bg-accent/15 text-accent border-accent/40'
+                  : 'bg-surface-2 text-muted border-border hover:text-text hover:border-muted/40',
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+          <button
+            onClick={() => { setCustomRange(c => !c); setActivePreset('custom') }}
+            className={clsx(
+              'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border',
+              customRange ? 'bg-accent/15 text-accent border-accent/40' : 'bg-surface-2 text-muted border-border hover:text-text hover:border-muted/40',
+            )}
+          >
+            Custom
+          </button>
+          {customRange && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={rangeFrom}
+                onChange={e => setRangeFrom(e.target.value)}
+                className="bg-surface-2 border border-border text-text text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-accent"
+              />
+              <span className="text-muted text-xs">→</span>
+              <input
+                type="date"
+                value={rangeTo}
+                onChange={e => setRangeTo(e.target.value)}
+                className="bg-surface-2 border border-border text-text text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-accent"
+              />
+              <button
+                onClick={() => activeId && fetchBookings(activeId, rangeFrom, rangeTo)}
+                className="px-3 py-1.5 bg-accent text-white text-xs font-semibold rounded-lg hover:bg-accent-hover transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Bookings — view toggle + table/calendar */}
         <div className="flex items-center gap-2 mb-1">
