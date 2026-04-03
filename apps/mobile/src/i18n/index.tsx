@@ -70,6 +70,16 @@ export interface Translations {
   onb_title_1: string; onb_sub_1: string
   onb_title_2: string; onb_sub_2: string
   onb_title_3: string; onb_sub_3: string
+  // forgot/reset password
+  forgot_password: string; reset_password: string; send_reset_link: string
+  check_email_title: string; check_email_body: string
+  confirm_password: string; passwords_not_match: string; back_to_login: string
+  // restaurant detail tabs
+  no_menu: string; no_reviews: string; google_rating: string
+  menu_tab: string; reviews_tab: string; info_tab: string
+  // map / search extras
+  select_city: string; all_restaurants_map: string
+  filter_by: string; show_results: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -141,6 +151,13 @@ const T: Record<LangKey, Translations> = {
     onb_sub_2: 'No calls, no waiting. Pick a date, time and guests — done.',
     onb_title_3: 'Get instant confirmation',
     onb_sub_3: "We'll send you an SMS confirmation and reminder before your reservation.",
+    forgot_password: 'Forgot password?', reset_password: 'Reset password', send_reset_link: 'Send reset link',
+    check_email_title: 'Check your email', check_email_body: "If that email exists, we've sent a reset link.",
+    confirm_password: 'Confirm password', passwords_not_match: 'Passwords do not match', back_to_login: 'Back to login',
+    no_menu: 'Menu not added yet', no_reviews: 'No reviews yet', google_rating: 'Google Rating',
+    menu_tab: 'Menu', reviews_tab: 'Reviews', info_tab: 'Info',
+    select_city: 'Select city', all_restaurants_map: 'restaurants on map',
+    filter_by: 'Filters', show_results: 'Show results',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
@@ -210,6 +227,13 @@ const T: Record<LangKey, Translations> = {
     onb_sub_2: 'Bez dzwonienia i czekania. Wybierz datę, godzinę, gości — gotowe.',
     onb_title_3: 'Natychmiastowe potwierdzenie',
     onb_sub_3: 'Dostaniesz SMS z potwierdzeniem i przypomnieniem przed rezerwacją.',
+    forgot_password: 'Zapomniałeś hasła?', reset_password: 'Zresetuj hasło', send_reset_link: 'Wyślij link',
+    check_email_title: 'Sprawdź pocztę', check_email_body: 'Jeśli email istnieje, wysłaliśmy link.',
+    confirm_password: 'Potwierdź hasło', passwords_not_match: 'Hasła nie są zgodne', back_to_login: 'Powrót do logowania',
+    no_menu: 'Menu nie zostało dodane', no_reviews: 'Brak recenzji', google_rating: 'Ocena Google',
+    menu_tab: 'Menu', reviews_tab: 'Recenzje', info_tab: 'Info',
+    select_city: 'Wybierz miasto', all_restaurants_map: 'restauracji na mapie',
+    filter_by: 'Filtry', show_results: 'Pokaż wyniki',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
@@ -279,6 +303,13 @@ const T: Record<LangKey, Translations> = {
     onb_sub_2: 'Без звонков и ожидания. Выбери дату, время и гостей — готово.',
     onb_title_3: 'Мгновенное подтверждение',
     onb_sub_3: 'Мы отправим SMS с подтверждением и напомним тебе перед бронированием.',
+    forgot_password: 'Забыли пароль?', reset_password: 'Сбросить пароль', send_reset_link: 'Отправить ссылку',
+    check_email_title: 'Проверьте почту', check_email_body: 'Если email существует, мы отправили ссылку.',
+    confirm_password: 'Подтвердите пароль', passwords_not_match: 'Пароли не совпадают', back_to_login: 'Назад к входу',
+    no_menu: 'Меню не добавлено', no_reviews: 'Нет отзывов', google_rating: 'Рейтинг Google',
+    menu_tab: 'Меню', reviews_tab: 'Отзывы', info_tab: 'Инфо',
+    select_city: 'Выберите город', all_restaurants_map: 'ресторанов на карте',
+    filter_by: 'Фильтры', show_results: 'Показать результаты',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
@@ -348,6 +379,13 @@ const T: Record<LangKey, Translations> = {
     onb_sub_2: 'Без дзвінків і очікування. Обери дату, час і гостей — готово.',
     onb_title_3: 'Миттєве підтвердження',
     onb_sub_3: 'Ми надішлемо SMS з підтвердженням і нагадаємо перед бронюванням.',
+    forgot_password: 'Забули пароль?', reset_password: 'Скинути пароль', send_reset_link: 'Надіслати посилання',
+    check_email_title: 'Перевірте пошту', check_email_body: 'Якщо email існує, ми надіслали посилання.',
+    confirm_password: 'Підтвердьте пароль', passwords_not_match: 'Паролі не збігаються', back_to_login: 'Назад до входу',
+    no_menu: 'Меню не додано', no_reviews: 'Немає відгуків', google_rating: 'Рейтинг Google',
+    menu_tab: 'Меню', reviews_tab: 'Відгуки', info_tab: 'Інфо',
+    select_city: 'Оберіть місто', all_restaurants_map: 'ресторанів на карті',
+    filter_by: 'Фільтри', show_results: 'Показати результати',
   },
 }
 

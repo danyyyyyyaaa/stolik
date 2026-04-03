@@ -1,290 +1,167 @@
-import React, { useEffect, useRef, useState } from 'react'
-import {
-  Animated, Image, StyleSheet, Text, TouchableOpacity, View,
-} from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ActivityIndicator, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps'
-import * as Location from 'expo-location'
 import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
-import { useAppStore } from '../../src/store/useAppStore'
-import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
-import { RESTAURANT_COORDS } from '../../src/data/restaurantCoords'
-import type { NormalizedRestaurant } from '../../src/utils/restaurant'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-type Region = {
-  latitude: number; longitude: number
-  latitudeDelta: number; longitudeDelta: number
-}
-
-const WARSAW_CENTER: Region = {
-  latitude: 52.2297, longitude: 21.0122,
-  latitudeDelta: 0.12, longitudeDelta: 0.12,
-}
-
-const DARK_MAP_STYLE = [
-  { elementType: 'geometry',            stylers: [{ color: '#1d2c4d' }] },
-  { elementType: 'labels.text.fill',    stylers: [{ color: '#8ec3b9' }] },
-  { elementType: 'labels.text.stroke',  stylers: [{ color: '#1a3646' }] },
-  { featureType: 'road', elementType: 'geometry',           stylers: [{ color: '#304a7d' }] },
-  { featureType: 'road', elementType: 'geometry.stroke',    stylers: [{ color: '#255763' }] },
-  { featureType: 'road', elementType: 'labels.text.fill',   stylers: [{ color: '#98a5be' }] },
-  { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#1d2c4d' }] },
-  { featureType: 'road.highway', elementType: 'geometry',        stylers: [{ color: '#2c6675' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke',  stylers: [{ color: '#255763' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#b0d5ce' }] },
-  { featureType: 'water', elementType: 'geometry',          stylers: [{ color: '#0e1626' }] },
-  { featureType: 'water', elementType: 'labels.text.fill',  stylers: [{ color: '#4e6d70' }] },
-  { featureType: 'poi',     stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#334e68' }] },
-  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9aa0a6' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#c4c4c4' }] },
+const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
+const CITY_KEY = 'stolik_selected_city'
+const CITIES = [
+  { name: 'Warszawa', lat: 52.2297, lng: 21.0122 },
+  { name: 'Kraków',   lat: 50.0647, lng: 19.9450 },
+  { name: 'Wrocław',  lat: 51.1079, lng: 17.0385 },
+  { name: 'Gdańsk',   lat: 54.3520, lng: 18.6466 },
+  { name: 'Poznań',   lat: 52.4064, lng: 16.9252 },
 ]
 
-function rImage(r: NormalizedRestaurant): string {
-  return (r as any).image ?? `https://picsum.photos/seed/${r.id}/400/300`
+let MapView: any = null, Marker: any = null, PROVIDER_GOOGLE: any = null
+if (Platform.OS !== 'web') {
+  try {
+    const m = require('react-native-maps')
+    MapView = m.default; Marker = m.Marker; PROVIDER_GOOGLE = m.PROVIDER_GOOGLE
+  } catch {}
 }
 
-function priceEuros(r: NormalizedRestaurant): string {
-  const pl = (r as any).priceLevel
-  if (typeof pl === 'number') return '€'.repeat(Math.min(pl, 3))
-  return (r.price ?? '$$').replace(/\$/g, '€')
-}
-
-function isInRegion(lat: number, lng: number, region: Region): boolean {
-  return (
-    Math.abs(lat - region.latitude)  <= region.latitudeDelta  / 2 &&
-    Math.abs(lng - region.longitude) <= region.longitudeDelta / 2
-  )
-}
-
-// ─── Bottom restaurant card ───────────────────────────────────────────────────
-
-function RestaurantCard({
-  r, th, t, onDismiss,
-}: {
-  r: NormalizedRestaurant; th: any; t: any; onDismiss: () => void
-}) {
-  const slideY = useRef(new Animated.Value(220)).current
-
-  useEffect(() => {
-    Animated.spring(slideY, {
-      toValue: 0, tension: 80, friction: 14, useNativeDriver: true,
-    }).start()
-  }, [])
-
-  const isOpen      = (r as any).isOpen !== false
-  const reviewCount = (r as any).reviewCount as number | undefined
-
-  return (
-    <Animated.View
-      style={[mc.card, { backgroundColor: th.bgCard, transform: [{ translateY: slideY }] }]}
-    >
-      <View style={[mc.handle, { backgroundColor: th.border }]} />
-
-      <View style={mc.row}>
-        <Image source={{ uri: rImage(r) }} style={mc.thumb} resizeMode="cover" />
-
-        <View style={mc.info}>
-          <Text style={[mc.name, { color: th.text }]} numberOfLines={1}>{r.name}</Text>
-          <Text style={[mc.meta, { color: th.textSub }]} numberOfLines={1}>
-            {r.emoji}  {r.district}  ·  {priceEuros(r)}
-          </Text>
-          <View style={mc.starsRow}>
-            {[1, 2, 3, 4, 5].map(i => (
-              <Feather
-                key={i} name="star" size={11}
-                color={i <= Math.round(r.rating) ? '#F0A500' : th.border}
-              />
-            ))}
-            <Text style={[mc.rating, { color: th.textSub }]}>{r.rating.toFixed(1)}</Text>
-            {reviewCount !== undefined && (
-              <Text style={[mc.reviews, { color: th.textMuted }]}>({reviewCount})</Text>
-            )}
-          </View>
-          {isOpen && (
-            <View style={mc.openBadge}>
-              <View style={mc.openDot} />
-              <Text style={mc.openTxt}>{t.available_now}</Text>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity onPress={onDismiss} hitSlop={12} style={mc.closeBtn}>
-          <Feather name="x" size={18} color={th.textMuted} />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        onPress={() => { onDismiss(); router.push(`/restaurant/${r.id}`) }}
-        activeOpacity={0.85}
-        style={[mc.reserveBtn, { backgroundColor: th.accent }]}
-      >
-        <Text style={mc.reserveTxt}>{t.reserve}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  )
-}
-
-const mc = StyleSheet.create({
-  card: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingTop: 6, paddingHorizontal: 16, paddingBottom: 32,
-  },
-  handle:   { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  row:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  thumb:    { width: 80, height: 80, borderRadius: 12 },
-  info:     { flex: 1 },
-  name:     { fontSize: 16, fontWeight: '700', marginBottom: 3 },
-  meta:     { fontSize: 12, marginBottom: 5 },
-  starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 6 },
-  rating:   { fontSize: 12, fontWeight: '600', marginLeft: 4 },
-  reviews:  { fontSize: 11 },
-  openBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(26,127,55,0.18)',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, alignSelf: 'flex-start',
-  },
-  openDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: '#238636' },
-  openTxt:    { color: '#238636', fontSize: 11, fontWeight: '600' },
-  closeBtn:   { paddingTop: 2 },
-  reserveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    paddingVertical: 13, borderRadius: 12,
-  },
-  reserveTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
-})
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
+const DARK_STYLE = [
+  { elementType: 'geometry',         stylers: [{ color: '#1a1a2e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+  { featureType: 'road',   elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+  { featureType: 'water',  elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+]
 
 export default function MapScreen() {
-  const { th, themeKey } = useTheme()
-  const { t }            = useLang()
-  const storeRests       = useAppStore(s => s.restaurants)
-
-  const mapRef = useRef<MapView>(null)
-  const [region,   setRegion]   = useState<Region>(WARSAW_CENTER)
-  const [selected, setSelected] = useState<NormalizedRestaurant | null>(null)
-
-  const allRests: NormalizedRestaurant[] =
-    storeRests.length > 0
-      ? (storeRests as NormalizedRestaurant[])
-      : (MOCK_RESTAURANTS as unknown as NormalizedRestaurant[])
-
-  const visibleRests = allRests.filter(r => {
-    const coords = RESTAURANT_COORDS[r.id]
-    return coords ? isInRegion(coords.latitude, coords.longitude, region) : false
-  })
+  const { th } = useTheme()
+  const { t } = useLang()
+  const mapRef = useRef<any>(null)
+  const [restaurants, setRestaurants] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<any>(null)
+  const [city, setCity] = useState(CITIES[0])
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
-    ;(async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted') return
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-      const userRegion: Region = {
-        latitude:      loc.coords.latitude,
-        longitude:     loc.coords.longitude,
-        latitudeDelta:  0.08,
-        longitudeDelta: 0.08,
-      }
-      mapRef.current?.animateToRegion(userRegion, 800)
-      setRegion(userRegion)
-    })()
+    AsyncStorage.getItem(CITY_KEY).then(s => {
+      if (s) { const f = CITIES.find(c => c.name === s); if (f) setCity(f) }
+    })
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 10000)
+    fetch(`${API}/api/restaurants`, { signal: ctrl.signal })
+      .then(r => r.json())
+      .then(d => setRestaurants(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => { clearTimeout(timer); setLoading(false) })
+    return () => { clearTimeout(timer); ctrl.abort() }
   }, [])
 
-  return (
-    <View style={{ flex: 1, backgroundColor: th.bg }}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={WARSAW_CENTER}
-        showsUserLocation
-        showsMyLocationButton={false}
-        customMapStyle={themeKey === 'dark' ? DARK_MAP_STYLE : []}
-        onRegionChangeComplete={r => setRegion(r)}
-        onPress={() => setSelected(null)}
-      >
-        {allRests.map(r => {
-          const coords = RESTAURANT_COORDS[r.id]
-          if (!coords) return null
-          if (!isInRegion(coords.latitude, coords.longitude, region)) return null
-          return (
-            <Marker key={r.id} coordinate={coords} onPress={() => setSelected(r)}>
-              <View style={[
-                ms.pin,
-                { backgroundColor: selected?.id === r.id ? th.accent : '#fff' },
-              ]}>
-                <Text style={ms.pinEmoji}>{r.emoji}</Text>
-              </View>
-            </Marker>
-          )
-        })}
-      </MapView>
+  function selectCity(c: typeof CITIES[0]) {
+    setCity(c)
+    AsyncStorage.setItem(CITY_KEY, c.name)
+    setShowPicker(false)
+    mapRef.current?.animateToRegion({ latitude: c.lat, longitude: c.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }, 600)
+  }
 
-      {/* Header overlay */}
-      <SafeAreaView edges={['top']} pointerEvents="box-none">
-        <View style={[ms.header, { backgroundColor: th.navBg + 'E8' }]}>
-          <Text style={[ms.headerTitle, { color: th.text }]}>{t.map_label}</Text>
-          <View style={[ms.countBadge, { backgroundColor: th.accentBg }]}>
-            <Text style={[ms.countTxt, { color: th.accentText }]}>{visibleRests.length}</Text>
-          </View>
-        </View>
+  function getCoords(r: any, idx: number) {
+    if (r.latitude && r.longitude) return { latitude: r.latitude, longitude: r.longitude }
+    const off = idx * 0.003
+    return { latitude: city.lat + off % 0.04, longitude: city.lng + (off * 1.3) % 0.04 }
+  }
+
+  if (Platform.OS === 'web') return (
+    <SafeAreaView style={[s.safe, { backgroundColor: th.bg }]}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>🗺️</Text>
+        <Text style={{ color: th.textSub, fontSize: 14, textAlign: 'center' }}>Map available in mobile app</Text>
+      </View>
+    </SafeAreaView>
+  )
+
+  return (
+    <View style={s.safe}>
+      <SafeAreaView style={[s.hdr, { backgroundColor: th.bgCard, borderBottomColor: th.border }]} edges={['top']}>
+        <TouchableOpacity onPress={() => setShowPicker(true)} style={s.cityBtn}>
+          <Text style={[s.cityNm, { color: th.text }]}>{city.name}</Text>
+          <Feather name="chevron-down" size={16} color={th.textMuted} />
+        </TouchableOpacity>
+        <Text style={[s.cnt, { color: th.textMuted }]}>{restaurants.length} {t.all_restaurants_map ?? 'restaurants'}</Text>
       </SafeAreaView>
 
-      {/* My location button */}
-      <TouchableOpacity
-        style={[ms.locBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
-        onPress={async () => {
-          const { status } = await Location.requestForegroundPermissionsAsync()
-          if (status !== 'granted') return
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-          mapRef.current?.animateToRegion({
-            latitude:      loc.coords.latitude,
-            longitude:     loc.coords.longitude,
-            latitudeDelta:  0.08,
-            longitudeDelta: 0.08,
-          }, 600)
-        }}
-        activeOpacity={0.8}
-      >
-        <Feather name="navigation" size={20} color={th.accent} />
-      </TouchableOpacity>
-
-      {/* Selected restaurant card */}
-      {selected && (
-        <RestaurantCard r={selected} th={th} t={t} onDismiss={() => setSelected(null)} />
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={th.accent} size="large" />
+        </View>
+      ) : (
+        MapView && (
+          <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE}
+            initialRegion={{ latitude: city.lat, longitude: city.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+            customMapStyle={DARK_STYLE} onPress={() => setSelected(null)}>
+            {restaurants.map((r, i) => (
+              <Marker key={r.id} coordinate={getCoords(r, i)} onPress={() => setSelected(r)}>
+                <View style={[s.pin, { backgroundColor: selected?.id === r.id ? th.accent : th.bgCard, borderColor: selected?.id === r.id ? th.accent : th.border }]}>
+                  <Text style={{ fontSize: 16 }}>{r.emoji ?? '🍽️'}</Text>
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+        )
       )}
+
+      {selected && (
+        <View style={[s.sheet, { backgroundColor: th.bgCard, borderTopColor: th.border }]}>
+          <View style={s.sheetRow}>
+            <View style={[s.sEmoji, { backgroundColor: (selected.color ?? th.accent) + '20' }]}>
+              <Text style={{ fontSize: 24 }}>{selected.emoji ?? '🍽️'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.sName, { color: th.text }]}>{selected.name}</Text>
+              <Text style={[s.sSub, { color: th.textSub }]}>{selected.cuisine} · {selected.priceRange}</Text>
+              {selected.rating > 0 ? <Text style={[s.sRating, { color: th.textSub }]}>⭐ {selected.rating?.toFixed(1)}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: selected.id } })}
+              style={[s.bookBtn, { backgroundColor: th.accent }]}>
+              <Text style={s.bookTx}>{t.reserve ?? 'Book'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <Modal visible={showPicker} transparent animationType="fade">
+        <Pressable style={s.mOverlay} onPress={() => setShowPicker(false)}>
+          <View style={[s.picker, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+            <Text style={[s.pickerTitle, { color: th.text }]}>{t.select_city ?? 'Select city'}</Text>
+            {CITIES.map(c => (
+              <TouchableOpacity key={c.name} onPress={() => selectCity(c)} style={[s.cityOpt, { borderBottomColor: th.border }]}>
+                <Text style={[s.cityOptTx, { color: c.name === city.name ? th.accent : th.text }]}>{c.name === city.name ? '✓ ' : ''}{c.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
 
-const ms = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 16, marginTop: 8,
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14,
-  },
-  headerTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
-  countBadge:  { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
-  countTxt:    { fontSize: 12, fontWeight: '700' },
-  pin: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3, shadowRadius: 4, elevation: 5,
-    borderWidth: 2, borderColor: 'rgba(0,0,0,0.12)',
-  },
-  pinEmoji: { fontSize: 18 },
-  locBtn: {
-    position: 'absolute', bottom: 220, right: 16,
-    width: 46, height: 46, borderRadius: 23, borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18, shadowRadius: 6, elevation: 4,
-  },
+const s = StyleSheet.create({
+  safe:       { flex: 1 },
+  hdr:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1 },
+  cityBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cityNm:     { fontSize: 18, fontWeight: '700' },
+  cnt:        { fontSize: 12 },
+  map:        { flex: 1 },
+  pin:        { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, padding: 16, paddingBottom: 32 },
+  sheetRow:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sEmoji:     { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  sName:      { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  sSub:       { fontSize: 12 },
+  sRating:    { fontSize: 12, marginTop: 2 },
+  bookBtn:    { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  bookTx:     { color: '#fff', fontWeight: '700', fontSize: 13 },
+  mOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 40 },
+  picker:     { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  pickerTitle:{ fontSize: 16, fontWeight: '700', padding: 16, paddingBottom: 8 },
+  cityOpt:    { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  cityOptTx:  { fontSize: 15, fontWeight: '500' },
 })
