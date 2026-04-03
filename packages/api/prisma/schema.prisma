@@ -34,6 +34,16 @@ model Restaurant {
   isPremium   Boolean  @default(false)
   plan        String   @default("free") // free | pro | business
 
+  // Google Places
+  googlePlaceId          String?
+  googleRating           Float?
+  googleReviewCount      Int?
+  googleReviewsCache     Json?
+  googleReviewsUpdatedAt DateTime?
+  isPublished            Boolean @default(false)
+  latitude               Float?
+  longitude              Float?
+
   // Stripe
   stripeCustomerId     String?
   stripeSubscriptionId String?
@@ -64,9 +74,10 @@ model Restaurant {
   tables    Table[]
   bookings  Booking[]
   guests    GuestProfile[]
-  reviews        Review[]
-  staff          StaffMember[]
-  menuCategories MenuCategory[]
+  reviews           Review[]
+  staff             StaffMember[]
+  menuCategories    MenuCategory[]
+  abandonedBookings AbandonedBooking[]
 
   @@map("restaurants")
 }
@@ -96,7 +107,9 @@ model User {
   phone       String?
   firstName   String
   lastName    String
-  avatarUrl   String?
+  avatarUrl      String?
+  expoPushToken  String?
+  lastActiveAt   DateTime?
   role        String   @default("guest") // guest | owner | admin
   isVerified  Boolean  @default(false)
   passwordHash String?
@@ -110,6 +123,8 @@ model User {
   reviews             Review[]
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
+  passwordResets      PasswordReset[]
+  abandonedBookings   AbandonedBooking[]
 
   @@map("users")
 }
@@ -160,6 +175,9 @@ model Booking {
   guestName   String
   guestPhone  String
   guestEmail  String?
+
+  // Push notifications
+  pushReminderSent Boolean @default(false)
 
   // Payment
   depositPaid     Boolean @default(false)
@@ -272,4 +290,37 @@ model StaffMember {
   restaurantId String
 
   @@map("staff_members")
+}
+
+// ─── PASSWORD RESET ──────────────────────────────────────────────────────────
+model PasswordReset {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// ─── ABANDONED BOOKING ───────────────────────────────────────────────────────
+model AbandonedBooking {
+  id               String     @id @default(uuid())
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId     String
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id])
+  date             String?
+  time             String?
+  guests           Int?
+  notificationSent Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+
+  @@index([userId])
+  @@index([notificationSent, createdAt])
+  @@map("abandoned_bookings")
 }

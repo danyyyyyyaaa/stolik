@@ -17,6 +17,9 @@ import { subscriptionsRouter } from './routes/subscriptions'
 import { uploadRouter } from './routes/upload'
 import { adminRouter } from './routes/admin'
 import { menuRouter } from './routes/menu'
+import { pushRouter } from './routes/push'
+import { citiesRouter } from './routes/cities'
+import { startCronJobs } from './cron'
 
 dotenv.config()
 
@@ -74,6 +77,11 @@ app.use('/api/widget', widgetRouter)  // public — no auth needed
 app.use('/api/upload', uploadRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/menu', menuRouter)
+app.use('/api/push', pushRouter)
+app.use('/api/cities', citiesRouter)
+
+// Serve local uploads as static files (fallback when R2 is not configured)
+app.use('/uploads', express.static('uploads'))
 
 // Health check
 app.get('/health', (req, res) => {
@@ -91,7 +99,10 @@ io.on('connection', (socket) => {
 
 export { io }
 
+// Start cron jobs
+startCronJobs()
+
 const PORT = process.env.PORT || 3001
 httpServer.listen(PORT, () => {
-  console.log(`🍽️  Stolik API running on http://localhost:${PORT}`)
+  console.log(`Stolik API running on http://localhost:${PORT}`)
 })

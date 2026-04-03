@@ -270,4 +270,100 @@ router.post('/resend-verification', requireAuth, async (req, res) => {
   res.json({ ok: true })
 })
 
+// ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body
+  if (!email) return res.status(400).json({ error: 'Email required' })
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (user) {
+      // Invalidate any existing tokens
+      await prisma.passwordReset.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() }
+      })
+
+      const token = randomUUID()
+      await prisma.passwordReset.create({
+        data: {
+          token,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+        }
+      })
+
+      const dashboardUrl = process.env.DASHBOARD_URL || 'https://stolik-dashboard.vercel.app'
+      console.log(`[PasswordReset] Reset link: ${dashboardUrl}/reset-password?token=${token}`)
+      // Try to send email if Resend configured
+      try {
+        const { Resend } = await import('resend').catch(() => ({ Resend: null }))
+        if (Resend && process.env.RESEND_API_KEY) {
+          const resend = new Resend(process.env.RESEND_API_KEY)
+          await resend.emails.send({
+            from: 'Stolik <noreply@stolik.pl>',
+            to: email,
+            subject: 'Reset your Stolik password',
+            html: `<p>Hi ${user.firstName},</p><p>Click below to reset your password:</p><p><a href="${dashboardUrl}/reset-password?token=${token}">Reset Password</a></p><p>Link expires in 1 hour.</p>`,
+          })
+        }
+      } catch {}
+    }
+    // Always return 200 for security
+    res.json({ success: true, message: 'If that email exists, a reset link has been sent.' })
+  } catch (err) {
+    console.error('Forgot password error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── RESET PASSWORD ──────────────────────────────────────────────────────────
+router.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body
+  if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword required' })
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' })
+
+  try {
+    const reset = await prisma.passwordReset.findUnique({ where: { token } })
+    if (!reset || reset.usedAt) return res.status(400).json({ error: 'Invalid or already used token' })
+    if (reset.expiresAt < new Date()) return res.status(410).json({ error: 'Token expired. Request a new reset link.' })
+
+    const passwordHash = await bcrypt.hash(newPassword, 12)
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
+      prisma.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+      prisma.refreshToken.deleteMany({ where: { userId: reset.userId } }),
+    ])
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Reset password error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ─── UPDATE PROFILE ──────────────────────────────────────────────────────────
+router.patch('/profile', requireAuth, async (req, res) => {
+  const { firstName, lastName, phone, avatarUrl } = req.body
+  const userId = (req as any).userId
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
+        ...(phone !== undefined && { phone }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        lastActiveAt: new Date(),
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatarUrl: true, role: true, isVerified: true }
+    })
+    res.json(user)
+  } catch (err) {
+    console.error('Update profile error:', err)
+    res.status(500).json({ error: 'Failed to update profile' })
+  }
+})
+
 export { router as authRouter }

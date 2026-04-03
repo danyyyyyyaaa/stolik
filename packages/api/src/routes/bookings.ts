@@ -237,4 +237,23 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
   res.json(booking)
 })
 
+// ─── ABANDON BOOKING (track incomplete bookings for re-engagement) ──────────
+router.post('/abandon', requireAuth, async (req, res) => {
+  const { restaurantId, date, time, guests } = req.body
+  const userId = (req as any).userId
+  if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
+
+  try {
+    // Only one abandoned booking per user per restaurant
+    await prisma.abandonedBooking.deleteMany({ where: { userId, restaurantId } })
+    const abandoned = await prisma.abandonedBooking.create({
+      data: { userId, restaurantId, date, time, guests: guests ? parseInt(guests) : null }
+    })
+    res.json({ success: true, id: abandoned.id })
+  } catch (err) {
+    console.error('Abandon booking error:', err)
+    res.status(500).json({ error: 'Failed to track abandoned booking' })
+  }
+})
+
 export { router as bookingsRouter }

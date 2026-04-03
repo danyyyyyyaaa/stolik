@@ -85,4 +85,62 @@ router.patch('/restaurants/:id/deactivate', requireAdmin, async (req, res) => {
   res.json(updated)
 })
 
+// ─── GET /api/admin/users — paginated user list ─────────────────────────────
+router.get('/users', requireAdmin, async (req, res) => {
+  const { role, page = '1', limit = '20' } = req.query
+  const skip = (parseInt(page as string) - 1) * parseInt(limit as string)
+  const where = role ? { role: role as string } : {}
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, isVerified: true, createdAt: true, lastActiveAt: true },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: parseInt(limit as string),
+    }),
+    prisma.user.count({ where }),
+  ])
+  res.json({ users, total, page: parseInt(page as string), limit: parseInt(limit as string) })
+})
+
+// ─── GET /api/admin/stats — platform statistics ─────────────────────────────
+router.get('/stats', requireAdmin, async (req, res) => {
+  const today = new Date(); today.setHours(0,0,0,0)
+  const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999)
+  const [totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday] = await Promise.all([
+    prisma.restaurant.count(),
+    prisma.restaurant.count({ where: { isActive: true } }),
+    prisma.booking.count(),
+    prisma.user.count(),
+    prisma.booking.count({ where: { date: { gte: today, lte: todayEnd } } }),
+  ])
+  res.json({ totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday })
+})
+
+// ─── PATCH /api/admin/users/:id/role — change user role ─────────────────────
+router.patch('/users/:id/role', requireAdmin, async (req, res) => {
+  const { role } = req.body
+  if (!['guest', 'owner', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role. Must be: guest, owner, or admin' })
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { role },
+      select: { id: true, email: true, role: true }
+    })
+    res.json(user)
+  } catch {
+    res.status(404).json({ error: 'User not found' })
+  }
+})
+
+// ─── GET /api/admin/restaurants/:id/dashboard — restaurant detail for admin ──
+router.get('/restaurants/:id/dashboard', requireAdmin, async (req, res) => {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: req.params.id },
+    include: { tables: true, owner: { select: { id: true, email: true, firstName: true, lastName: true } } }
+  })
+  if (!restaurant) return res.status(404).json({ error: 'Not found' })
+  res.json(restaurant)
+})
+
 export { router as adminRouter }
