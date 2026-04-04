@@ -5,9 +5,9 @@ import {
   Switch, Alert, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Feather } from '@expo/vector-icons'
+import { ChevronRight, Edit2, Lock, LogOut, Camera, HelpCircle, MessageCircle, FileText } from 'lucide-react-native'
 import { router } from 'expo-router'
-import { useTheme } from '../../src/theme'
+import { useTheme, colors, radii, shadows } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
 import { login, register, changePassword, deleteAccount, updateProfile, uploadAvatar } from '../../src/api/auth'
@@ -300,7 +300,7 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
 // ─── Profile view (logged in) ──────────────────────────────────────────────────
 function ProfileView({ th, t }: { th: any; t: any }) {
   const { themeKey, toggle } = useTheme()
-  const { user, logout }     = useAppStore()
+  const { user, logout, setUser } = useAppStore()
   const [deletingAccount,  setDeletingAccount]  = useState(false)
 
   function handleDeleteAccount() {
@@ -328,13 +328,12 @@ function ProfileView({ th, t }: { th: any; t: any }) {
     )
   }
 
-  const [langPickerOpen,    setLangPickerOpen]    = useState(false)
-  const [editProfileOpen,   setEditProfileOpen]   = useState(false)
-  const [changePwdOpen,     setChangePwdOpen]     = useState(false)
-  const [notificationsOn,   setNotificationsOn]   = useState(true)
-  const [avatarUploading,   setAvatarUploading]   = useState(false)
+  const [langPickerOpen,  setLangPickerOpen]  = useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [changePwdOpen,   setChangePwdOpen]   = useState(false)
+  const [notificationsOn, setNotificationsOn] = useState(true)
+  const [avatarUploading, setAvatarUploading] = useState(false)
 
-  // Load persisted notification preference on mount
   useEffect(() => {
     isEnabled().then(v => setNotificationsOn(v))
   }, [])
@@ -342,31 +341,15 @@ function ProfileView({ th, t }: { th: any; t: any }) {
   async function toggleNotifications(v: boolean) {
     setNotificationsOn(v)
     await setEnabled(v)
-    // Re-request permissions when user enables notifications
     if (v) requestPermissions()
   }
 
   async function handleAvatarTap() {
-    const options = ['Take Photo', 'Choose from Library', 'Remove Photo', 'Cancel']
-    const destructiveIndex = 2
-    const cancelIndex = 3
     Alert.alert('Profile Photo', undefined, [
-      {
-        text: 'Take Photo',
-        onPress: () => pickImage('camera'),
-      },
-      {
-        text: 'Choose from Library',
-        onPress: () => pickImage('library'),
-      },
-      {
-        text: 'Remove Photo',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const updated = await updateProfile({ avatarUrl: null })
-            setUser({ ...user!, ...updated })
-          } catch {}
+      { text: 'Take Photo',            onPress: () => pickImage('camera')  },
+      { text: 'Choose from Library',   onPress: () => pickImage('library') },
+      { text: 'Remove Photo', style: 'destructive', onPress: async () => {
+          try { const updated = await updateProfile({ avatarUrl: null }); setUser({ ...user!, ...updated }) } catch {}
         },
       },
       { text: 'Cancel', style: 'cancel' },
@@ -375,28 +358,19 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 
   async function pickImage(source: 'camera' | 'library') {
     try {
-      // Dynamically import expo-image-picker to avoid crash if not installed
       const ImagePicker = await import('expo-image-picker').catch(() => null)
       if (!ImagePicker) { Alert.alert('Feature not available'); return }
-
       let result: any
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync()
         if (status !== 'granted') { Alert.alert('Camera permission required'); return }
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true, aspect: [1, 1], quality: 0.7,
-        })
+        result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
         if (status !== 'granted') { Alert.alert('Photo library permission required'); return }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'images',
-          allowsEditing: true, aspect: [1, 1], quality: 0.7,
-        })
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'images', allowsEditing: true, aspect: [1, 1], quality: 0.7 })
       }
-
       if (result.canceled || !result.assets?.[0]?.uri) return
-
       setAvatarUploading(true)
       try {
         const url = await uploadAvatar(result.assets[0].uri)
@@ -416,84 +390,65 @@ function ProfileView({ th, t }: { th: any; t: any }) {
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'U'
     : 'U'
 
+  const accentColor = themeKey === 'dark' ? colors.primaryAccent : colors.primary
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pv.scroll}>
 
-      {/* Avatar + info */}
-      <View style={pv.userRow}>
+      {/* ── Avatar + name ── */}
+      <View style={pv.avatarSection}>
         <TouchableOpacity onPress={handleAvatarTap} activeOpacity={0.8} style={pv.avatarWrap}>
           {user?.avatarUrl ? (
-            <Image source={{ uri: user.avatarUrl }} style={pv.avatar} />
+            <Image source={{ uri: user.avatarUrl }} style={[pv.avatar, { borderColor: th.border }]} />
           ) : (
-            <View style={[pv.avatar, { backgroundColor: th.accent }]}>
+            <View style={[pv.avatar, { backgroundColor: accentColor }]}>
               <Text style={pv.avatarText}>{initials}</Text>
             </View>
           )}
           {avatarUploading && (
-            <View style={pv.avatarOverlay}>
+            <View style={pv.avatarOverlay as any}>
               <ActivityIndicator color="#fff" size="small" />
             </View>
           )}
-          <View style={[pv.avatarBadge, { backgroundColor: th.accent }]}>
-            <Feather name="camera" size={10} color="#fff" />
+          <View style={[pv.avatarBadge, { backgroundColor: accentColor }]}>
+            <Camera size={10} color="#fff" strokeWidth={2} />
           </View>
         </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={[pv.userName, { color: th.text }]}>
-            {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : t.user}
-          </Text>
-          <Text style={[pv.userEmail, { color: th.textSub }]}>{user?.email ?? ''}</Text>
-        </View>
+        <Text style={[pv.userName, { color: th.text }]}>
+          {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : t.user}
+        </Text>
+        <Text style={[pv.userEmail, { color: th.textSub }]}>{user?.email ?? ''}</Text>
       </View>
 
-      {/* Settings section */}
+      {/* ── Settings ── */}
       <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{t.settings.toUpperCase()}</Text>
       <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
-
-        {/* Language */}
-        <TouchableOpacity
-          onPress={() => setLangPickerOpen(true)}
-          style={[pv.row, { borderBottomColor: th.border }]}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={() => setLangPickerOpen(true)} style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
           <View style={pv.rowLabel}>
-            <Text style={{ fontSize: 16 }}>🌐</Text>
+            <Text style={pv.rowIcon}>🌐</Text>
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.language}</Text>
           </View>
-          <Feather name="chevron-right" size={16} color={th.textMuted} />
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
 
-        {/* Theme */}
-        <TouchableOpacity
-          onPress={toggle}
-          style={[pv.row, { borderBottomColor: th.border }]}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={toggle} style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
           <View style={pv.rowLabel}>
-            <Text style={{ fontSize: 16 }}>{themeKey === 'dark' ? '🌙' : '☀️'}</Text>
+            <Text style={pv.rowIcon}>{themeKey === 'dark' ? '🌙' : '☀️'}</Text>
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.theme}</Text>
           </View>
-          <Text style={[pv.rowValue, { color: th.textSub }]}>
-            {themeKey === 'dark' ? t.dark : t.light}
-          </Text>
+          <Text style={[pv.rowValue, { color: th.textSub }]}>{themeKey === 'dark' ? t.dark : t.light}</Text>
         </TouchableOpacity>
 
-        {/* Notifications */}
         <View style={[pv.row, { borderBottomWidth: 0 }]}>
           <View style={pv.rowLabel}>
-            <Text style={{ fontSize: 16 }}>🔔</Text>
+            <Text style={pv.rowIcon}>🔔</Text>
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.notifications}</Text>
           </View>
-          <Switch
-            value={notificationsOn}
-            onValueChange={toggleNotifications}
-            trackColor={{ false: th.border, true: th.accent }}
-            thumbColor="#fff"
-          />
+          <Switch value={notificationsOn} onValueChange={toggleNotifications} trackColor={{ false: th.border, true: accentColor }} thumbColor="#fff" />
         </View>
       </View>
 
-      {/* Account section */}
+      {/* ── Account ── */}
       <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{t.account.toUpperCase()}</Text>
       <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
         <TouchableOpacity
@@ -502,10 +457,10 @@ function ProfileView({ th, t }: { th: any; t: any }) {
           activeOpacity={0.7}
         >
           <View style={pv.rowLabel}>
-            <Feather name="edit-2" size={15} color={th.textSub} />
+            <Edit2 size={15} color={th.textSub} strokeWidth={1.75} />
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.edit_profile}</Text>
           </View>
-          <Feather name={editProfileOpen ? 'chevron-up' : 'chevron-right'} size={16} color={th.textMuted} />
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
 
         {editProfileOpen && (
@@ -520,10 +475,10 @@ function ProfileView({ th, t }: { th: any; t: any }) {
           activeOpacity={0.7}
         >
           <View style={pv.rowLabel}>
-            <Feather name="lock" size={15} color={th.textSub} />
+            <Lock size={15} color={th.textSub} strokeWidth={1.75} />
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.change_password}</Text>
           </View>
-          <Feather name={changePwdOpen ? 'chevron-up' : 'chevron-right'} size={16} color={th.textMuted} />
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
 
         {changePwdOpen && (
@@ -533,29 +488,52 @@ function ProfileView({ th, t }: { th: any; t: any }) {
         )}
       </View>
 
-      {/* Danger zone */}
-      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{t.danger_zone.toUpperCase()}</Text>
+      {/* ── Help ── */}
+      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>ПОМОЩЬ</Text>
+      <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+        <TouchableOpacity style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
+          <View style={pv.rowLabel}>
+            <HelpCircle size={15} color={th.textSub} strokeWidth={1.75} />
+            <Text style={[pv.rowLabelText, { color: th.text }]}>FAQ</Text>
+          </View>
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
+          <View style={pv.rowLabel}>
+            <MessageCircle size={15} color={th.textSub} strokeWidth={1.75} />
+            <Text style={[pv.rowLabelText, { color: th.text }]}>Связаться с нами</Text>
+          </View>
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[pv.row, { borderBottomWidth: 0 }]} activeOpacity={0.7}>
+          <View style={pv.rowLabel}>
+            <FileText size={15} color={th.textSub} strokeWidth={1.75} />
+            <Text style={[pv.rowLabelText, { color: th.text }]}>Условия использования</Text>
+          </View>
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Log out (grey, neutral) ── */}
       <TouchableOpacity
         onPress={() => logout()}
         activeOpacity={0.8}
-        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: th.error + '50', marginBottom: 10 }]}
+        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: '#D1D5DB' }]}
       >
-        <Feather name="log-out" size={16} color={th.error} />
-        <Text style={[pv.logoutText, { color: th.error }]}>{t.logout}</Text>
+        <LogOut size={16} color={th.textSub} strokeWidth={1.75} />
+        <Text style={[pv.logoutText, { color: th.textSub }]}>{t.logout}</Text>
       </TouchableOpacity>
 
+      {/* ── Delete account — subtle link ── */}
       <TouchableOpacity
         onPress={handleDeleteAccount}
         disabled={deletingAccount}
-        activeOpacity={0.8}
-        style={[pv.logoutBtn, { backgroundColor: th.bgCard, borderColor: th.border, opacity: deletingAccount ? 0.5 : 1 }]}
+        activeOpacity={0.6}
+        style={pv.deleteLink}
       >
         {deletingAccount
           ? <ActivityIndicator size="small" color={th.textMuted} />
-          : <>
-              <Feather name="trash-2" size={16} color={th.textMuted} />
-              <Text style={[pv.logoutText, { color: th.textMuted }]}>{t.delete_account}</Text>
-            </>
+          : <Text style={[pv.deleteLinkTxt, { color: th.textMuted }]}>{t.delete_account}</Text>
         }
       </TouchableOpacity>
 
@@ -570,34 +548,46 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 
 const pv = StyleSheet.create({
   scroll:        { paddingHorizontal: 16, paddingTop: 20 },
-  userRow:       { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, paddingHorizontal: 4 },
-  avatarWrap:    { position: 'relative', width: 64, height: 64 },
-  avatar:        { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  avatarOverlay: { position: 'absolute', inset: 0, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' } as any,
-  avatarBadge:   { position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  avatarText:    { color: '#fff', fontSize: 24, fontWeight: '700' },
-  userName:      { fontSize: 18, fontWeight: '700', marginBottom: 2 },
-  userEmail:     { fontSize: 13 },
-  sectionLabel:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 4 },
-  card:          { borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 20 },
+
+  // Avatar section — centred
+  avatarSection: { alignItems: 'center', marginBottom: 28 },
+  avatarWrap:    { position: 'relative', width: 80, height: 80, marginBottom: 12 },
+  avatar:        { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
+  avatarOverlay: { position: 'absolute', inset: 0, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  avatarBadge:   { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  avatarText:    { color: '#fff', fontSize: 28, fontFamily: 'PlusJakartaSans_700Bold' },
+  userName:      { fontSize: 20, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 3 },
+  userEmail:     { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular' },
+
+  // Sections
+  sectionLabel:  { fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 4 },
+  card:          { borderRadius: radii.lg, borderWidth: 1, overflow: 'hidden', marginBottom: 20 },
   row:           { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowLabelText:  { fontSize: 15, fontWeight: '500' },
-  rowValue:      { fontSize: 13 },
-  logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, borderWidth: 1.5 },
-  logoutText:    { fontSize: 15, fontWeight: '600' },
-  versionText:   { fontSize: 12, textAlign: 'center', marginTop: 16 },
+  rowIcon:       { fontSize: 16, width: 20, textAlign: 'center' },
+  rowLabelText:  { fontSize: 15, fontFamily: 'PlusJakartaSans_500Medium' },
+  rowValue:      { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular' },
+
+  // Log out — grey button
+  logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: radii.md, borderWidth: 1.5, marginBottom: 16 },
+  logoutText:    { fontSize: 15, fontFamily: 'PlusJakartaSans_600SemiBold' },
+
+  // Delete — subtle text link
+  deleteLink:    { alignItems: 'center', paddingVertical: 8, marginBottom: 8 },
+  deleteLinkTxt: { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textDecorationLine: 'underline' },
+
+  versionText:   { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'center', marginTop: 4, opacity: 0.5 },
 })
 
 // ─── Screen export ─────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const { th }  = useTheme()
-  const { t }   = useLang()
+  const { th }    = useTheme()
+  const { t }     = useLang()
   const { token } = useAppStore()
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: th.bg }]} edges={['top']}>
-      <Text style={[styles.pageTitle, { color: th.text }]}>{t.profile}</Text>
+    <SafeAreaView style={[ps.safe, { backgroundColor: th.bg }]} edges={['top']}>
+      <Text style={[ps.pageTitle, { color: th.text }]}>{t.profile}</Text>
       {token
         ? <ProfileView th={th} t={t} />
         : <AuthForm th={th} t={t} />
@@ -606,7 +596,7 @@ export default function ProfileScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const ps = StyleSheet.create({
   safe:      { flex: 1 },
-  pageTitle: { fontSize: 24, fontWeight: '800', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
+  pageTitle: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
 })

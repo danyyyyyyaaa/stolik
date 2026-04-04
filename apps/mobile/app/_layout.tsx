@@ -3,6 +3,16 @@ import { View, Text, Animated, StyleSheet } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SecureStore from 'expo-secure-store'
+import * as Font from 'expo-font'
+import {
+  DMSerifDisplay_400Regular,
+} from '@expo-google-fonts/dm-serif-display'
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans'
 import { ThemeProvider, useTheme } from '../src/theme'
 import { LangProvider, useLang } from '../src/i18n'
 import { useAppStore } from '../src/store/useAppStore'
@@ -81,6 +91,19 @@ function RootStack() {
   const { setToken, setUser } = useAppStore()
 
   const [appState, setAppState] = useState<AppState>('splash')
+  const [fontsLoaded, setFontsLoaded] = useState(false)
+
+  useEffect(() => {
+    Font.loadAsync({
+      DMSerifDisplay_400Regular,
+      PlusJakartaSans_400Regular,
+      PlusJakartaSans_500Medium,
+      PlusJakartaSans_600SemiBold,
+      PlusJakartaSans_700Bold,
+    })
+      .catch(() => {})
+      .finally(() => setFontsLoaded(true))
+  }, [])
 
   useEffect(() => {
     const splashTimer = new Promise<void>(r => setTimeout(r, 1500))
@@ -141,7 +164,7 @@ function RootStack() {
     setAppState('main')
   }
 
-  if (appState === 'splash') return <SplashView />
+  if (appState === 'splash' || !fontsLoaded) return <SplashView />
 
   if (appState === 'auth') {
     return (

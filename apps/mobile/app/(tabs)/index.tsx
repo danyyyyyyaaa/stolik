@@ -4,9 +4,9 @@ import {
   RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Feather } from '@expo/vector-icons'
+import { Bell, ChevronDown, MapPin, Search, Star } from 'lucide-react-native'
 import { router } from 'expo-router'
-import { useTheme } from '../../src/theme'
+import { useTheme, colors, shadows, radii } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
 import { getRestaurants } from '../../src/api/restaurants'
@@ -19,11 +19,11 @@ import { type FilterState, DEFAULT_FILTERS, countActiveFilters, applyFilters } f
 const { width: W } = Dimensions.get('window')
 
 const CUISINES = [
-  { id: 'all',      labelKey: 'all'      },
-  { id: 'polish',   labelKey: 'polish'   },
-  { id: 'italiana', labelKey: 'italian'  },
-  { id: 'japanese', labelKey: 'japanese' },
-  { id: 'french',   labelKey: 'french'   },
+  { id: 'all',      labelKey: 'all',     emoji: '🍽️' },
+  { id: 'polish',   labelKey: 'polish',  emoji: '🇵🇱' },
+  { id: 'italiana', labelKey: 'italian', emoji: '🇮🇹' },
+  { id: 'japanese', labelKey: 'japanese',emoji: '🇯🇵' },
+  { id: 'french',   labelKey: 'french',  emoji: '🥐' },
 ] as const
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -48,15 +48,16 @@ function rImage(r: NormalizedRestaurant): string {
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function SkeletonCard({ th }: { th: any }) {
-  const pulse = useRef(new Animated.Value(0.45)).current
+  const pulse = useRef(new Animated.Value(0.4)).current
   useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1,    duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.45, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1,   duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 900, useNativeDriver: true }),
       ])
-    ).start()
-    return () => pulse.stopAnimation()
+    )
+    anim.start()
+    return () => anim.stop()
   }, [])
   return (
     <Animated.View style={[sk.wrap, { opacity: pulse }]}>
@@ -64,8 +65,8 @@ function SkeletonCard({ th }: { th: any }) {
         <View style={[sk.img, { backgroundColor: th.bgCardAlt }]} />
         <View style={sk.body}>
           <View style={[sk.pill, { backgroundColor: th.bgCardAlt }]} />
-          <View style={[sk.line, { width: '52%', backgroundColor: th.bgCardAlt }]} />
-          <View style={[sk.line, { width: '38%', height: 10, backgroundColor: th.bgCardAlt }]} />
+          <View style={[sk.line, { width: '60%', backgroundColor: th.bgCardAlt }]} />
+          <View style={[sk.line, { width: '40%', height: 10, backgroundColor: th.bgCardAlt }]} />
           <View style={[sk.btn, { backgroundColor: th.bgCardAlt }]} />
         </View>
       </View>
@@ -74,122 +75,168 @@ function SkeletonCard({ th }: { th: any }) {
 }
 const sk = StyleSheet.create({
   wrap: { marginBottom: 16 },
-  card: { borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
+  card: { borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1 },
   img:  { height: 200 },
   body: { padding: 16, gap: 10 },
-  pill: { height: 26, width: 96, borderRadius: 13 },
+  pill: { height: 26, width: 96, borderRadius: radii.full },
   line: { height: 13, borderRadius: 7 },
-  btn:  { height: 48, borderRadius: 12, marginTop: 4 },
+  btn:  { height: 48, borderRadius: radii.md, marginTop: 4 },
 })
 
-// ─── Featured Card (horizontal scroll) ───────────────────────────────────────
-function FeaturedCard({
-  r, th, onPress,
-}: { r: NormalizedRestaurant; th: any; onPress: () => void }) {
+// ─── Popular Card (horizontal 160×200) ────────────────────────────────────────
+function PopularCard({ r, onPress }: { r: NormalizedRestaurant; onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 60, bounciness: 2 }).start()
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()
+  }
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [fc.card, pressed && { opacity: 0.88 }]}
-    >
-      <Image
-        source={{ uri: rImage(r) }}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
-      {/* subtle overall darkening */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.14)' }]} />
-      {/* bottom gradient simulation */}
-      <View style={fc.gradient} />
+    <Animated.View style={{ transform: [{ scale }], marginRight: 12 }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={pc.card}
+      >
+        <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
+        <View style={pc.gradient} />
 
-      {/* Rating badge — top right */}
-      <View style={fc.topRow}>
-        <View style={fc.ratingPill}>
-          <Feather name="star" size={10} color="#F0A500" />
-          <Text style={fc.ratingTxt}>{r.rating.toFixed(1)}</Text>
+        {/* Rating badge — top right */}
+        <View style={pc.ratingBadge}>
+          <Star size={9} color="#F0A500" fill="#F0A500" />
+          <Text style={pc.ratingTxt}>{(r.rating ?? 0).toFixed(1)}</Text>
         </View>
-      </View>
 
-      {/* Name area — bottom */}
-      <View style={fc.bottom}>
-        <Text style={fc.emoji}>{r.emoji}</Text>
-        <Text style={fc.name} numberOfLines={1}>{r.name}</Text>
-        <Text style={fc.district} numberOfLines={1}>{r.district}</Text>
-      </View>
-    </Pressable>
+        {/* Bottom info */}
+        <View style={pc.bottom}>
+          <Text style={pc.name} numberOfLines={1}>{r.name}</Text>
+          <View style={pc.distRow}>
+            <MapPin size={10} color="rgba(255,255,255,0.8)" />
+            <Text style={pc.district} numberOfLines={1}>{r.district}</Text>
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
   )
 }
-const fc = StyleSheet.create({
-  card:      { width: 190, height: 150, borderRadius: 16, overflow: 'hidden', marginRight: 12 },
-  gradient:  { position: 'absolute', bottom: 0, left: 0, right: 0, height: 95, backgroundColor: 'rgba(0,0,0,0.64)' },
-  topRow:    { position: 'absolute', top: 10, right: 10 },
-  ratingPill:{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.52)', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
-  ratingTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  bottom:    { position: 'absolute', bottom: 10, left: 12, right: 12 },
-  emoji:     { fontSize: 18, marginBottom: 3 },
-  name:      { color: '#fff', fontSize: 14, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  district:  { color: 'rgba(255,255,255,0.72)', fontSize: 11, marginTop: 1 },
+const pc = StyleSheet.create({
+  card:       { width: 160, height: 200, borderRadius: radii.lg, overflow: 'hidden' },
+  gradient:   { position: 'absolute', bottom: 0, left: 0, right: 0, height: 110, backgroundColor: 'rgba(0,0,0,0.68)' },
+  ratingBadge:{ position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 7, paddingVertical: 4, borderRadius: radii.sm },
+  ratingTxt:  { color: '#fff', fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold' },
+  bottom:     { position: 'absolute', bottom: 12, left: 12, right: 12 },
+  name:       { color: '#fff', fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 4 },
+  distRow:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  district:   { color: 'rgba(255,255,255,0.78)', fontSize: 11, fontFamily: 'PlusJakartaSans_400Regular' },
+})
+
+// ─── Available Now Card (horizontal compact) ──────────────────────────────────
+function AvailableNowCard({
+  r, th, t, onPress,
+}: { r: NormalizedRestaurant; th: any; t: any; onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 2 }).start()
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()
+  }
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, shadows.sm, { borderRadius: radii.md, marginBottom: 10 }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={[an.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
+      >
+        {/* Photo */}
+        <Image source={{ uri: rImage(r) }} style={an.photo} resizeMode="cover" />
+
+        {/* Info */}
+        <View style={an.info}>
+          <Text style={[an.name, { color: th.text }]} numberOfLines={1}>{r.name}</Text>
+          <Text style={[an.sub, { color: th.textSub }]} numberOfLines={1}>
+            {cuisineLabel(r.cuisine, t)} · {r.district} · {priceEuros(r)}
+          </Text>
+          <View style={an.statusRow}>
+            <View style={an.dot} />
+            <Text style={an.statusTxt}>Столик свободен</Text>
+          </View>
+        </View>
+
+        {/* CTA */}
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.8}
+          style={[an.btn, { backgroundColor: colors.primaryAccent }]}
+        >
+          <Text style={an.btnTxt}>{t.reserve?.replace(' →', '') ?? 'Book'}</Text>
+        </TouchableOpacity>
+      </Pressable>
+    </Animated.View>
+  )
+}
+const an = StyleSheet.create({
+  card:      { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.md, borderWidth: 1 },
+  photo:     { width: 80, height: 80, borderRadius: radii.sm, flexShrink: 0 },
+  info:      { flex: 1, gap: 4 },
+  name:      { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  sub:       { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot:       { width: 7, height: 7, borderRadius: radii.full, backgroundColor: colors.success },
+  statusTxt: { fontSize: 11, fontFamily: 'PlusJakartaSans_500Medium', color: colors.success },
+  btn:       { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radii.sm, flexShrink: 0 },
+  btnTxt:    { color: '#fff', fontSize: 12, fontFamily: 'PlusJakartaSans_700Bold' },
 })
 
 // ─── Restaurant Card ──────────────────────────────────────────────────────────
 function RestaurantCard({
   r, th, t, onPress, index,
-}: {
-  r: NormalizedRestaurant; th: any; t: any; onPress: () => void; index: number
-}) {
+}: { r: NormalizedRestaurant; th: any; t: any; onPress: () => void; index: number }) {
   const fade  = useRef(new Animated.Value(0)).current
-  const slide = useRef(new Animated.Value(22)).current
+  const slide = useRef(new Animated.Value(20)).current
+  const scale = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
-    const delay = Math.min(index, 6) * 72
-    Animated.parallel([
-      Animated.timing(fade,  { toValue: 1, duration: 380, delay, useNativeDriver: true }),
-      Animated.timing(slide, { toValue: 0, duration: 320, delay, useNativeDriver: true }),
-    ]).start()
-    return () => { fade.stopAnimation(); slide.stopAnimation() }
+    const delay = Math.min(index, 5) * 70
+    const anim = Animated.parallel([
+      Animated.timing(fade,  { toValue: 1, duration: 360, delay, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 300, delay, useNativeDriver: true }),
+    ])
+    anim.start()
+    return () => anim.stop()
   }, [])
+
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 2 }).start()
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()
+  }
 
   const isOpen     = (r as any).isOpen !== false
   const reviewCount = (r as any).reviewCount as number | undefined
-  const isDark     = th.bg === '#0D1117'
 
   return (
-    <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
-      {/* Shadow wrapper — must NOT have overflow:hidden for shadow to show on iOS */}
-      <View style={[
-        s.shadow,
-        {
-          shadowColor:   '#000',
-          shadowOffset:  { width: 0, height: 4 },
-          shadowOpacity: isDark ? 0.38 : 0.10,
-          shadowRadius:  14,
-          elevation:     6,
-        },
-      ]}>
+    <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }, { scale }] }}>
+      <View style={[s.shadow, shadows.md]}>
         <Pressable
           onPress={onPress}
-          style={({ pressed }) => [
-            s.card,
-            { backgroundColor: th.bgCard, borderColor: th.border, opacity: pressed ? 0.96 : 1 },
-          ]}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={[s.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
         >
-          {/* ── Image area ── */}
+          {/* Image */}
           <View style={s.imgWrap}>
-            <Image
-              source={{ uri: rImage(r) }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-            />
-            {/* subtle overall tint */}
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.10)' }]} />
-            {/* gradient strip over bottom 55% */}
+            <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.08)' }]} />
             <View style={s.imgGradient} />
-
-            {/* Name overlaid on image */}
             <View style={s.imgNameArea}>
               <Text style={s.imgName} numberOfLines={1}>{r.name}</Text>
             </View>
-
-            {/* "Open now" badge — top right */}
             {isOpen && (
               <View style={s.openBadge}>
                 <View style={s.openDot} />
@@ -198,10 +245,8 @@ function RestaurantCard({
             )}
           </View>
 
-          {/* ── Info section ── */}
+          {/* Info */}
           <View style={s.info}>
-
-            {/* Row 1: cuisine pill + price */}
             <View style={s.rowSplit}>
               <View style={[s.cuisinePill, { backgroundColor: r.color + '1E', borderColor: r.color + '40' }]}>
                 <Text style={s.cuisineEmoji}>{r.emoji}</Text>
@@ -210,31 +255,23 @@ function RestaurantCard({
               <Text style={[s.priceText, { color: th.textSub }]}>{priceEuros(r)}</Text>
             </View>
 
-            {/* Row 2: stars + rating + review count */}
             <View style={s.starsRow}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <Feather
-                  key={i}
-                  name="star"
-                  size={13}
-                  color={i <= Math.round(r.rating) ? '#F0A500' : th.border}
-                />
+              {[1,2,3,4,5].map(i => (
+                <Star key={i} size={12} color={i <= Math.round(r.rating ?? 0) ? '#F0A500' : th.border} fill={i <= Math.round(r.rating ?? 0) ? '#F0A500' : 'transparent'} />
               ))}
-              <Text style={[s.ratingNum, { color: th.text }]}>{r.rating.toFixed(1)}</Text>
+              <Text style={[s.ratingNum, { color: th.text }]}>{(r.rating ?? 0).toFixed(1)}</Text>
               {reviewCount !== undefined && (
                 <Text style={[s.reviewCount, { color: th.textMuted }]}>({reviewCount})</Text>
               )}
             </View>
 
-            {/* Row 3: location */}
             <View style={s.locRow}>
-              <Feather name="map-pin" size={12} color={th.textMuted} />
+              <MapPin size={12} color={th.textMuted} />
               <Text style={[s.locTxt, { color: th.textSub }]} numberOfLines={1}>
                 {[r.district, r.city].filter(Boolean).join(', ')}
               </Text>
             </View>
 
-            {/* Reserve button */}
             <TouchableOpacity
               onPress={onPress}
               activeOpacity={0.8}
@@ -250,51 +287,46 @@ function RestaurantCard({
 }
 
 const s = StyleSheet.create({
-  shadow:      { borderRadius: 16 },
-  card:        { borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
+  shadow:      { borderRadius: radii.lg },
+  card:        { borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1 },
   imgWrap:     { height: 200 },
   imgGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 115, backgroundColor: 'rgba(0,0,0,0.65)' },
   imgNameArea: { position: 'absolute', bottom: 13, left: 14, right: 14 },
-  imgName:     {
-    color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
-  },
-  openBadge:   { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(26,127,55,0.92)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  openDot:     { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7ee787' },
-  openTxt:     { color: '#fff', fontSize: 11, fontWeight: '600' },
+  imgName:     { color: '#fff', fontSize: 20, fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.3 },
+  openBadge:   { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(5,150,105,0.9)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.full },
+  openDot:     { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6EE7B7' },
+  openTxt:     { color: '#fff', fontSize: 11, fontFamily: 'PlusJakartaSans_600SemiBold' },
   info:        { padding: 14, gap: 10 },
   rowSplit:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cuisinePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  cuisinePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.full, borderWidth: 1 },
   cuisineEmoji:{ fontSize: 13 },
-  cuisineTxt:  { fontSize: 12, fontWeight: '600' },
-  priceText:   { fontSize: 14, fontWeight: '700' },
+  cuisineTxt:  { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  priceText:   { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold' },
   starsRow:    { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  ratingNum:   { fontSize: 13, fontWeight: '700', marginLeft: 5 },
-  reviewCount: { fontSize: 12, marginLeft: 2 },
+  ratingNum:   { fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', marginLeft: 5 },
+  reviewCount: { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', marginLeft: 2 },
   locRow:      { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  locTxt:      { fontSize: 13, flex: 1 },
-  reserveBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, borderRadius: 12, marginTop: 2 },
-  reserveTxt:  { color: '#fff', fontSize: 15, fontWeight: '700' },
+  locTxt:      { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', flex: 1 },
+  reserveBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: radii.md, marginTop: 2 },
+  reserveTxt:  { color: '#fff', fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold' },
 })
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
-  const { th, themeKey, toggle } = useTheme()
-  const { t }                    = useLang()
+  const { th, themeKey } = useTheme()
+  const { t }            = useLang()
   const { restaurants, setRestaurants, user } = useAppStore()
-  const [langPickerOpen,    setLangPickerOpen]    = useState(false)
-  const [filterModalOpen,   setFilterModalOpen]   = useState(false)
-  const [filters,           setFilters]           = useState<FilterState>(DEFAULT_FILTERS)
-
-  const [loading,    setLoading]    = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [langPickerOpen,  setLangPickerOpen]  = useState(false)
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS)
+  const [loading,         setLoading]         = useState(true)
+  const [refreshing,      setRefreshing]      = useState(false)
 
   const activeFilterCount = countActiveFilters(filters)
 
-  // Screen mount fade-in
   const screenFade = useRef(new Animated.Value(0)).current
   useEffect(() => {
-    Animated.timing(screenFade, { toValue: 1, duration: 360, useNativeDriver: true }).start()
+    Animated.timing(screenFade, { toValue: 1, duration: 340, useNativeDriver: true }).start()
   }, [])
 
   async function load() {
@@ -319,11 +351,18 @@ export default function HomeScreen() {
   }, [])
 
   const filtered = applyFilters(restaurants as NormalizedRestaurant[], filters)
-
-  // Top-5 by rating for featured strip
   const featured = [...(restaurants as NormalizedRestaurant[])]
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    .slice(0, 5)
+    .slice(0, 8)
+
+  // "Available now" = first 3 from filtered list
+  const availableNow = filtered.slice(0, 3)
+
+  const avatarInitial = user
+    ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()
+    : 'S'
+
+  const accentColor = themeKey === 'dark' ? colors.primaryAccent : colors.primary
 
   return (
     <SafeAreaView style={[hs.safe, { backgroundColor: th.bg }]} edges={['top']}>
@@ -333,64 +372,52 @@ export default function HomeScreen() {
           keyExtractor={r => r.id}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={th.accent}
-              colors={[th.accent]}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} colors={[accentColor]} />
           }
           contentContainerStyle={hs.list}
           ListHeaderComponent={
             <View>
-              {/* ── Hero ── */}
-              <View style={hs.hero}>
-                <View style={hs.heroLeft}>
-                  <Text style={[hs.greeting, { color: th.textSub }]}>
-                    {user?.firstName
-                      ? `${t.good_morning}, ${user.firstName} 👋`
-                      : `${t.good_morning} 👋`}
-                  </Text>
-                  <Text style={[hs.logo, { color: th.text }]}>
-                    Stol<Text style={{ fontStyle: 'italic', color: th.accent }}>ik</Text>
-                  </Text>
-                  <Text style={[hs.heroSub, { color: th.textMuted }]}>{t.find_table}</Text>
-                </View>
-                <View style={hs.headerRight}>
-                  <TouchableOpacity
-                    onPress={toggle}
-                    style={[hs.headerBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
-                    hitSlop={8}
-                  >
-                    <Text style={{ fontSize: 15 }}>{themeKey === 'dark' ? '☀️' : '🌙'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setLangPickerOpen(true)}
-                    style={[hs.headerBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
-                    hitSlop={8}
-                  >
-                    <Text style={{ fontSize: 15 }}>🌐</Text>
-                  </TouchableOpacity>
+              {/* ── Header bar ── */}
+              <View style={hs.header}>
+                {/* Left: avatar + location */}
+                <View style={hs.headerLeft}>
                   <Pressable
                     onPress={() => router.navigate('/(tabs)/profile')}
-                    style={[hs.avatar, { backgroundColor: th.accent }]}
+                    style={[hs.avatar, { backgroundColor: accentColor }]}
                   >
-                    <Text style={hs.avatarTxt}>
-                      {user
-                        ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()
-                        : 'S'}
-                    </Text>
+                    <Text style={hs.avatarTxt}>{avatarInitial}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => {}} style={hs.locationBtn}>
+                    <Text style={[hs.locationTxt, { color: th.text }]}>Warszawa</Text>
+                    <ChevronDown size={14} color={th.textSub} />
                   </Pressable>
                 </View>
+                {/* Right: notifications */}
+                <TouchableOpacity
+                  style={[hs.iconBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
+                  activeOpacity={0.7}
+                >
+                  <Bell size={18} color={th.textSub} strokeWidth={1.75} />
+                </TouchableOpacity>
               </View>
 
-              {/* ── Search bar + Filter button ── */}
+              {/* ── Greeting ── */}
+              <View style={hs.greetingBlock}>
+                <Text style={[hs.greeting, { color: th.text }]}>
+                  {user?.firstName
+                    ? `${t.good_morning}, ${user.firstName}`
+                    : t.good_morning}
+                </Text>
+                <Text style={[hs.greetingSub, { color: th.textSub }]}>{t.find_table}</Text>
+              </View>
+
+              {/* ── Search bar ── */}
               <View style={hs.searchRow}>
                 <Pressable
                   onPress={() => router.navigate('/(tabs)/search')}
-                  style={[hs.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }]}
+                  style={[hs.searchBar, { backgroundColor: th.bgCard, borderColor: th.border }, shadows.sm]}
                 >
-                  <Feather name="search" size={16} color={th.textMuted} />
+                  <Search size={16} color={th.textMuted} strokeWidth={1.75} />
                   <Text style={[hs.searchHint, { color: th.textMuted }]}>{t.search_placeholder}</Text>
                 </Pressable>
                 <TouchableOpacity
@@ -399,12 +426,11 @@ export default function HomeScreen() {
                   style={[
                     hs.filterBtn,
                     {
-                      backgroundColor: activeFilterCount > 0 ? th.accent   : th.bgCard,
-                      borderColor:     activeFilterCount > 0 ? th.accent   : th.border,
+                      backgroundColor: activeFilterCount > 0 ? accentColor : th.bgCard,
+                      borderColor:     activeFilterCount > 0 ? accentColor : th.border,
                     },
                   ]}
                 >
-                  <Feather name="sliders" size={14} color={activeFilterCount > 0 ? '#fff' : th.textSub} />
                   <Text style={[hs.filterBtnTxt, { color: activeFilterCount > 0 ? '#fff' : th.textSub }]}>
                     {activeFilterCount > 0 ? `${t.filters} • ${activeFilterCount}` : t.filters}
                   </Text>
@@ -426,11 +452,12 @@ export default function HomeScreen() {
                       onPress={() => setFilters(f => ({ ...f, cuisine: item.id }))}
                       activeOpacity={0.8}
                       style={[hs.pill, {
-                        backgroundColor: active ? th.pillActive : th.pill,
+                        backgroundColor: active ? accentColor : th.pill,
                         borderColor:     active ? 'transparent' : th.border,
                       }]}
                     >
-                      <Text style={[hs.pillTxt, { color: active ? th.pillActiveText : th.textSub }]}>
+                      <Text style={hs.pillEmoji}>{item.emoji}</Text>
+                      <Text style={[hs.pillTxt, { color: active ? '#fff' : th.textSub }]}>
                         {String(label)}
                       </Text>
                     </TouchableOpacity>
@@ -438,12 +465,14 @@ export default function HomeScreen() {
                 }}
               />
 
-              {/* ── Featured / Top Rated (horizontal, only on 'all' filter) ── */}
+              {/* ── Popular / Top Rated ── */}
               {!loading && featured.length > 0 && filters.cuisine === 'all' && (
                 <View style={hs.section}>
                   <View style={hs.sectionHead}>
-                    <Text style={[hs.sectionTitle, { color: th.text }]}>{t.top_rated}</Text>
-                    <Feather name="award" size={15} color={th.accent} />
+                    <Text style={[hs.sectionTitle, { color: th.text }]}>🔥 {t.top_rated}</Text>
+                    <TouchableOpacity onPress={() => router.navigate('/(tabs)/search')}>
+                      <Text style={[hs.seeAll, { color: accentColor }]}>Все →</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={featured}
@@ -452,9 +481,8 @@ export default function HomeScreen() {
                     keyExtractor={r => r.id + '_feat'}
                     contentContainerStyle={{ paddingRight: 16 }}
                     renderItem={({ item }) => (
-                      <FeaturedCard
+                      <PopularCard
                         r={item}
-                        th={th}
                         onPress={() => router.push(`/restaurant/${item.id}`)}
                       />
                     )}
@@ -462,18 +490,33 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* ── "Available now" section header ── */}
-              <View style={[hs.sectionHead, { marginTop: 4 }]}>
-                <Text style={[hs.sectionTitle, { color: th.text }]}>{t.available_now}</Text>
-                {!loading && (
-                  <View style={[hs.countBadge, { backgroundColor: th.accentBg }]}>
-                    <Text style={[hs.countTxt, { color: th.accentText }]}>{filtered.length}</Text>
+              {/* ── Available Now ── */}
+              {!loading && availableNow.length > 0 && (
+                <View style={hs.section}>
+                  <View style={hs.sectionHead}>
+                    <Text style={[hs.sectionTitle, { color: th.text }]}>⚡ {t.available_now}</Text>
+                    <View style={[hs.countBadge, { backgroundColor: th.accentBg }]}>
+                      <Text style={[hs.countTxt, { color: th.accentText }]}>{filtered.length}</Text>
+                    </View>
                   </View>
-                )}
+                  {availableNow.map(r => (
+                    <AvailableNowCard
+                      key={r.id + '_av'}
+                      r={r}
+                      th={th}
+                      t={t}
+                      onPress={() => router.push(`/restaurant/${r.id}`)}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Section header for full list */}
+              <View style={[hs.sectionHead, { marginTop: 8, marginBottom: 14 }]}>
+                <Text style={[hs.sectionTitle, { color: th.text }]}>📖 Все рестораны</Text>
               </View>
 
-              {/* Skeletons while loading */}
-              {loading && [0, 1, 2].map(i => <SkeletonCard key={i} th={th} />)}
+              {loading && [0,1,2].map(i => <SkeletonCard key={i} th={th} />)}
             </View>
           }
           renderItem={({ item, index }) => (
@@ -510,43 +553,48 @@ export default function HomeScreen() {
 }
 
 const hs = StyleSheet.create({
-  safe:        { flex: 1 },
-  screen:      { flex: 1 },
-  list:        { paddingHorizontal: 16 },
+  safe:    { flex: 1 },
+  screen:  { flex: 1 },
+  list:    { paddingHorizontal: 16 },
 
-  // Hero
-  hero:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingTop: 20, paddingBottom: 22, paddingHorizontal: 4 },
-  heroLeft:    { flex: 1, marginRight: 14 },
-  greeting:    { fontSize: 13, marginBottom: 3 },
-  logo:        { fontSize: 30, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
-  heroSub:     { fontSize: 13 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
-  headerBtn:   { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  avatar:      { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarTxt:   { color: '#fff', fontSize: 17, fontWeight: '700' },
+  // Header
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, paddingBottom: 12, paddingHorizontal: 4 },
+  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar:      { width: 36, height: 36, borderRadius: radii.full, alignItems: 'center', justifyContent: 'center' },
+  avatarTxt:   { color: '#fff', fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold' },
+  locationBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  locationTxt: { fontSize: 15, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  iconBtn:     { width: 36, height: 36, borderRadius: radii.full, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Search row + filter button
-  searchRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 4, marginBottom: 18 },
-  searchBar:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 14, borderRadius: 14, borderWidth: 1 },
-  searchHint:  { fontSize: 14, flex: 1 },
-  filterBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 14, borderRadius: 14, borderWidth: 1, flexShrink: 0 },
-  filterBtnTxt:{ fontSize: 13, fontWeight: '600' },
+  // Greeting
+  greetingBlock: { paddingHorizontal: 4, paddingBottom: 20 },
+  greeting:      { fontSize: 24, fontFamily: 'DMSerifDisplay_400Regular', marginBottom: 4 },
+  greetingSub:   { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' },
+
+  // Search row
+  searchRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 16 },
+  searchBar:    { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13, borderRadius: radii.lg, borderWidth: 1 },
+  searchHint:   { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular', flex: 1 },
+  filterBtn:    { paddingHorizontal: 14, paddingVertical: 13, borderRadius: radii.lg, borderWidth: 1 },
+  filterBtnTxt: { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold' },
 
   // Pills
-  pillsRow:    { paddingHorizontal: 4, paddingBottom: 22, gap: 8 },
-  pill:        { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  pillTxt:     { fontSize: 13, fontWeight: '500' },
+  pillsRow:  { paddingHorizontal: 4, paddingBottom: 20, gap: 8 },
+  pill:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.full, borderWidth: 1 },
+  pillEmoji: { fontSize: 13 },
+  pillTxt:   { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium' },
 
   // Section headers
   section:     { marginBottom: 24 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 4, marginBottom: 14 },
-  sectionTitle:{ fontSize: 16, fontWeight: '700' },
-  countBadge:  { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
-  countTxt:    { fontSize: 12, fontWeight: '700' },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 14 },
+  sectionTitle:{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
+  seeAll:      { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  countBadge:  { paddingHorizontal: 10, paddingVertical: 3, borderRadius: radii.sm },
+  countTxt:    { fontSize: 12, fontFamily: 'PlusJakartaSans_700Bold' },
 
   // Empty state
   empty:       { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
   emptyEmoji:  { fontSize: 52, marginBottom: 16 },
-  emptyTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  emptyDesc:   { fontSize: 14 },
+  emptyTitle:  { fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 6 },
+  emptyDesc:   { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' },
 })

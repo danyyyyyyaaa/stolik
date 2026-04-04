@@ -1,77 +1,98 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
+import { colors, fontFamilies, fontSizes, radii, shadows, spacing } from './tokens'
 
 export type ThemeKey = 'dark' | 'light'
 
 export interface ThemeColors {
+  // Surfaces
   bg:             string
   bgCard:         string
   bgCardAlt:      string
   border:         string
+  // Text
   text:           string
   textSub:        string
   textMuted:      string
+  // Brand
   accent:         string
+  accentLight:    string
   accentText:     string
   accentBg:       string
+  secondary:      string
+  // Pills / chips
   pill:           string
   pillActive:     string
   pillActiveText: string
+  // Nav
   navBg:          string
   navBorder:      string
+  // Inputs
   inputBg:        string
   inputBorder:    string
+  // Semantic
   success:        string
+  warning:        string
   error:          string
+  // Status bar
   statusBar:      'light-content' | 'dark-content'
 }
 
 export const themes: Record<ThemeKey, ThemeColors> = {
-  dark: {
-    bg:             '#0D1117',
-    bgCard:         '#161B22',
-    bgCardAlt:      '#21262D',
-    border:         'rgba(240,246,252,0.1)',
-    text:           '#E6EDF3',
-    textSub:        '#8B949E',
-    textMuted:      '#6E7681',
-    accent:         '#238636',
-    accentText:     '#3FB950',
-    accentBg:       'rgba(35,134,54,0.15)',
-    pill:           '#21262D',
-    pillActive:     '#238636',
-    pillActiveText: '#FFFFFF',
-    navBg:          '#0D1117',
-    navBorder:      'rgba(240,246,252,0.08)',
-    inputBg:        '#0D1117',
-    inputBorder:    'rgba(240,246,252,0.15)',
-    success:        '#238636',
-    error:          '#F85149',
-    statusBar:      'light-content',
-  },
   light: {
-    bg:             '#F6F8FA',
-    bgCard:         '#FFFFFF',
-    bgCardAlt:      '#F6F8FA',
-    border:         'rgba(31,35,40,0.12)',
-    text:           '#1F2328',
-    textSub:        '#656D76',
-    textMuted:      '#9198A1',
-    accent:         '#1A7F37',
-    accentText:     '#1A7F37',
-    accentBg:       'rgba(26,127,55,0.08)',
-    pill:           '#EFF1F3',
-    pillActive:     '#1A7F37',
+    bg:             colors.background,
+    bgCard:         colors.surface,
+    bgCardAlt:      colors.surfaceDark,
+    border:         colors.borderLight,
+    text:           colors.textPrimary,
+    textSub:        colors.textSecondary,
+    textMuted:      '#9CA3AF',
+    accent:         colors.primary,
+    accentLight:    colors.primaryLight,
+    accentText:     colors.primaryAccent,
+    accentBg:       'rgba(82,183,136,0.12)',
+    secondary:      colors.secondary,
+    pill:           colors.surfaceDark,
+    pillActive:     colors.primary,
     pillActiveText: '#FFFFFF',
-    navBg:          '#FFFFFF',
-    navBorder:      'rgba(31,35,40,0.08)',
-    inputBg:        '#FFFFFF',
-    inputBorder:    'rgba(31,35,40,0.2)',
-    success:        '#1A7F37',
-    error:          '#CF222E',
+    navBg:          colors.surface,
+    navBorder:      'rgba(0,0,0,0)',
+    inputBg:        colors.surface,
+    inputBorder:    colors.borderLight,
+    success:        colors.success,
+    warning:        colors.warning,
+    error:          colors.error,
     statusBar:      'dark-content',
   },
+  dark: {
+    bg:             colors.backgroundDark,
+    bgCard:         colors.surfaceDarkMode,
+    bgCardAlt:      colors.surfaceDark2,
+    border:         colors.borderDark,
+    text:           colors.textInverse,
+    textSub:        '#9CA3AF',
+    textMuted:      '#6B7280',
+    accent:         colors.primaryAccent,
+    accentLight:    colors.primaryLight,
+    accentText:     colors.primaryAccent,
+    accentBg:       'rgba(82,183,136,0.15)',
+    secondary:      colors.secondary,
+    pill:           colors.surfaceDark2,
+    pillActive:     colors.primaryAccent,
+    pillActiveText: '#0F1410',
+    navBg:          '#0A0F0B',
+    navBorder:      'rgba(0,0,0,0)',
+    inputBg:        colors.surfaceDarkMode,
+    inputBorder:    colors.borderDark,
+    success:        colors.success,
+    warning:        colors.warning,
+    error:          colors.error,
+    statusBar:      'light-content',
+  },
 }
+
+// Re-export tokens so consumers import everything from theme
+export { colors, fontFamilies, fontSizes, radii, shadows, spacing }
 
 interface ThemeCtx {
   themeKey: ThemeKey

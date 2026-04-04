@@ -12,7 +12,9 @@
     "splash": {
       "backgroundColor": "#0D1117"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "pl.stolik.mobile"
@@ -42,7 +44,8 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Stolik"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

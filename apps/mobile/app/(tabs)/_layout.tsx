@@ -1,19 +1,26 @@
 import React, { useRef, useEffect } from 'react'
 import { View, Animated, Platform, StyleSheet } from 'react-native'
 import { Tabs } from 'expo-router'
-import { Feather } from '@expo/vector-icons'
-import { useTheme } from '../../src/theme'
+import {
+  Home, Search, MapPin, BookMarked, User,
+} from 'lucide-react-native'
+import { useTheme, colors, radii, shadows } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 
-// ─── Animated tab icon with spring dot indicator ──────────────────────────────
+// ─── Animated tab icon ────────────────────────────────────────────────────────
+
+type LucideIcon = typeof Home
 
 function TabIcon({
-  name, color, focused, accent,
+  Icon,
+  color,
+  focused,
+  accentColor,
 }: {
-  name: React.ComponentProps<typeof Feather>['name']
+  Icon: LucideIcon
   color: string
   focused: boolean
-  accent: string
+  accentColor: string
 }) {
   const dotScale  = useRef(new Animated.Value(focused ? 1 : 0)).current
   const iconScale = useRef(new Animated.Value(1)).current
@@ -28,7 +35,7 @@ function TabIcon({
       }),
       Animated.sequence([
         Animated.timing(iconScale, {
-          toValue: focused ? 1.15 : 0.9,
+          toValue: focused ? 1.12 : 0.92,
           duration: 100,
           useNativeDriver: true,
         }),
@@ -45,13 +52,18 @@ function TabIcon({
   return (
     <View style={styles.iconWrap}>
       <Animated.View style={{ transform: [{ scale: iconScale }] }}>
-        <Feather name={name} size={22} color={color} />
+        <Icon
+          size={24}
+          color={color}
+          strokeWidth={focused ? 2.5 : 1.75}
+          fill={focused ? color : 'transparent'}
+        />
       </Animated.View>
       <Animated.View
         style={[
           styles.dot,
           {
-            backgroundColor: accent,
+            backgroundColor: accentColor,
             transform: [{ scaleX: dotScale }],
             opacity: dotScale,
           },
@@ -64,8 +76,11 @@ function TabIcon({
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
-  const { th } = useTheme()
+  const { th, themeKey } = useTheme()
   const { t }  = useLang()
+
+  const activeColor   = themeKey === 'dark' ? colors.primaryAccent : colors.primary
+  const inactiveColor = '#9CA3AF'
 
   return (
     <Tabs
@@ -73,18 +88,20 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: th.navBg,
-          borderTopColor:  th.navBorder,
-          borderTopWidth:  1,
+          borderTopWidth:  0,
           paddingBottom:   Platform.OS === 'ios' ? 24 : 10,
           paddingTop:      10,
           height:          Platform.OS === 'ios' ? 84 : 64,
+          // Shadow above the tab bar
+          ...shadows.lg,
+          shadowOffset: { width: 0, height: -4 },
         },
-        tabBarActiveTintColor:   th.accent,
-        tabBarInactiveTintColor: th.textMuted,
+        tabBarActiveTintColor:   activeColor,
+        tabBarInactiveTintColor: inactiveColor,
         tabBarLabelStyle: {
-          fontSize:   10,
-          fontWeight: '600',
-          marginTop:  2,
+          fontSize:    10,
+          fontFamily:  'PlusJakartaSans_600SemiBold',
+          marginTop:   2,
         },
       }}
     >
@@ -93,7 +110,7 @@ export default function TabLayout() {
         options={{
           title: t.home_label,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="home" color={color} focused={focused} accent={th.accent} />
+            <TabIcon Icon={Home} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />
@@ -102,7 +119,7 @@ export default function TabLayout() {
         options={{
           title: t.search_label,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="search" color={color} focused={focused} accent={th.accent} />
+            <TabIcon Icon={Search} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />
@@ -111,7 +128,7 @@ export default function TabLayout() {
         options={{
           title: t.map_label,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="map-pin" color={color} focused={focused} accent={th.accent} />
+            <TabIcon Icon={MapPin} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />
@@ -120,7 +137,7 @@ export default function TabLayout() {
         options={{
           title: t.bookings_label,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="bookmark" color={color} focused={focused} accent={th.accent} />
+            <TabIcon Icon={BookMarked} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />
@@ -129,7 +146,7 @@ export default function TabLayout() {
         options={{
           title: t.profile_label,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="user" color={color} focused={focused} accent={th.accent} />
+            <TabIcon Icon={User} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />
@@ -141,15 +158,15 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    alignItems:    'center',
+    alignItems:     'center',
     justifyContent: 'center',
-    width:         36,
-    height:        30,
+    width:          36,
+    height:         30,
   },
   dot: {
-    width:        18,
+    width:        16,
     height:       3,
-    borderRadius: 2,
+    borderRadius: radii.full,
     marginTop:    4,
   },
 })
