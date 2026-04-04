@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Switch, Alert, Image,
+  Switch, Alert, Image, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ChevronRight, Edit2, Lock, LogOut, Camera, HelpCircle, MessageCircle, FileText } from 'lucide-react-native'
+import { ChevronRight, Edit2, Lock, LogOut, Camera, HelpCircle, MessageCircle, FileText, Globe, Sun, Moon, Bell, ChevronDown } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { useTheme, colors, radii, shadows } from '../../src/theme'
 import { useLang } from '../../src/i18n'
@@ -69,7 +69,7 @@ function AuthForm({ th, t }: { th: any; t: any }) {
         {/* Logo */}
         <View style={af.logoRow}>
           <Text style={[af.logo, { color: th.text }]}>
-            Stol<Text style={{ fontStyle: 'italic', color: th.accent }}>ik</Text>
+            Din<Text style={{ fontStyle: 'italic', color: th.accent }}>to</Text>
           </Text>
           <Text style={[af.subtitle, { color: th.textSub }]}>{t.sign_in}</Text>
         </View>
@@ -333,6 +333,8 @@ function ProfileView({ th, t }: { th: any; t: any }) {
   const [changePwdOpen,   setChangePwdOpen]   = useState(false)
   const [notificationsOn, setNotificationsOn] = useState(true)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [faqOpen,         setFaqOpen]         = useState(false)
+  const [openFaqIdx,      setOpenFaqIdx]      = useState<number | null>(null)
 
   useEffect(() => {
     isEnabled().then(v => setNotificationsOn(v))
@@ -425,7 +427,7 @@ function ProfileView({ th, t }: { th: any; t: any }) {
       <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
         <TouchableOpacity onPress={() => setLangPickerOpen(true)} style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
           <View style={pv.rowLabel}>
-            <Text style={pv.rowIcon}>🌐</Text>
+            <Globe size={20} color={th.textSub} strokeWidth={1.75} />
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.language}</Text>
           </View>
           <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
@@ -433,7 +435,10 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 
         <TouchableOpacity onPress={toggle} style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
           <View style={pv.rowLabel}>
-            <Text style={pv.rowIcon}>{themeKey === 'dark' ? '🌙' : '☀️'}</Text>
+            {themeKey === 'dark'
+              ? <Moon size={20} color={th.textSub} strokeWidth={1.75} />
+              : <Sun size={20} color={th.textSub} strokeWidth={1.75} />
+            }
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.theme}</Text>
           </View>
           <Text style={[pv.rowValue, { color: th.textSub }]}>{themeKey === 'dark' ? t.dark : t.light}</Text>
@@ -441,7 +446,7 @@ function ProfileView({ th, t }: { th: any; t: any }) {
 
         <View style={[pv.row, { borderBottomWidth: 0 }]}>
           <View style={pv.rowLabel}>
-            <Text style={pv.rowIcon}>🔔</Text>
+            <Bell size={20} color={th.textSub} strokeWidth={1.75} />
             <Text style={[pv.rowLabelText, { color: th.text }]}>{t.notifications}</Text>
           </View>
           <Switch value={notificationsOn} onValueChange={toggleNotifications} trackColor={{ false: th.border, true: accentColor }} thumbColor="#fff" />
@@ -489,26 +494,68 @@ function ProfileView({ th, t }: { th: any; t: any }) {
       </View>
 
       {/* ── Help ── */}
-      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>ПОМОЩЬ</Text>
+      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{(t.help ?? 'ПОМОЩЬ').toUpperCase()}</Text>
       <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
-        <TouchableOpacity style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
+        {/* FAQ with accordion */}
+        <TouchableOpacity
+          onPress={() => setFaqOpen(v => !v)}
+          style={[pv.row, { borderBottomColor: th.border }]}
+          activeOpacity={0.7}
+        >
           <View style={pv.rowLabel}>
             <HelpCircle size={15} color={th.textSub} strokeWidth={1.75} />
-            <Text style={[pv.rowLabelText, { color: th.text }]}>FAQ</Text>
+            <Text style={[pv.rowLabelText, { color: th.text }]}>{t.faq}</Text>
           </View>
-          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+          <ChevronDown size={16} color={th.textMuted} strokeWidth={1.75} style={{ transform: [{ rotate: faqOpen ? '180deg' : '0deg' }] }} />
         </TouchableOpacity>
-        <TouchableOpacity style={[pv.row, { borderBottomColor: th.border }]} activeOpacity={0.7}>
+        {faqOpen && (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+            {[
+              { q: 'Как забронировать столик?', a: 'Выберите ресторан, дату, время и количество гостей. Нажмите Забронировать.' },
+              { q: 'Как отменить бронь?', a: 'Откройте раздел Брони, найдите нужную бронь и нажмите Отменить.' },
+              { q: 'В каких городах работает Dinto?', a: 'Сейчас Dinto доступен в Варшаве. Бухарест — скоро!' },
+              { q: 'Бронирование бесплатное?', a: 'Да, бронирование через Dinto полностью бесплатно для гостей.' },
+              { q: 'Как связаться с рестораном?', a: 'На странице ресторана нажмите на номер телефона.' },
+            ].map((item, idx) => (
+              <View key={idx} style={[pv.faqItem, { borderBottomColor: th.border, borderBottomWidth: idx < 4 ? 1 : 0 }]}>
+                <TouchableOpacity
+                  onPress={() => setOpenFaqIdx(openFaqIdx === idx ? null : idx)}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[pv.faqQ, { color: th.text, flex: 1, marginRight: 8 }]}>{item.q}</Text>
+                  <ChevronDown size={14} color={th.textMuted} style={{ transform: [{ rotate: openFaqIdx === idx ? '180deg' : '0deg' }] }} />
+                </TouchableOpacity>
+                {openFaqIdx === idx && (
+                  <Text style={[pv.faqA, { color: th.textSub }]}>{item.a}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Contact */}
+        <TouchableOpacity
+          onPress={() => Linking.openURL('mailto:support@dinto.app')}
+          style={[pv.row, { borderBottomColor: th.border }]}
+          activeOpacity={0.7}
+        >
           <View style={pv.rowLabel}>
             <MessageCircle size={15} color={th.textSub} strokeWidth={1.75} />
-            <Text style={[pv.rowLabelText, { color: th.text }]}>Связаться с нами</Text>
+            <Text style={[pv.rowLabelText, { color: th.text }]}>{t.contact_us}</Text>
           </View>
           <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
-        <TouchableOpacity style={[pv.row, { borderBottomWidth: 0 }]} activeOpacity={0.7}>
+
+        {/* Terms */}
+        <TouchableOpacity
+          onPress={() => Alert.alert(t.terms, 'Условия использования будут опубликованы до запуска приложения.')}
+          style={[pv.row, { borderBottomWidth: 0 }]}
+          activeOpacity={0.7}
+        >
           <View style={pv.rowLabel}>
             <FileText size={15} color={th.textSub} strokeWidth={1.75} />
-            <Text style={[pv.rowLabelText, { color: th.text }]}>Условия использования</Text>
+            <Text style={[pv.rowLabelText, { color: th.text }]}>{t.terms}</Text>
           </View>
           <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
@@ -577,6 +624,11 @@ const pv = StyleSheet.create({
   deleteLinkTxt: { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textDecorationLine: 'underline' },
 
   versionText:   { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'center', marginTop: 4, opacity: 0.5 },
+
+  // FAQ
+  faqItem: { paddingHorizontal: 0 },
+  faqQ:    { fontSize: 14, fontFamily: 'PlusJakartaSans_500Medium' },
+  faqA:    { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', paddingBottom: 10, lineHeight: 20 },
 })
 
 // ─── Screen export ─────────────────────────────────────────────────────────────

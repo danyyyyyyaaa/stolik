@@ -112,14 +112,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeKey, setKey] = useState<ThemeKey>('dark')
 
   useEffect(() => {
-    SecureStore.getItemAsync('stolik_theme')
+    SecureStore.getItemAsync('dinto_theme')
       .then(v => { if (v === 'dark' || v === 'light') setKey(v) })
       .catch(() => {})
   }, [])
 
   function setTheme(k: ThemeKey) {
     setKey(k)
-    SecureStore.setItemAsync('stolik_theme', k).catch(() => {})
+    SecureStore.setItemAsync('dinto_theme', k).catch(() => {})
   }
 
   return (

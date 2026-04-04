@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
-  Image, Modal, Pressable, ScrollView, Animated,
+  Image, Modal, Pressable, ScrollView, Animated, Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, SlidersHorizontal, X, ChevronRight, XCircle } from 'lucide-react-native'
@@ -10,6 +10,7 @@ import { useTheme, colors, shadows, radii } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
+const { width: SCREEN_W } = Dimensions.get('window')
 
 const CUISINES = ['Italian', 'Polish', 'Japanese', 'French', 'Georgian', 'American']
 const PRICES   = ['$', '$$', '$$$', '$$$$']
@@ -390,7 +391,7 @@ const s = StyleSheet.create({
   // Categories
   sectionTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 14 },
   catGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  catCard:      { width: (344 - 12) / 2, aspectRatio: 1.6, borderRadius: radii.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  catCard:      { width: (SCREEN_W - 48) / 2, height: 100, borderRadius: radii.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
   catEmoji:     { fontSize: 28 },
   catLabel:     { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold' },
 })

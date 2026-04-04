@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, Pressable,
-  ActivityIndicator, Platform, Animated,
+  ActivityIndicator, Platform, Animated, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ChevronDown, Search, List, Navigation, Star, MapPin } from 'lucide-react-native'
 import { router } from 'expo-router'
+import * as Location from 'expo-location'
 import { useTheme, colors, shadows, radii } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
-const CITY_KEY = 'stolik_selected_city'
+const CITY_KEY = 'dinto_selected_city'
 const CITIES = [
-  { name: 'Warszawa', lat: 52.2297, lng: 21.0122 },
-  { name: 'Kraków',   lat: 50.0647, lng: 19.9450 },
-  { name: 'Wrocław',  lat: 51.1079, lng: 17.0385 },
-  { name: 'Gdańsk',   lat: 54.3520, lng: 18.6466 },
-  { name: 'Poznań',   lat: 52.4064, lng: 16.9252 },
+  { name: 'Warszawa',   lat: 52.2297, lng: 21.0122, flag: '🇵🇱', active: true  },
+  { name: 'București',  lat: 44.4268, lng: 26.1025, flag: '🇷🇴', active: false },
 ]
 
 let MapView: any = null, Marker: any = null, PROVIDER_GOOGLE: any = null
@@ -126,14 +124,40 @@ function BottomSheet({ r, th, t, onClose }: { r: any; th: any; t: any; onClose: 
           </View>
         )}
 
-        {/* CTA */}
-        <TouchableOpacity
-          onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: r.id } })}
-          activeOpacity={0.85}
-          style={[bs.bookBtn, { backgroundColor: colors.primary }]}
-        >
-          <Text style={bs.bookTxt}>🍽️  Забронировать столик</Text>
-        </TouchableOpacity>
+        {/* Actions row */}
+        <View style={bs.actionsRow}>
+          {/* Route button */}
+          {r.latitude && r.longitude && (
+            <TouchableOpacity
+              onPress={() => {
+                const lat = r.latitude
+                const lng = r.longitude
+                const url = Platform.OS === 'ios'
+                  ? `maps://app?daddr=${lat},${lng}`
+                  : `google.navigation:q=${lat},${lng}`
+                Linking.canOpenURL(url).then(ok => {
+                  if (ok) Linking.openURL(url)
+                  else Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
+                }).catch(() => {
+                  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
+                })
+              }}
+              activeOpacity={0.8}
+              style={[bs.routeBtn, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}
+            >
+              <Navigation size={14} color={colors.primary} strokeWidth={1.75} />
+              <Text style={[bs.routeTxt, { color: colors.primary }]}>{t.route}</Text>
+            </TouchableOpacity>
+          )}
+          {/* Book CTA */}
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: r.id } })}
+            activeOpacity={0.85}
+            style={[bs.bookBtn, { backgroundColor: colors.primary, flex: 1 }]}
+          >
+            <Text style={bs.bookTxt}>🍽️  Забронировать</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Animated.View>
   )
@@ -152,8 +176,11 @@ const bs = StyleSheet.create({
   closeTxt:  { fontSize: 16 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   detailTxt: { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', flex: 1 },
-  bookBtn:   { paddingVertical: 16, borderRadius: radii.md, alignItems: 'center' },
-  bookTxt:   { color: '#fff', fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
+  actionsRow: { flexDirection: 'row', gap: 8 },
+  routeBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 14, borderRadius: radii.md, borderWidth: 1 },
+  routeTxt:   { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  bookBtn:    { paddingVertical: 14, borderRadius: radii.md, alignItems: 'center' },
+  bookTxt:    { color: '#fff', fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold' },
 })
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -167,11 +194,26 @@ export default function MapScreen() {
   const [selected,    setSelected]    = useState<any>(null)
   const [city,        setCity]        = useState(CITIES[0])
   const [showPicker,  setShowPicker]  = useState(false)
+  const [userLoc,     setUserLoc]     = useState<{ latitude: number; longitude: number } | null>(null)
 
   useEffect(() => {
     AsyncStorage.getItem(CITY_KEY).then(s => {
-      if (s) { const f = CITIES.find(c => c.name === s); if (f) setCity(f) }
+      if (s) { const f = CITIES.find(c => c.name === s && c.active); if (f) setCity(f) }
     })
+    // Request geolocation
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status === 'granted') {
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(pos => {
+          setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude })
+          mapRef.current?.animateToRegion({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }, 600)
+        }).catch(() => {})
+      }
+    }).catch(() => {})
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 10000)
     fetch(`${API}/api/restaurants`, { signal: ctrl.signal })
@@ -183,6 +225,7 @@ export default function MapScreen() {
   }, [])
 
   function selectCity(c: typeof CITIES[0]) {
+    if (!c.active) return
     setCity(c)
     AsyncStorage.setItem(CITY_KEY, c.name)
     setShowPicker(false)
@@ -190,6 +233,24 @@ export default function MapScreen() {
       { latitude: c.lat, longitude: c.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
       600,
     )
+  }
+
+  function goToMyLocation() {
+    if (userLoc) {
+      mapRef.current?.animateToRegion({
+        ...userLoc, latitudeDelta: 0.02, longitudeDelta: 0.02,
+      }, 500)
+    } else {
+      Location.requestForegroundPermissionsAsync().then(({ status }) => {
+        if (status === 'granted') {
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(pos => {
+            const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+            setUserLoc(loc)
+            mapRef.current?.animateToRegion({ ...loc, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 500)
+          }).catch(() => {})
+        }
+      }).catch(() => {})
+    }
   }
 
   function getCoords(r: any, idx: number) {
@@ -235,12 +296,10 @@ export default function MapScreen() {
             <List size={16} color={th.textSub} strokeWidth={1.75} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => mapRef.current?.animateToRegion(
-              { latitude: city.lat, longitude: city.lng, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 500,
-            )}
+            onPress={goToMyLocation}
             style={[s.iconBtn, { backgroundColor: th.bgCardAlt, borderColor: th.border }]}
           >
-            <Navigation size={16} color={th.textSub} strokeWidth={1.75} />
+            <Navigation size={16} color={userLoc ? colors.primary : th.textSub} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -287,11 +346,17 @@ export default function MapScreen() {
               <TouchableOpacity
                 key={c.name}
                 onPress={() => selectCity(c)}
-                style={[s.cityOpt, { borderBottomColor: th.border }]}
+                disabled={!c.active}
+                style={[s.cityOpt, { borderBottomColor: th.border, opacity: c.active ? 1 : 0.5 }]}
+                activeOpacity={0.7}
               >
-                <Text style={[s.cityOptTx, { color: c.name === city.name ? colors.primary : th.text }]}>
+                <Text style={{ fontSize: 18, marginRight: 8 }}>{c.flag}</Text>
+                <Text style={[s.cityOptTx, { color: c.name === city.name ? colors.primary : c.active ? th.text : th.textSub, flex: 1 }]}>
                   {c.name === city.name ? '✓ ' : ''}{c.name}
                 </Text>
+                {!c.active && (
+                  <Text style={[s.comingSoon, { color: th.textMuted }]}>{t.coming_soon}</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -312,6 +377,7 @@ const s = StyleSheet.create({
   mOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 40 },
   picker:       { borderRadius: radii.lg, borderWidth: 1, overflow: 'hidden' },
   pickerTitle:  { fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', padding: 16, paddingBottom: 8 },
-  cityOpt:      { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  cityOpt:      { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center' },
   cityOptTx:    { fontSize: 15, fontFamily: 'PlusJakartaSans_500Medium' },
+  comingSoon:   { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular' },
 })

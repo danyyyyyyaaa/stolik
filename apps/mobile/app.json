@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Stolik",
-    "slug": "stolik-mobile",
+    "name": "Dinto",
+    "slug": "dinto-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "stolik",
+    "scheme": "dinto",
     "web": {
       "bundler": "metro"
     },
@@ -17,13 +17,13 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "pl.stolik.mobile"
+      "bundleIdentifier": "pl.dinto.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0D1117"
       },
-      "package": "pl.stolik.mobile"
+      "package": "pl.dinto.mobile"
     },
     "plugins": [
       "expo-router",
@@ -31,8 +31,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Stolik needs access to your photo library to update your profile picture.",
-          "cameraPermission": "Stolik needs access to your camera to take a profile picture."
+          "photosPermission": "Dinto needs access to your photo library to update your profile picture.",
+          "cameraPermission": "Dinto needs access to your camera to take a profile picture."
         }
       ],
       [
@@ -42,7 +42,7 @@
           "color": "#238636",
           "sounds": [],
           "androidMode": "default",
-          "androidCollapsedTitle": "Stolik"
+          "androidCollapsedTitle": "Dinto"
         }
       ],
       "expo-font"

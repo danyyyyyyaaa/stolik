@@ -80,6 +80,10 @@ export interface Translations {
   // map / search extras
   select_city: string; all_restaurants_map: string
   filter_by: string; show_results: string
+  // dinto extras
+  coming_soon: string; route: string; my_location: string
+  faq: string; contact_us: string; terms: string; help: string
+  all_restaurants: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -88,8 +92,8 @@ const T: Record<LangKey, Translations> = {
     reserve: 'Reserve a table →',
     search_placeholder: 'Search restaurants...', search_label: 'Search',
     bookings_label: 'Bookings', profile_label: 'Profile', home_label: 'Home',
-    good_morning: 'Good evening', find_table: 'Find your table',
-    find_your_table: 'Find your table',
+    good_morning: 'Good evening', find_table: 'Find your restaurant',
+    find_your_table: 'Find your restaurant',
     available_now: 'Available now', top_rated: 'Top rated',
     book_table: 'Book a table', select_date: 'Select date',
     select_time: 'Select time', select_guests: 'Number of guests',
@@ -145,7 +149,7 @@ const T: Record<LangKey, Translations> = {
     login_required_title: 'Sign in to book',
     login_required_sub: 'Create a free account to reserve tables at the best restaurants in Warsaw.',
     onb_skip: 'Skip', onb_next: 'Next', onb_start: 'Get Started',
-    onb_title_1: 'Find your table',
+    onb_title_1: 'Find your restaurant',
     onb_sub_1: 'Discover the best restaurants near you — Polish, Italian, Japanese and more.',
     onb_title_2: 'Book in 30 seconds',
     onb_sub_2: 'No calls, no waiting. Pick a date, time and guests — done.',
@@ -158,14 +162,17 @@ const T: Record<LangKey, Translations> = {
     menu_tab: 'Menu', reviews_tab: 'Reviews', info_tab: 'Info',
     select_city: 'Select city', all_restaurants_map: 'restaurants on map',
     filter_by: 'Filters', show_results: 'Show results',
+    coming_soon: 'Coming soon', route: 'Route', my_location: 'My location',
+    faq: 'FAQ', contact_us: 'Contact us', terms: 'Terms of use', help: 'Help',
+    all_restaurants: 'All restaurants',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
     reserve: 'Zarezerwuj stolik →',
     search_placeholder: 'Szukaj restauracji...', search_label: 'Szukaj',
     bookings_label: 'Rezerwacje', profile_label: 'Profil', home_label: 'Start',
-    good_morning: 'Dzień dobry', find_table: 'Znajdź swój stolik',
-    find_your_table: 'Znajdź swój stolik',
+    good_morning: 'Dzień dobry', find_table: 'Znajdź swoją restaurację',
+    find_your_table: 'Znajdź swoją restaurację',
     available_now: 'Dostępne teraz', top_rated: 'Najwyżej oceniane',
     book_table: 'Rezerwuj stolik', select_date: 'Wybierz datę',
     select_time: 'Wybierz godzinę', select_guests: 'Liczba gości',
@@ -221,7 +228,7 @@ const T: Record<LangKey, Translations> = {
     login_required_title: 'Zaloguj się, aby zarezerwować',
     login_required_sub: 'Utwórz darmowe konto, aby rezerwować stoliki w najlepszych restauracjach Warszawy.',
     onb_skip: 'Pomiń', onb_next: 'Dalej', onb_start: 'Rozpocznij',
-    onb_title_1: 'Znajdź swój stolik',
+    onb_title_1: 'Znajdź swoją restaurację',
     onb_sub_1: 'Odkryj najlepsze restauracje w okolicy — polska, włoska, japońska i więcej.',
     onb_title_2: 'Zarezerwuj w 30 sekund',
     onb_sub_2: 'Bez dzwonienia i czekania. Wybierz datę, godzinę, gości — gotowe.',
@@ -234,14 +241,17 @@ const T: Record<LangKey, Translations> = {
     menu_tab: 'Menu', reviews_tab: 'Recenzje', info_tab: 'Info',
     select_city: 'Wybierz miasto', all_restaurants_map: 'restauracji na mapie',
     filter_by: 'Filtry', show_results: 'Pokaż wyniki',
+    coming_soon: 'Wkrótce', route: 'Trasa', my_location: 'Moja lokalizacja',
+    faq: 'FAQ', contact_us: 'Skontaktuj się', terms: 'Warunki użytkowania', help: 'Pomoc',
+    all_restaurants: 'Wszystkie restauracje',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
     reserve: 'Забронировать столик →',
     search_placeholder: 'Поиск ресторанов...', search_label: 'Поиск',
     bookings_label: 'Брони', profile_label: 'Профиль', home_label: 'Главная',
-    good_morning: 'Добрый вечер', find_table: 'Найди свой столик',
-    find_your_table: 'Найди свой столик',
+    good_morning: 'Добрый вечер', find_table: 'Найди свой ресторан',
+    find_your_table: 'Найди свой ресторан',
     available_now: 'Доступно сейчас', top_rated: 'Лучшие',
     book_table: 'Забронировать', select_date: 'Выберите дату',
     select_time: 'Выберите время', select_guests: 'Количество гостей',
@@ -297,7 +307,7 @@ const T: Record<LangKey, Translations> = {
     login_required_title: 'Войдите, чтобы забронировать',
     login_required_sub: 'Создайте бесплатный аккаунт, чтобы бронировать столики в лучших ресторанах Варшавы.',
     onb_skip: 'Пропустить', onb_next: 'Далее', onb_start: 'Начать',
-    onb_title_1: 'Найди свой столик',
+    onb_title_1: 'Найди свой ресторан',
     onb_sub_1: 'Открой лучшие рестораны рядом — польская, итальянская, японская кухня и не только.',
     onb_title_2: 'Забронируй за 30 секунд',
     onb_sub_2: 'Без звонков и ожидания. Выбери дату, время и гостей — готово.',
@@ -310,14 +320,17 @@ const T: Record<LangKey, Translations> = {
     menu_tab: 'Меню', reviews_tab: 'Отзывы', info_tab: 'Инфо',
     select_city: 'Выберите город', all_restaurants_map: 'ресторанов на карте',
     filter_by: 'Фильтры', show_results: 'Показать результаты',
+    coming_soon: 'Скоро', route: 'Маршрут', my_location: 'Моя позиция',
+    faq: 'FAQ', contact_us: 'Связаться', terms: 'Условия использования', help: 'Помощь',
+    all_restaurants: 'Все рестораны',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
     reserve: 'Забронювати столик →',
     search_placeholder: 'Пошук ресторанів...', search_label: 'Пошук',
     bookings_label: 'Брони', profile_label: 'Профіль', home_label: 'Головна',
-    good_morning: 'Добрий вечір', find_table: 'Знайди свій столик',
-    find_your_table: 'Знайди свій столик',
+    good_morning: 'Добрий вечір', find_table: 'Знайди свій ресторан',
+    find_your_table: 'Знайди свій ресторан',
     available_now: 'Доступно зараз', top_rated: 'Найкращі',
     book_table: 'Забронювати', select_date: 'Оберіть дату',
     select_time: 'Оберіть час', select_guests: 'Кількість гостей',
@@ -373,7 +386,7 @@ const T: Record<LangKey, Translations> = {
     login_required_title: 'Увійдіть, щоб забронювати',
     login_required_sub: 'Створіть безкоштовний акаунт, щоб бронювати столики в найкращих ресторанах Варшави.',
     onb_skip: 'Пропустити', onb_next: 'Далі', onb_start: 'Почати',
-    onb_title_1: 'Знайди свій столик',
+    onb_title_1: 'Знайди свій ресторан',
     onb_sub_1: 'Відкрий найкращі ресторани поруч — польська, італійська, японська та інші кухні.',
     onb_title_2: 'Забронюй за 30 секунд',
     onb_sub_2: 'Без дзвінків і очікування. Обери дату, час і гостей — готово.',
@@ -386,6 +399,9 @@ const T: Record<LangKey, Translations> = {
     menu_tab: 'Меню', reviews_tab: 'Відгуки', info_tab: 'Інфо',
     select_city: 'Оберіть місто', all_restaurants_map: 'ресторанів на карті',
     filter_by: 'Фільтри', show_results: 'Показати результати',
+    coming_soon: 'Скоро', route: 'Маршрут', my_location: 'Моя позиція',
+    faq: 'FAQ', contact_us: 'Зв\'язатись', terms: 'Умови використання', help: 'Допомога',
+    all_restaurants: 'Всі ресторани',
   },
 }
 

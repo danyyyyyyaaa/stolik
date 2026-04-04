@@ -1,10 +1,10 @@
-// ─── Stolik Design Tokens ────────────────────────────────────────────────────
+// ─── Dinto Design Tokens ─────────────────────────────────────────────────────
 // "Warm minimalism" — clean forms + warm palette + restaurant atmosphere
 
 export const colors = {
   // Brand
-  primary:        '#1B4332',
-  primaryLight:   '#2D6A4F',
+  primary:        '#2D6A4F',
+  primaryLight:   '#40916C',
   primaryAccent:  '#52B788',
   secondary:      '#D4A574',
 

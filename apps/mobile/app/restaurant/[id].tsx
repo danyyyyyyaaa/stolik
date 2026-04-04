@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
-  Modal, Pressable, ActivityIndicator,
+  Modal, Pressable, ActivityIndicator, Linking, Platform,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
@@ -204,7 +204,7 @@ export default function RestaurantScreen() {
   const r  = storeR ?? mockR ?? fetchedR
   const nr: NormalizedRestaurant | null = r ? normalizeRestaurant(r) : null
 
-  const imageUrl = mockR?.image ?? `https://picsum.photos/seed/stolik-${id}/800/400`
+  const imageUrl = mockR?.image ?? `https://picsum.photos/seed/dinto-${id}/800/400`
 
   const [activeTab,    setActiveTab]    = useState<TabKey>('about')
   const [apiMenu,      setApiMenu]      = useState<ApiMenuCategory[] | null>(null)
@@ -333,15 +333,38 @@ export default function RestaurantScreen() {
               <View style={[s.infoCard, { backgroundColor: th.bgCard, borderColor: th.border }]}>
                 <Text style={[s.infoCardLabel, { color: th.textMuted }]}>{t.info_label}</Text>
                 {[
-                  [t.open_until,      nr.open],
-                  [t.district,        nr.district],
-                  [t.cuisine_label,   getCuisineName(cuisine, t)],
-                  [t.address,         nr.address],
-                  [t.tel,             (r as any)?.phone],
-                ].filter(([, v]) => v).map(([k, v]) => (
+                  [t.open_until,      nr.open,               null],
+                  [t.district,        nr.district,           null],
+                  [t.cuisine_label,   getCuisineName(cuisine, t), null],
+                  [t.address,         nr.address,            'address'],
+                  [t.tel,             (r as any)?.phone,     'phone'],
+                ].filter(([, v]) => v).map(([k, v, type]) => (
                   <View key={String(k)} style={[s.infoRow, { borderBottomColor: th.border }]}>
                     <Text style={[s.infoKey, { color: th.textSub }]}>{k}</Text>
-                    <Text style={[s.infoVal, { color: th.text }]}>{v}</Text>
+                    {type === 'phone' ? (
+                      <TouchableOpacity onPress={() => Linking.openURL(`tel:${v}`)}>
+                        <Text style={[s.infoVal, { color: th.accent, textDecorationLine: 'underline' }]}>{v}</Text>
+                      </TouchableOpacity>
+                    ) : type === 'address' && (r as any)?.latitude && (r as any)?.longitude ? (
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}
+                        onPress={() => {
+                          const lat = (r as any).latitude
+                          const lng = (r as any).longitude
+                          const url = Platform.OS === 'ios'
+                            ? `maps://app?daddr=${lat},${lng}`
+                            : `google.navigation:q=${lat},${lng}`
+                          Linking.canOpenURL(url).then(ok => {
+                            Linking.openURL(ok ? url : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
+                          }).catch(() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`))
+                        }}
+                      >
+                        <Text style={[s.infoVal, { color: th.text }]}>{v}</Text>
+                        <Feather name="navigation" size={13} color={th.accent} />
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[s.infoVal, { color: th.text }]}>{v}</Text>
+                    )}
                   </View>
                 ))}
               </View>

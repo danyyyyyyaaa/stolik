@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Animated, Dimensions, FlatList, Image, Pressable,
+  Animated, Dimensions, FlatList, Image, Modal, Pressable,
   RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Bell, ChevronDown, MapPin, Search, Star } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { useTheme, colors, shadows, radii } from '../../src/theme'
@@ -17,6 +18,12 @@ import FilterModal from '../../src/components/FilterModal'
 import { type FilterState, DEFAULT_FILTERS, countActiveFilters, applyFilters } from '../../src/utils/filters'
 
 const { width: W } = Dimensions.get('window')
+
+const CITY_KEY = 'dinto_selected_city'
+const AVAILABLE_CITIES = [
+  { name: 'Warszawa', flag: '🇵🇱', active: true },
+  { name: 'București', flag: '🇷🇴', active: false },
+]
 
 const CUISINES = [
   { id: 'all',      labelKey: 'all',     emoji: '🍽️' },
@@ -318,6 +325,8 @@ export default function HomeScreen() {
   const { restaurants, setRestaurants, user } = useAppStore()
   const [langPickerOpen,  setLangPickerOpen]  = useState(false)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [cityPickerOpen,  setCityPickerOpen]  = useState(false)
+  const [selectedCity,    setSelectedCity]    = useState('Warszawa')
   const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS)
   const [loading,         setLoading]         = useState(true)
   const [refreshing,      setRefreshing]      = useState(false)
@@ -327,6 +336,7 @@ export default function HomeScreen() {
   const screenFade = useRef(new Animated.Value(0)).current
   useEffect(() => {
     Animated.timing(screenFade, { toValue: 1, duration: 340, useNativeDriver: true }).start()
+    AsyncStorage.getItem(CITY_KEY).then(v => { if (v) setSelectedCity(v) }).catch(() => {})
   }, [])
 
   async function load() {
@@ -360,7 +370,7 @@ export default function HomeScreen() {
 
   const avatarInitial = user
     ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()
-    : 'S'
+    : 'D'
 
   const accentColor = themeKey === 'dark' ? colors.primaryAccent : colors.primary
 
@@ -387,8 +397,8 @@ export default function HomeScreen() {
                   >
                     <Text style={hs.avatarTxt}>{avatarInitial}</Text>
                   </Pressable>
-                  <Pressable onPress={() => {}} style={hs.locationBtn}>
-                    <Text style={[hs.locationTxt, { color: th.text }]}>Warszawa</Text>
+                  <Pressable onPress={() => setCityPickerOpen(true)} style={hs.locationBtn}>
+                    <Text style={[hs.locationTxt, { color: th.text }]}>{selectedCity}</Text>
                     <ChevronDown size={14} color={th.textSub} />
                   </Pressable>
                 </View>
@@ -513,7 +523,7 @@ export default function HomeScreen() {
 
               {/* Section header for full list */}
               <View style={[hs.sectionHead, { marginTop: 8, marginBottom: 14 }]}>
-                <Text style={[hs.sectionTitle, { color: th.text }]}>📖 Все рестораны</Text>
+                <Text style={[hs.sectionTitle, { color: th.text }]}>📖 {t.all_restaurants}</Text>
               </View>
 
               {loading && [0,1,2].map(i => <SkeletonCard key={i} th={th} />)}
@@ -548,6 +558,40 @@ export default function HomeScreen() {
         onClose={() => setFilterModalOpen(false)}
         onApply={setFilters}
       />
+      {/* City picker bottom sheet */}
+      <Modal visible={cityPickerOpen} transparent animationType="slide">
+        <Pressable style={hs.cityOverlay} onPress={() => setCityPickerOpen(false)}>
+          <View style={[hs.citySheet, { backgroundColor: th.bgCard }]}>
+            <View style={[hs.cityHandle, { backgroundColor: th.border }]} />
+            <Text style={[hs.cityTitle, { color: th.text }]}>{t.select_city}</Text>
+            {AVAILABLE_CITIES.map(c => (
+              <TouchableOpacity
+                key={c.name}
+                disabled={!c.active}
+                onPress={() => {
+                  if (c.active) {
+                    setSelectedCity(c.name)
+                    AsyncStorage.setItem(CITY_KEY, c.name).catch(() => {})
+                    setCityPickerOpen(false)
+                  }
+                }}
+                style={[hs.cityOpt, { borderBottomColor: th.border, opacity: c.active ? 1 : 0.5 }]}
+                activeOpacity={0.7}
+              >
+                <Text style={hs.cityFlag}>{c.flag}</Text>
+                <Text style={[hs.cityName, { color: c.active ? th.text : th.textSub }]}>{c.name}</Text>
+                {c.active && c.name === selectedCity && (
+                  <View style={[hs.cityDot, { backgroundColor: accentColor }]} />
+                )}
+                {!c.active && (
+                  <Text style={[hs.citySoon, { color: th.textMuted }]}>{t.coming_soon}</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+            <View style={{ height: 24 }} />
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -597,4 +641,15 @@ const hs = StyleSheet.create({
   emptyEmoji:  { fontSize: 52, marginBottom: 16 },
   emptyTitle:  { fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 6 },
   emptyDesc:   { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' },
+
+  // City picker
+  cityOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  citySheet:   { borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, paddingHorizontal: 16, paddingTop: 12 },
+  cityHandle:  { width: 40, height: 4, borderRadius: radii.full, alignSelf: 'center', marginBottom: 16 },
+  cityTitle:   { fontSize: 17, fontFamily: 'PlusJakartaSans_700Bold', marginBottom: 8, paddingHorizontal: 4 },
+  cityOpt:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, paddingHorizontal: 4 },
+  cityFlag:    { fontSize: 22 },
+  cityName:    { fontSize: 16, fontFamily: 'PlusJakartaSans_500Medium', flex: 1 },
+  cityDot:     { width: 8, height: 8, borderRadius: radii.full },
+  citySoon:    { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular' },
 })

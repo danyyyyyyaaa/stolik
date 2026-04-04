@@ -42,7 +42,7 @@ function fmtDate(s: string): string {
 // ─── Booking ref cleanup ──────────────────────────────────────────────────────
 function fmtRef(ref: string): string {
   if (!ref) return ''
-  const clean = ref.replace(/^#+/, '')
+  const clean = ref.replace(/^#+/, '').replace(/^ST-?/, 'DN-').replace(/^ST(\d)/, 'DN-$1')
   return clean.replace(/^([A-Z]{2,3})(\d+)$/, '$1-$2')
 }
 
