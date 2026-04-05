@@ -48,7 +48,7 @@ router.get('/overview', requireAuth, async (req, res, next) => {
 })
 
 // ─── GET /api/dashboard/calendar?restaurantId=xxx&month=2026-04 ──────────────
-// Returns days array with booking counts and booking details per day
+// Returns days array with booking counts, guest counts, and full booking details per day
 router.get('/calendar', requireAuth, async (req, res, next) => {
   try {
     const { restaurantId, month } = req.query
@@ -60,11 +60,10 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
 
     const bookings = await prisma.booking.findMany({
       where: { restaurantId: String(restaurantId), date: { gte: start, lt: end } },
-      select: { id: true, date: true, time: true, guestCount: true, status: true, guestName: true, bookingRef: true },
-      orderBy: { date: 'asc' },
+      include: { table: { select: { name: true } } },
+      orderBy: [{ date: 'asc' }, { time: 'asc' }],
     })
 
-    // Group by date
     const byDate: Record<string, typeof bookings> = {}
     for (const b of bookings) {
       const key = b.date.toISOString().split('T')[0]
@@ -75,15 +74,33 @@ router.get('/calendar', requireAuth, async (req, res, next) => {
     const days = Object.entries(byDate).map(([date, bks]) => ({
       date,
       bookingCount: bks.length,
-      bookings: bks,
+      guestCount: bks.reduce((s, b) => s + b.guestCount, 0),
+      bookings: bks.map(b => ({
+        id: b.id,
+        bookingCode: b.bookingRef,
+        guestName: b.guestName,
+        guestPhone: b.guestPhone,
+        partySize: b.guestCount,
+        time: b.time,
+        endTime: calcEndTime(b.time, b.duration),
+        tableName: b.table?.name ?? null,
+        status: b.status,
+      })),
     }))
 
     res.json({ days })
   } catch (err) { next(err) }
 })
 
+function calcEndTime(time: string, duration: number): string {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + duration
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
 // ─── GET /api/dashboard/analytics?restaurantId=xxx&from=2026-01-01&to=2026-04-01
-// Returns: bookings by day, status breakdown, peak hours, totals, rates
+// Returns: KPIs with change %, bookings over time, status breakdown, peak hours heatmap,
+//          guest distribution, table utilization, top guests
 router.get('/analytics', requireAuth, async (req, res, next) => {
   try {
     const { restaurantId, from, to } = req.query
@@ -92,42 +109,127 @@ router.get('/analytics', requireAuth, async (req, res, next) => {
     const fromDate = new Date(String(from))
     const toDate = new Date(String(to))
 
-    const bookings = await prisma.booking.findMany({
-      where: { restaurantId: String(restaurantId), date: { gte: fromDate, lte: toDate } },
-      select: { date: true, status: true, guestCount: true, time: true, userId: true, createdAt: true },
-    })
+    // Previous period for change calculation
+    const periodMs = toDate.getTime() - fromDate.getTime()
+    const prevFrom = new Date(fromDate.getTime() - periodMs)
+    const prevTo = new Date(fromDate)
 
-    const byDay: Record<string, number> = {}
-    const statusBreakdown: Record<string, number> = {}
-    const peakHours: Record<string, number> = {}
-    let totalGuests = 0
-    let noShows = 0
-    let cancellations = 0
-
-    for (const b of bookings) {
-      const day = b.date.toISOString().split('T')[0]
-      byDay[day] = (byDay[day] ?? 0) + 1
-      statusBreakdown[b.status] = (statusBreakdown[b.status] ?? 0) + 1
-      const hour = b.time?.split(':')[0] ?? '12'
-      peakHours[hour] = (peakHours[hour] ?? 0) + 1
-      totalGuests += b.guestCount
-      if (b.status === 'no_show') noShows++
-      if (b.status === 'cancelled') cancellations++
-    }
+    const [bookings, prevBookings, tables] = await Promise.all([
+      prisma.booking.findMany({
+        where: { restaurantId: String(restaurantId), date: { gte: fromDate, lte: toDate } },
+        include: { table: { select: { name: true } } },
+      }),
+      prisma.booking.findMany({
+        where: { restaurantId: String(restaurantId), date: { gte: prevFrom, lte: prevTo } },
+        select: { userId: true, guestCount: true, status: true },
+      }),
+      prisma.table.findMany({ where: { restaurantId: String(restaurantId) }, select: { id: true, name: true } }),
+    ])
 
     const total = bookings.length
+    const prevTotal = prevBookings.length
     const uniqueGuests = new Set(bookings.filter(b => b.userId).map(b => b.userId)).size
+    const prevUniqueGuests = new Set(prevBookings.filter(b => b.userId).map(b => b.userId)).size
+    const avgPartySize = total > 0 ? bookings.reduce((s, b) => s + b.guestCount, 0) / total : 0
+    const prevAvgPartySize = prevTotal > 0 ? prevBookings.reduce((s, b) => s + b.guestCount, 0) / prevTotal : 0
+    const noShows = bookings.filter(b => b.status === 'no_show').length
+    const prevNoShows = prevBookings.filter(b => b.status === 'no_show').length
+    const cancellations = bookings.filter(b => b.status === 'cancelled').length
+    const prevCancellations = prevBookings.filter(b => b.status === 'cancelled').length
+
+    const noShowRate = total > 0 ? (noShows / total) * 100 : 0
+    const prevNoShowRate = prevTotal > 0 ? (prevNoShows / prevTotal) * 100 : 0
+    const cancelRate = total > 0 ? (cancellations / total) * 100 : 0
+    const prevCancelRate = prevTotal > 0 ? (prevCancellations / prevTotal) * 100 : 0
+
+    const avgLeadTime = bookings.length > 0
+      ? bookings.reduce((s, b) => {
+          const lead = (b.date.getTime() - b.createdAt.getTime()) / 86400000
+          return s + Math.max(0, lead)
+        }, 0) / total
+      : 0
+
+    function pctChange(curr: number, prev: number) {
+      if (prev === 0) return null
+      return parseFloat(((curr - prev) / prev * 100).toFixed(1))
+    }
+
+    // Bookings over time
+    const byDay: Record<string, { confirmed: number; cancelled: number; noShow: number }> = {}
+    for (const b of bookings) {
+      const day = b.date.toISOString().split('T')[0]
+      if (!byDay[day]) byDay[day] = { confirmed: 0, cancelled: 0, noShow: 0 }
+      if (b.status === 'confirmed' || b.status === 'completed') byDay[day].confirmed++
+      else if (b.status === 'cancelled') byDay[day].cancelled++
+      else if (b.status === 'no_show') byDay[day].noShow++
+    }
+    const bookingsOverTime = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({ date, ...v }))
+
+    // Status breakdown
+    const statusCounts: Record<string, number> = {}
+    for (const b of bookings) statusCounts[b.status] = (statusCounts[b.status] ?? 0) + 1
+    const statusColors: Record<string, string> = { confirmed: '#1B7A4A', pending: '#F5A623', cancelled: '#E53E3E', no_show: '#9CA3AF', completed: '#6366F1' }
+    const bookingsByStatus = Object.entries(statusCounts).map(([status, count]) => ({ status, count, color: statusColors[status] ?? '#9CA3AF' }))
+
+    // Peak hours heatmap
+    const heatmap: Record<string, number> = {}
+    for (const b of bookings) {
+      const day = b.date.getDay()
+      const hour = parseInt(b.time.split(':')[0])
+      const key = `${day}_${hour}`
+      heatmap[key] = (heatmap[key] ?? 0) + 1
+    }
+    const peakHoursHeatmap = Object.entries(heatmap).map(([key, count]) => {
+      const [day, hour] = key.split('_').map(Number)
+      return { day, hour, count }
+    })
+
+    // Guest distribution
+    const distBuckets: Record<string, number> = { '1-2': 0, '3-4': 0, '5-6': 0, '7+': 0 }
+    for (const b of bookings) {
+      if (b.guestCount <= 2) distBuckets['1-2']++
+      else if (b.guestCount <= 4) distBuckets['3-4']++
+      else if (b.guestCount <= 6) distBuckets['5-6']++
+      else distBuckets['7+']++
+    }
+    const guestDistribution = Object.entries(distBuckets).map(([partySize, count]) => ({ partySize, count }))
+
+    // Table utilization
+    const dayCount = Math.max(1, Math.ceil(periodMs / 86400000))
+    const tableBookings: Record<string, number> = {}
+    for (const b of bookings) if (b.tableId) tableBookings[b.tableId] = (tableBookings[b.tableId] ?? 0) + 1
+    const tableUtilization = tables.map(t => ({
+      tableName: t.name,
+      utilizationPercent: Math.min(100, Math.round(((tableBookings[t.id] ?? 0) / dayCount) * 100)),
+    }))
+
+    // Top guests
+    const guestVisits: Record<string, { name: string; count: number; lastVisit: string }> = {}
+    for (const b of bookings) {
+      const key = b.guestPhone
+      if (!guestVisits[key]) guestVisits[key] = { name: b.guestName, count: 0, lastVisit: b.date.toISOString().split('T')[0] }
+      guestVisits[key].count++
+      if (b.date.toISOString() > guestVisits[key].lastVisit) guestVisits[key].lastVisit = b.date.toISOString().split('T')[0]
+    }
+    const topGuests = Object.values(guestVisits).sort((a, b) => b.count - a.count).slice(0, 10).map(g => ({
+      name: g.name, visits: g.count, lastVisit: g.lastVisit,
+    }))
 
     res.json({
-      bookingsByDay: Object.entries(byDay).map(([date, count]) => ({ date, count })),
-      statusBreakdown,
-      peakHours: Object.entries(peakHours).map(([hour, count]) => ({ hour: parseInt(hour), count })),
-      totalBookings: total,
-      totalGuests,
-      uniqueGuests,
-      avgPartySize: total > 0 ? (totalGuests / total).toFixed(1) : 0,
-      noShowRate: total > 0 ? ((noShows / total) * 100).toFixed(1) : 0,
-      cancellationRate: total > 0 ? ((cancellations / total) * 100).toFixed(1) : 0,
+      kpis: {
+        totalBookings: total, totalBookingsChange: pctChange(total, prevTotal),
+        uniqueGuests, uniqueGuestsChange: pctChange(uniqueGuests, prevUniqueGuests),
+        avgPartySize: parseFloat(avgPartySize.toFixed(1)), avgPartySizeChange: pctChange(avgPartySize, prevAvgPartySize),
+        noShowRate: parseFloat(noShowRate.toFixed(1)), noShowRateChange: pctChange(noShowRate, prevNoShowRate),
+        cancellationRate: parseFloat(cancelRate.toFixed(1)), cancellationRateChange: pctChange(cancelRate, prevCancelRate),
+        avgLeadTimeDays: parseFloat(avgLeadTime.toFixed(1)), avgLeadTimeDaysChange: null,
+      },
+      bookingsOverTime,
+      bookingsByStatus,
+      peakHoursHeatmap,
+      guestDistribution,
+      tableUtilization,
+      topGuests,
     })
   } catch (err) { next(err) }
 })

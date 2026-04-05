@@ -159,10 +159,9 @@ router.post('/partners', requireAdmin, async (req, res, next) => {
   try {
     const schema = z.object({
       name: z.string().min(1),
-      email: z.string().email().optional(),
+      email: z.string().email(),
       phone: z.string().optional(),
       company: z.string().optional(),
-      notes: z.string().optional(),
     })
     const data = schema.parse(req.body)
     const partner = await prisma.partner.create({ data })
@@ -202,6 +201,128 @@ router.delete('/partners/:id', requireAdmin, async (req, res, next) => {
   try {
     await prisma.partner.delete({ where: { id: req.params.id } })
     res.status(204).send()
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/admin/statistics — comprehensive platform statistics ───────────
+router.get('/statistics', requireAdmin, async (req, res, next) => {
+  try {
+    const { from, to } = req.query
+    const fromDate = from ? new Date(String(from)) : new Date(new Date().getFullYear(), 0, 1)
+    const toDate = to ? new Date(String(to)) : new Date()
+
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59, 999)
+
+    const [
+      totalRestaurants, activeRestaurants, totalUsers, totalBookings, todayBookings,
+      planDistribution, bookingSourceDistribution, userRoleDistribution,
+      restaurants, bookings, users,
+    ] = await Promise.all([
+      prisma.restaurant.count(),
+      prisma.restaurant.count({ where: { isActive: true } }),
+      prisma.user.count(),
+      prisma.booking.count(),
+      prisma.booking.count({ where: { date: { gte: today, lte: todayEnd } } }),
+      prisma.restaurant.groupBy({ by: ['plan'], _count: { id: true } }),
+      prisma.booking.groupBy({ by: ['source'], _count: { id: true } }),
+      prisma.user.groupBy({ by: ['role'], _count: { id: true } }),
+      prisma.restaurant.findMany({
+        where: { createdAt: { gte: fromDate, lte: toDate } },
+        select: { id: true, name: true, district: true, plan: true, rating: true, createdAt: true,
+          _count: { select: { bookings: true } } },
+      }),
+      prisma.booking.findMany({
+        where: { date: { gte: fromDate, lte: toDate } },
+        select: { restaurantId: true, date: true, createdAt: true },
+      }),
+      prisma.user.findMany({
+        where: { createdAt: { gte: fromDate, lte: toDate } },
+        select: { createdAt: true },
+      }),
+    ])
+
+    // MRR: rough estimate
+    let mrr = 0
+    for (const p of planDistribution) {
+      if (p.plan === 'pro') mrr += p._count.id * 149
+      else if (p.plan === 'business') mrr += p._count.id * 349
+    }
+
+    // Growth by month
+    function groupByMonth(items: { createdAt: Date }[]) {
+      const byMonth: Record<string, number> = {}
+      for (const item of items) {
+        const key = item.createdAt.toISOString().slice(0, 7)
+        byMonth[key] = (byMonth[key] ?? 0) + 1
+      }
+      return Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }))
+    }
+
+    const bookingsByMonth: Record<string, number> = {}
+    for (const b of bookings) {
+      const key = b.date.toISOString().slice(0, 7)
+      bookingsByMonth[key] = (bookingsByMonth[key] ?? 0) + 1
+    }
+    const bookingsGrowth = Object.entries(bookingsByMonth).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }))
+
+    // Top restaurants by booking count
+    const allRestaurants = await prisma.restaurant.findMany({
+      select: { id: true, name: true, rating: true, _count: { select: { bookings: true } } },
+      orderBy: { bookings: { _count: 'desc' } },
+      take: 10,
+    })
+    const topRestaurants = allRestaurants.map(r => ({
+      name: r.name,
+      bookings: r._count.bookings,
+      rating: r.rating,
+    }))
+
+    // Top districts
+    const districtData = await prisma.restaurant.findMany({
+      select: { district: true, _count: { select: { bookings: true } } },
+    })
+    const districtMap: Record<string, { restaurantCount: number; bookingCount: number }> = {}
+    for (const r of districtData) {
+      if (!r.district) continue
+      if (!districtMap[r.district]) districtMap[r.district] = { restaurantCount: 0, bookingCount: 0 }
+      districtMap[r.district].restaurantCount++
+      districtMap[r.district].bookingCount += r._count.bookings
+    }
+    const topDistricts = Object.entries(districtMap)
+      .map(([district, data]) => ({ district, ...data }))
+      .sort((a, b) => b.bookingCount - a.bookingCount)
+      .slice(0, 10)
+
+    res.json({
+      overview: {
+        totalRestaurants,
+        activeRestaurants,
+        totalUsers,
+        totalBookings,
+        todayBookings,
+        mrr,
+      },
+      growth: {
+        restaurants: groupByMonth(restaurants),
+        users: groupByMonth(users),
+        bookings: bookingsGrowth,
+      },
+      topRestaurants,
+      topDistricts,
+      planDistribution: planDistribution.map(p => ({ plan: p.plan, count: p._count.id })),
+      bookingSourceDistribution: bookingSourceDistribution.map(s => ({ source: s.source, count: s._count.id })),
+      userRoleDistribution: userRoleDistribution.map(r => ({ role: r.role, count: r._count.id })),
+    })
+  } catch (err) { next(err) }
+})
+
+// ─── PUT /api/admin/restaurants/:id/status — update restaurant status ────────
+router.put('/restaurants/:id/status', requireAdmin, async (req, res, next) => {
+  try {
+    const { status } = req.body
+    const r = await prisma.restaurant.update({ where: { id: req.params.id }, data: { status } })
+    res.json(r)
   } catch (err) { next(err) }
 })
 

@@ -25,8 +25,11 @@ const createItemSchema = z.object({
   description: z.string().optional(),
   price:       z.number().positive(),
   imageUrl:    z.string().url().optional(),
+  photoUrl:    z.string().url().optional(),
   available:   z.boolean().optional(),
   sortOrder:   z.number().int().optional(),
+  allergens:   z.array(z.string()).optional(),
+  isPopular:   z.boolean().optional(),
 })
 
 const updateItemSchema = z.object({
@@ -34,9 +37,17 @@ const updateItemSchema = z.object({
   description: z.string().optional(),
   price:       z.number().positive().optional(),
   imageUrl:    z.string().url().nullable().optional(),
+  photoUrl:    z.string().url().nullable().optional(),
   available:   z.boolean().optional(),
   sortOrder:   z.number().int().optional(),
   categoryId:  z.string().min(1).optional(),
+  allergens:   z.array(z.string()).optional(),
+  isPopular:   z.boolean().optional(),
+})
+
+const reorderSchema = z.object({
+  categories: z.array(z.object({ id: z.string(), sortOrder: z.number().int() })).optional(),
+  items: z.array(z.object({ id: z.string(), sortOrder: z.number().int() })).optional(),
 })
 
 // ─── Helper: verify the authenticated user owns the restaurant ────────────────
@@ -61,7 +72,7 @@ router.get('/:restaurantId', async (req, res) => {
         },
       },
     })
-    res.json(categories)
+    res.json({ categories })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch menu' })
@@ -155,9 +166,11 @@ router.post('/items', requireAuth, async (req, res) => {
         name:        parsed.data.name,
         description: parsed.data.description,
         price:       parsed.data.price,
-        imageUrl:    parsed.data.imageUrl,
+        imageUrl:    parsed.data.photoUrl ?? parsed.data.imageUrl,
         available:   parsed.data.available ?? true,
         sortOrder:   parsed.data.sortOrder ?? 0,
+        allergens:   parsed.data.allergens ?? [],
+        isPopular:   parsed.data.isPopular ?? false,
       },
     })
     res.status(201).json(item)
@@ -182,7 +195,10 @@ router.patch('/items/:id', requireAuth, async (req, res) => {
   if (!restaurant) return res.status(403).json({ error: 'Access denied' })
 
   try {
-    const updated = await prisma.menuItem.update({ where: { id }, data: parsed.data })
+    const { photoUrl, ...restData } = parsed.data
+    const updateData: any = { ...restData }
+    if (photoUrl !== undefined) updateData.imageUrl = photoUrl
+    const updated = await prisma.menuItem.update({ where: { id }, data: updateData })
     res.json(updated)
   } catch (err) {
     console.error(err)
@@ -208,6 +224,38 @@ router.delete('/items/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to delete item' })
+  }
+})
+
+// ─── PUT /api/menu/:restaurantId/reorder — reorder categories and items ──────
+
+router.put('/:restaurantId/reorder', requireAuth, async (req, res) => {
+  const userId = (req as any).userId
+  const { restaurantId } = req.params
+
+  const restaurant = await ownerOf(restaurantId, userId)
+  if (!restaurant) return res.status(403).json({ error: 'Access denied' })
+
+  const parsed = reorderSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (parsed.data.categories) {
+        for (const cat of parsed.data.categories) {
+          await tx.menuCategory.update({ where: { id: cat.id }, data: { sortOrder: cat.sortOrder } })
+        }
+      }
+      if (parsed.data.items) {
+        for (const item of parsed.data.items) {
+          await tx.menuItem.update({ where: { id: item.id }, data: { sortOrder: item.sortOrder } })
+        }
+      }
+    })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to reorder' })
   }
 })
 

@@ -112,36 +112,91 @@ router.get('/slots', async (req, res) => {
 })
 
 // ─── GET BOOKINGS BY DATE RANGE (owner) ──────────────────────────────────────
-router.get('/', requireAuth, async (req, res) => {
-  const { restaurantId, date, from, to } = req.query
+// Query params: restaurantId, status, from, to, search, page, limit, sortBy, sortOrder
+router.get('/', requireAuth, async (req, res, next) => {
+  try {
+    const { restaurantId, date, from, to, status, search, page = '1', limit = '20', sortBy = 'date', sortOrder = 'desc' } = req.query
 
-  if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
+    if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
 
-  let dateFilter: { gte: Date; lte: Date }
-  if (from && to) {
-    dateFilter = {
-      gte: new Date(`${from}T00:00:00`),
-      lte: new Date(`${to}T23:59:59`),
+    const where: any = { restaurantId: restaurantId as string }
+
+    // Date filter
+    if (from && to) {
+      where.date = { gte: new Date(`${from}T00:00:00`), lte: new Date(`${to}T23:59:59`) }
+    } else if (date) {
+      where.date = { gte: new Date(`${date}T00:00:00`), lte: new Date(`${date}T23:59:59`) }
     }
-  } else if (date) {
-    dateFilter = {
-      gte: new Date(`${date}T00:00:00`),
-      lte: new Date(`${date}T23:59:59`),
+
+    // Status filter
+    if (status && status !== 'all') {
+      where.status = status as string
     }
-  } else {
-    const today = new Date()
-    today.setHours(0,0,0,0)
-    const end = new Date(today); end.setHours(23,59,59,999)
-    dateFilter = { gte: today, lte: end }
-  }
 
-  const bookings = await prisma.booking.findMany({
-    where: { restaurantId: restaurantId as string, date: dateFilter },
-    include: { table: true },
-    orderBy: [{ date: 'asc' }, { time: 'asc' }],
-  })
+    // Search filter
+    if (search) {
+      where.OR = [
+        { guestName: { contains: search as string, mode: 'insensitive' } },
+        { guestPhone: { contains: search as string, mode: 'insensitive' } },
+        { bookingRef: { contains: search as string, mode: 'insensitive' } },
+      ]
+    }
 
-  res.json(bookings)
+    const pageNum = Math.max(1, parseInt(page as string))
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)))
+    const skip = (pageNum - 1) * limitNum
+
+    // Build orderBy
+    const validSortFields = ['date', 'time', 'guestCount', 'createdAt', 'status']
+    const sortField = validSortFields.includes(sortBy as string) ? (sortBy as string) : 'date'
+    const order = sortOrder === 'asc' ? 'asc' : 'desc'
+    const orderBy = sortField === 'date' ? [{ date: order }, { time: order }] : [{ [sortField]: order }]
+
+    const [bookings, total, statusAgg] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        include: { table: { select: { name: true } } },
+        orderBy: orderBy as any,
+        skip,
+        take: limitNum,
+      }),
+      prisma.booking.count({ where }),
+      prisma.booking.groupBy({
+        by: ['status'],
+        where: { restaurantId: restaurantId as string, ...(where.date ? { date: where.date } : {}) },
+        _count: true,
+      }),
+    ])
+
+    const stats: Record<string, number> = { confirmed: 0, pending: 0, cancelled: 0, no_show: 0, completed: 0 }
+    for (const s of statusAgg) stats[s.status] = s._count
+
+    const mapped = bookings.map(b => ({
+      id: b.id,
+      bookingRef: b.bookingRef,
+      guestName: b.guestName,
+      guestEmail: b.guestEmail,
+      guestPhone: b.guestPhone,
+      partySize: b.guestCount,
+      date: b.date.toISOString(),
+      time: b.time,
+      duration: b.duration,
+      specialRequests: b.notes,
+      source: b.source,
+      status: b.status,
+      createdAt: b.createdAt.toISOString(),
+      table: b.table?.name ?? null,
+      tableZone: null,
+    }))
+
+    res.json({
+      bookings: mapped,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      stats,
+    })
+  } catch (err) { next(err) }
 })
 
 // ─── GET MY BOOKINGS (authenticated user) ────────────────────────────────────
@@ -215,26 +270,50 @@ router.get('/stats/:restaurantId', requireAuth, async (req, res) => {
   res.json({ yesterday, daily })
 })
 
-// ─── CANCEL / UPDATE STATUS ───────────────────────────────────────────────────
-router.patch('/:id/status', requireAuth, async (req, res) => {
-  const { status } = req.body
-  const booking = await prisma.booking.update({
-    where: { id: req.params.id },
-    data:  { status },
-    include: { restaurant: true },
-  })
+// ─── CANCEL / UPDATE STATUS (PATCH) ──────────────────────────────────────────
+router.patch('/:id/status', requireAuth, async (req, res, next) => {
+  try {
+    const { status } = req.body
+    const booking = await prisma.booking.update({
+      where: { id: req.params.id },
+      data:  { status },
+      include: { restaurant: true, table: { select: { name: true } } },
+    })
 
-  const io = getIo()
-  if (io) {
-    const room = `restaurant:${booking.restaurantId}`
-    if (status === 'cancelled') {
-      io.to(room).emit('booking:cancelled', { bookingId: booking.id, guestName: booking.guestName })
-    } else {
-      io.to(room).emit('booking:updated', { bookingId: booking.id, status })
+    const io = getIo()
+    if (io) {
+      const room = `restaurant:${booking.restaurantId}`
+      if (status === 'cancelled') {
+        io.to(room).emit('booking:cancelled', { bookingId: booking.id, guestName: booking.guestName })
+      } else {
+        io.to(room).emit('booking:updated', booking)
+      }
     }
-  }
 
-  res.json(booking)
+    res.json(booking)
+  } catch (err) { next(err) }
+})
+
+// ─── UPDATE STATUS (PUT) ─────────────────────────────────────────────────────
+router.put('/:id/status', requireAuth, async (req, res, next) => {
+  try {
+    const { status } = req.body
+    const validStatuses = ['confirmed', 'cancelled', 'no_show', 'completed', 'pending']
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' })
+
+    const booking = await prisma.booking.update({
+      where: { id: req.params.id },
+      data: { status },
+      include: { table: { select: { name: true } }, restaurant: { select: { id: true } } },
+    })
+
+    const io = getIo()
+    if (io) {
+      io.to(`restaurant:${booking.restaurantId}`).emit('booking:updated', booking)
+    }
+
+    res.json(booking)
+  } catch (err) { next(err) }
 })
 
 // ─── ABANDON BOOKING (track incomplete bookings for re-engagement) ──────────

@@ -1,942 +1,811 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Utensils, Check, Upload, X, Search, ArrowLeft, Star, MapPin, Phone, Zap, ClipboardList } from 'lucide-react'
-import { useT } from '@/lib/i18n'
+import React, { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
+const DAYS_LIST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const STEP_LABELS = ['Basic Info', 'Hours', 'Photos', 'Tables', 'Review & Publish']
 
-const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
-type DayKey = (typeof DAY_KEYS)[number]
-
-const CUISINE_VALUES = [
-  { value: 'polska',            tKey: 'cuisinePolish',        emoji: '🥟' },
-  { value: 'włoska',            tKey: 'cuisineItalian',       emoji: '🍕' },
-  { value: 'japońska',          tKey: 'cuisineJapanese',      emoji: '🍣' },
-  { value: 'francuska',         tKey: 'cuisineFrench',        emoji: '🥐' },
-  { value: 'meksykańska',       tKey: 'cuisineMexican',       emoji: '🌮' },
-  { value: 'indyjska',          tKey: 'cuisineIndian',        emoji: '🍛' },
-  { value: 'chińska',           tKey: 'cuisineChinese',       emoji: '🥡' },
-  { value: 'śródziemnomorska',  tKey: 'cuisineMediterranean', emoji: '🫒' },
-  { value: 'inne',              tKey: 'cuisineOther',         emoji: '🍽️' },
-] as const
-
-const WARSAW_DISTRICTS = [
-  'Śródmieście', 'Mokotów', 'Wola', 'Praga-Północ', 'Praga-Południe',
-  'Żoliborz', 'Ochota', 'Ursynów', 'Wilanów', 'Bemowo', 'Bielany',
-  'Targówek', 'Białołęka', 'Ursus', 'Włochy', 'Wawer', 'Wesoła',
-  'Rembertów',
-]
-
-const PRICE_RANGES = ['$', '$$', '$$$', '$$$$']
-const SLOT_DURATIONS = [60, 90, 120]
-
-type DayHours = { open: string; close: string; closed: boolean }
-type Hours = Record<DayKey, DayHours>
-
-function defaultHours(): Hours {
-  return Object.fromEntries(
-    DAY_KEYS.map(d => [d, { open: '12:00', close: '22:00', closed: false }])
-  ) as Hours
+interface DayHours {
+  open: boolean
+  openTime: string
+  closeTime: string
 }
+
+interface TableRow {
+  id: string
+  name: string
+  minGuests: number
+  maxGuests: number
+  zone: string
+}
+
+interface BasicInfo {
+  name: string
+  description: string
+  cuisine: string
+  priceRange: string
+  address: string
+  district: string
+  phone: string
+  email: string
+  website: string
+}
+
+const defaultBasicInfo: BasicInfo = {
+  name: '',
+  description: '',
+  cuisine: '',
+  priceRange: '$$',
+  address: '',
+  district: '',
+  phone: '',
+  email: '',
+  website: '',
+}
+
+const defaultHours: DayHours[] = DAYS_LIST.map(() => ({
+  open: true,
+  openTime: '12:00',
+  closeTime: '22:00',
+}))
 
 const inputCls =
-  'w-full bg-surface-2 border border-border rounded-lg px-3.5 py-2.5 text-sm text-text placeholder-muted focus:outline-none focus:border-accent transition-colors'
-const btnCls =
-  'flex-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg px-4 py-2.5 text-sm transition-colors'
-const backCls =
-  'flex-1 bg-surface-2 border border-border hover:border-muted/50 text-muted hover:text-text font-medium rounded-lg px-4 py-2.5 text-sm transition-colors'
-
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>
-      {children}
-      {hint && <p className="text-xs text-muted/70">{hint}</p>}
-    </div>
-  )
-}
-
-function ErrorBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-sm text-red-400 bg-red-400/8 border border-red-400/20 rounded-lg px-4 py-2.5">
-      {children}
-    </div>
-  )
-}
-
-function ProgressBar({ step, labels }: { step: number; labels: string[] }) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-center">
-        {labels.map((label, i) => (
-          <div key={i} className="flex items-center flex-1">
-            <div className="flex flex-col items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                i < step
-                  ? 'bg-accent text-white'
-                  : i === step
-                  ? 'bg-accent text-white ring-2 ring-accent/30 ring-offset-2 ring-offset-surface'
-                  : 'bg-surface-2 border border-border text-muted'
-              }`}>
-                {i < step ? <Check size={14} /> : i + 1}
-              </div>
-              <span className={`mt-1.5 text-xs font-medium text-center leading-tight max-w-[60px] ${
-                i <= step ? 'text-text' : 'text-muted'
-              }`}>
-                {label}
-              </span>
-            </div>
-            {i < labels.length - 1 && (
-              <div className={`flex-1 h-px mx-2 mt-[-14px] ${i < step ? 'bg-accent' : 'bg-border'}`} />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function PhotoUpload({
-  label, hint, url, uploading, onUpload, onRemove, aspectClass = 'h-40',
-}: {
-  label:       string
-  hint?:       string
-  url:         string | null
-  uploading:   boolean
-  onUpload:    (file: File) => void
-  onRemove:    () => void
-  aspectClass?: string
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const t        = useT()
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</p>
-      {url ? (
-        <div className="relative rounded-xl overflow-hidden border border-border">
-          <img src={url} alt="preview" className={`w-full ${aspectClass} object-cover`} />
-          <button
-            type="button"
-            onClick={onRemove}
-            className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-white hover:bg-black/80 transition-colors"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className={`w-full ${aspectClass} border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent/50 hover:text-accent transition-colors disabled:opacity-50`}
-        >
-          {uploading ? (
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Upload size={20} />
-          )}
-          <span className="text-xs font-medium">{uploading ? t.uploadingPhoto : t.clickToUpload}</span>
-        </button>
-      )}
-      {hint && <p className="text-xs text-muted/70">{hint}</p>}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={e => {
-          const file = e.target.files?.[0]
-          if (file) { onUpload(file); e.target.value = '' }
-        }}
-      />
-    </div>
-  )
-}
-
-function Stepper({
-  value, onChange, min = 0, max = 999,
-}: {
-  value: number; onChange: (v: number) => void; min?: number; max?: number
-}) {
-  return (
-    <div className="flex items-center gap-4">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
-        className="w-10 h-10 rounded-lg bg-surface-2 border border-border text-text hover:border-muted/50 transition-colors text-xl flex items-center justify-center">
-        −
-      </button>
-      <span className="flex-1 text-center text-xl font-bold text-text">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
-        className="w-10 h-10 rounded-lg bg-surface-2 border border-border text-text hover:border-muted/50 transition-colors text-xl flex items-center justify-center">
-        +
-      </button>
-    </div>
-  )
-}
-
-// ─── Quick Connect types ──────────────────────────────────────────────────────
-
-type OnboardingMode = 'quick-choice' | 'quick-search' | 'quick-confirm' | 'quick-tables' | 'manual'
-
-type QPlace = {
-  placeId: string
-  name: string
-  address: string
-  rating: number | null
-  phone: string | null
-  photoUrl: string | null
-  openingHours: string[]
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
+  'w-full border border-border rounded-btn px-3 py-2 text-sm text-text bg-surface placeholder-muted focus:outline-none focus:border-accent transition-colors'
 
 export default function OnboardingPage() {
-  const router = useRouter()
-  const t      = useT()
+  const [step, setStep] = useState(1)
+  const [saving, setSaving] = useState(false)
+  const [restaurantId, setRestaurantId] = useState<string | null>(null)
 
-  const [token, setToken] = useState<string | null>(null)
+  // Step 1: Basic info
+  const [basicInfo, setBasicInfo] = useState<BasicInfo>(defaultBasicInfo)
 
-  useEffect(() => {
-    const tok = localStorage.getItem('stolik_token')
-    if (!tok) { router.push('/login'); return }
-    const existing = localStorage.getItem('stolik_restaurant')
-    if (existing) {
-      try { if (JSON.parse(existing)?.id) { router.push('/dashboard'); return } } catch {}
-    }
-    setToken(tok)
-  }, [router])
+  // Step 2: Hours
+  const [hours, setHours] = useState<DayHours[]>(defaultHours)
+  const [slotDuration, setSlotDuration] = useState(60)
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(30)
 
-  // ── Quick Connect state ───────────────────────────────────────────────────
-  const [mode, setMode] = useState<OnboardingMode>('quick-choice')
+  // Step 3: Photos
+  const [coverPhoto, setCoverPhoto] = useState('')
+  const [logo, setLogo] = useState('')
+  const [gallery, setGallery] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
 
-  const [qSearch,       setQSearch]       = useState('')
-  const [qResults,      setQResults]      = useState<QPlace[]>([])
-  const [qLoading,      setQLoading]      = useState(false)
-  const [selectedPlace, setSelectedPlace] = useState<QPlace | null>(null)
-
-  const [qTables, setQTables] = useState([
-    { capacity: 2, count: 0 },
-    { capacity: 4, count: 0 },
-    { capacity: 6, count: 0 },
-    { capacity: 8, count: 0 },
+  // Step 4: Tables
+  const [tables, setTables] = useState<TableRow[]>([
+    { id: '1', name: 'Table 1', minGuests: 1, maxGuests: 4, zone: 'indoor' },
   ])
 
-  const [qError,   setQError]   = useState('')
-  const [qLoading2, setQLoading2] = useState(false)
-
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const searchPlaces = useCallback((query: string) => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    if (!query.trim()) { setQResults([]); return }
-    searchTimerRef.current = setTimeout(async () => {
-      setQLoading(true)
-      setQError('')
+  // Persist to localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('dinto_onboarding')
+    if (saved) {
       try {
-        const res = await fetch(
-          `${API}/api/restaurants/search-google?query=${encodeURIComponent(query)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Search failed')
-        setQResults(Array.isArray(data) ? data : data.results ?? [])
-      } catch (err: any) {
-        setQError(err.message || 'Search failed')
-        setQResults([])
-      } finally {
-        setQLoading(false)
+        const parsed = JSON.parse(saved)
+        if (parsed.step) setStep(parsed.step)
+        if (parsed.basicInfo) setBasicInfo(parsed.basicInfo)
+        if (parsed.hours) setHours(parsed.hours)
+        if (parsed.slotDuration) setSlotDuration(parsed.slotDuration)
+        if (parsed.maxAdvanceDays) setMaxAdvanceDays(parsed.maxAdvanceDays)
+        if (parsed.coverPhoto) setCoverPhoto(parsed.coverPhoto)
+        if (parsed.logo) setLogo(parsed.logo)
+        if (parsed.gallery) setGallery(parsed.gallery)
+        if (parsed.tables) setTables(parsed.tables)
+        if (parsed.restaurantId) setRestaurantId(parsed.restaurantId)
+      } catch {
+        // ignore parse errors
       }
-    }, 500)
-  }, [token])
+    }
+  }, [])
 
-  async function handleQuickCreate() {
-    if (!selectedPlace) return
-    const tablesPayload = qTables.filter(t => t.count > 0)
-    if (tablesPayload.length === 0) {
-      setQError('Please add at least one table before launching.')
+  useEffect(() => {
+    localStorage.setItem(
+      'dinto_onboarding',
+      JSON.stringify({
+        step,
+        basicInfo,
+        hours,
+        slotDuration,
+        maxAdvanceDays,
+        coverPhoto,
+        logo,
+        gallery,
+        tables,
+        restaurantId,
+      })
+    )
+  }, [step, basicInfo, hours, slotDuration, maxAdvanceDays, coverPhoto, logo, gallery, tables, restaurantId])
+
+  // ── Step handlers ────────────────────────────────────────────────────────────
+
+  const handleStep1Next = async () => {
+    if (!basicInfo.name.trim()) {
+      alert('Restaurant name is required')
       return
     }
-    setQError(''); setQLoading2(true)
+    setSaving(true)
     try {
-      const res = await fetch(`${API}/api/restaurants/quick-create`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ googlePlaceId: selectedPlace.placeId, tables: tablesPayload }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to create restaurant')
-      localStorage.setItem('stolik_restaurant',        JSON.stringify(data))
-      localStorage.setItem('stolik_active_restaurant', JSON.stringify(data))
-      router.push('/dashboard')
-    } catch (err: any) {
-      setQError(err.message || 'Something went wrong. Please try again.')
+      if (!restaurantId) {
+        const res = await api.post<{ id: string }>('/api/restaurants', {
+          ...basicInfo,
+          city: 'Warszawa',
+          isPublished: false,
+          status: 'draft',
+        })
+        setRestaurantId(res.id)
+      } else {
+        await api.put(`/api/restaurants/${restaurantId}`, basicInfo)
+      }
+      setStep(2)
+    } catch (err) {
+      console.error(err)
     } finally {
-      setQLoading2(false)
+      setSaving(false)
     }
   }
 
-  const DAYS_T = [
-    { key: 'monday'    as DayKey, label: t.mon },
-    { key: 'tuesday'   as DayKey, label: t.tue },
-    { key: 'wednesday' as DayKey, label: t.wed },
-    { key: 'thursday'  as DayKey, label: t.thu },
-    { key: 'friday'    as DayKey, label: t.fri },
-    { key: 'saturday'  as DayKey, label: t.sat },
-    { key: 'sunday'    as DayKey, label: t.sun },
-  ]
-  const STEP_LABELS = [t.basicInfo, t.tabHours, t.stepPhotosLabel, t.tables]
-
-  const [step,    setStep]    = useState(0)
-  const [error,   setError]   = useState('')
-  const [loading, setLoading] = useState(false)
-
-  // ── Step 1: Basic info ────────────────────────────────────────────────────
-  const [name,        setName]        = useState('')
-  const [cuisine,     setCuisine]     = useState('polska')
-  const [priceRange,  setPriceRange]  = useState('$$')
-  const [description, setDescription] = useState('')
-  const [phone,       setPhone]       = useState('')
-  const [address,     setAddress]     = useState('')
-  const [district,    setDistrict]    = useState(WARSAW_DISTRICTS[0])
-  const [city,        setCity]        = useState('Warszawa')
-
-  // ── Step 2: Hours ─────────────────────────────────────────────────────────
-  const [hours, setHours] = useState<Hours>(defaultHours())
-
-  function updateDay(day: DayKey, field: keyof DayHours, value: string | boolean) {
-    setHours(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }))
+  const handleStep2Next = async () => {
+    if (restaurantId) {
+      await api
+        .put(`/api/restaurants/${restaurantId}`, {
+          openingHours: JSON.stringify(hours),
+          slotDuration,
+          maxAdvanceDays,
+        })
+        .catch(console.error)
+    }
+    setStep(3)
   }
 
-  function copyFromMonday(targetDay: DayKey) {
-    setHours(prev => ({ ...prev, [targetDay]: { ...prev['monday'] } }))
+  const handleStep3Next = () => setStep(4)
+
+  const handleStep4Next = () => setStep(5)
+
+  const handleNext = () => {
+    if (step === 1) handleStep1Next()
+    else if (step === 2) handleStep2Next()
+    else if (step === 3) handleStep3Next()
+    else if (step === 4) handleStep4Next()
   }
 
-  // ── Step 3: Photos ────────────────────────────────────────────────────────
-  const [coverImage,    setCoverImage]    = useState<string | null>(null)
-  const [logoImage,     setLogoImage]     = useState<string | null>(null)
-  const [uploadingCover, setUploadingCover] = useState(false)
-  const [uploadingLogo,  setUploadingLogo]  = useState(false)
-
-  async function uploadPhoto(
-    file: File,
-    setUploading: (b: boolean) => void,
-    setUrl: (url: string | null) => void,
-  ) {
-    setUploading(true)
-    setError('')
+  const handlePublish = async () => {
+    setSaving(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res  = await fetch(`${API}/api/upload`, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body:    fd,
-      })
+      if (restaurantId) {
+        for (const table of tables) {
+          await api
+            .post(`/api/restaurants/${restaurantId}/tables`, {
+              name: table.name,
+              minCapacity: table.minGuests,
+              maxCapacity: table.maxGuests,
+              zone: table.zone,
+            })
+            .catch(() => {})
+        }
+        await api.put(`/api/restaurants/${restaurantId}`, {
+          coverImage: coverPhoto,
+          isPublished: true,
+          status: 'active',
+        })
+      }
+      localStorage.removeItem('dinto_onboarding')
+      window.location.href = '/dashboard'
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Photo upload ─────────────────────────────────────────────────────────────
+
+  const handleUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: 'cover' | 'logo' | 'gallery'
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('token') ?? localStorage.getItem('stolik_token') : null
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? 'https://stolik-production.up.railway.app'}/api/upload`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        }
+      )
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
-      setUrl(data.url)
-    } catch (err: any) {
-      setError(err.message || 'Upload failed')
+      if (type === 'cover') setCoverPhoto(data.url)
+      else if (type === 'logo') setLogo(data.url)
+      else setGallery(prev => [...prev, data.url])
+    } catch (err) {
+      console.error('Upload failed', err)
     } finally {
       setUploading(false)
+      e.target.value = ''
     }
   }
 
-  // ── Step 4: Tables & slots ────────────────────────────────────────────────
-  const [tableCount,      setTableCount]      = useState(6)
-  const [slotDuration,    setSlotDuration]    = useState(90)
-  const [minAdvanceHours, setMinAdvanceHours] = useState(2)
-  const [maxGuestsPerSlot,setMaxGuestsPerSlot] = useState(20)
+  // ── Table helpers ────────────────────────────────────────────────────────────
 
-  // ── Go live ───────────────────────────────────────────────────────────────
-  async function handleGoLive() {
-    if (loading) return
-    setError(''); setLoading(true)
-
-    try {
-      const emoji = CUISINE_VALUES.find(c => c.value === cuisine)?.emoji ?? '🍽️'
-
-      // 1. Create restaurant record
-      const createRes = await fetch(`${API}/api/restaurants`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({
-          name,
-          cuisine,
-          priceRange,
-          district,
-          city: city || 'Warszawa',
-          address,
-          ...(phone       ? { phone }       : {}),
-          ...(description ? { description } : {}),
-          emoji,
-          ...(coverImage  ? { coverImage }  : {}),
-        }),
-      })
-      const created = await createRes.json()
-      if (!createRes.ok) {
-        setError(created.error || t.restaurantSaveError)
-        setLoading(false)
-        return
-      }
-
-      const restaurantId = created.id
-
-      // 2. Create tables
-      if (tableCount > 0) {
-        await Promise.all(
-          Array.from({ length: tableCount }, (_, i) =>
-            fetch(`${API}/api/restaurants/${restaurantId}/tables`, {
-              method:  'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body:    JSON.stringify({ name: `T${i + 1}`, capacity: 4 }),
-            })
-          )
-        )
-      }
-
-      // 3. Apply hours + slot settings + go live
-      const hoursData: Record<string, string | null> = {}
-      DAY_KEYS.forEach(d => {
-        const h   = hours[d]
-        const key = `open${d.charAt(0).toUpperCase()}${d.slice(1)}`
-        hoursData[key] = h.closed ? null : `${h.open}-${h.close}`
-      })
-
-      const patchBody: Record<string, unknown> = {
-        ...hoursData,
-        slotDuration,
-        maxGuestsPerSlot,
-        minAdvanceHours,
-        isActive: true,
-        ...(logoImage ? { images: [logoImage] } : {}),
-      }
-
-      await fetch(`${API}/api/restaurants/${restaurantId}`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify(patchBody),
-      })
-
-      // 4. Store + redirect
-      localStorage.setItem('stolik_restaurant',        JSON.stringify(created))
-      localStorage.setItem('stolik_active_restaurant', JSON.stringify(created))
-      router.push('/dashboard')
-    } catch {
-      setError(t.serverError)
-    } finally {
-      setLoading(false)
-    }
+  const updateTable = (index: number, field: keyof TableRow, value: string | number) => {
+    setTables(prev =>
+      prev.map((t, i) => (i === index ? { ...t, [field]: value } : t))
+    )
   }
 
-  if (!token) return null
+  // ── Checklist (step 5) ───────────────────────────────────────────────────────
+
+  const checklist = [
+    { label: 'Basic info complete', done: !!basicInfo.name },
+    { label: 'Working hours set', done: hours.some(h => h.open) },
+    { label: 'Cover photo uploaded', done: !!coverPhoto },
+    { label: 'Tables configured', done: tables.length > 0 },
+  ]
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-bg">
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-start py-12 px-4">
       <div className="w-full max-w-2xl">
-
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-accent/15 border border-accent/25 rounded-2xl mb-4">
-            <Utensils size={22} className="text-accent" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">Stolik</h1>
-          <p className="mt-1.5 text-sm text-muted">{t.regTagline}</p>
+          <span className="text-2xl font-bold text-text">
+            Din<em>to</em>
+          </span>
+          <p className="text-sm text-muted mt-1">Set up your restaurant</p>
         </div>
 
+        {/* Step indicator */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          {[1, 2, 3, 4, 5].map(s => (
+            <React.Fragment key={s}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  s < step
+                    ? 'bg-accent text-white'
+                    : s === step
+                    ? 'bg-accent text-white ring-4 ring-accent/20'
+                    : 'bg-surface-2 text-muted border border-border'
+                }`}
+              >
+                {s < step ? '✓' : s}
+              </div>
+              {s < 5 && (
+                <div
+                  className={`flex-1 max-w-12 h-0.5 transition-colors ${
+                    s < step ? 'bg-accent' : 'bg-border'
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <p className="text-center text-sm text-muted mb-8">{STEP_LABELS[step - 1]}</p>
+
         {/* Card */}
-        <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl">
-
-          {/* ── Quick choice ─────────────────────────────────────────────── */}
-          {mode === 'quick-choice' && (
+        <div className="bg-surface border border-border rounded-card p-6 shadow-card">
+          {/* ── Step 1: Basic Info ── */}
+          {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-base font-bold text-text mb-1">Set up your restaurant</h2>
-              <p className="text-sm text-muted mb-6">Choose how you want to get started.</p>
-
-              <button
-                type="button"
-                onClick={() => { setQError(''); setMode('quick-search') }}
-                className="w-full text-left p-5 rounded-xl border-2 border-accent/40 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center">
-                    <Zap size={20} className="text-accent" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-text group-hover:text-accent transition-colors">Quick Connect</p>
-                    <p className="text-sm text-muted mt-0.5">Find your restaurant in Google Maps — we&apos;ll fill the details automatically.</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setError(''); setMode('manual') }}
-                className="w-full text-left p-5 rounded-xl border border-border bg-surface-2 hover:border-muted/50 transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-border">
-                    <ClipboardList size={20} className="text-muted group-hover:text-text transition-colors" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-text">Manual Setup</p>
-                    <p className="text-sm text-muted mt-0.5">Fill restaurant information step by step.</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* ── Quick search ─────────────────────────────────────────────── */}
-          {mode === 'quick-search' && (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3 mb-1">
-                <button
-                  type="button"
-                  onClick={() => { setQSearch(''); setQResults([]); setQError(''); setMode('quick-choice') }}
-                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-                <h2 className="text-base font-bold text-text">Find your restaurant</h2>
-              </div>
-
-              <div className="relative">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Restaurant name <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="text"
-                  value={qSearch}
-                  onChange={e => { setQSearch(e.target.value); searchPlaces(e.target.value) }}
-                  placeholder="Enter restaurant name..."
-                  className={`${inputCls} pl-9`}
-                  autoFocus
+                  required
+                  value={basicInfo.name}
+                  onChange={e => setBasicInfo(b => ({ ...b, name: e.target.value }))}
+                  placeholder="e.g. Trattoria Roma"
+                  className={inputCls}
                 />
               </div>
-
-              {qError && <ErrorBox>{qError}</ErrorBox>}
-
-              {qLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-
-              {!qLoading && qResults.length > 0 && (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {qResults.map(place => (
-                    <button
-                      key={place.placeId}
-                      type="button"
-                      onClick={() => { setSelectedPlace(place); setQError(''); setMode('quick-confirm') }}
-                      className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border bg-surface-2 hover:border-accent/50 hover:bg-accent/5 transition-all"
-                    >
-                      {place.photoUrl ? (
-                        <img
-                          src={place.photoUrl}
-                          alt={place.name}
-                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center flex-shrink-0 border border-border">
-                          <Utensils size={18} className="text-muted" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-semibold text-text text-sm truncate">{place.name}</p>
-                        <p className="text-xs text-muted truncate mt-0.5">{place.address}</p>
-                        {place.rating !== null && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Star size={11} className="text-yellow-400 fill-yellow-400" />
-                            <span className="text-xs text-muted">{place.rating.toFixed(1)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {!qLoading && qSearch.trim() && qResults.length === 0 && (
-                <p className="text-sm text-muted text-center py-6">No results found. Try a different name.</p>
-              )}
-
-              {!qSearch.trim() && (
-                <p className="text-sm text-muted text-center py-6">Start typing to search Google Places.</p>
-              )}
-            </div>
-          )}
-
-          {/* ── Quick confirm ────────────────────────────────────────────── */}
-          {mode === 'quick-confirm' && selectedPlace && (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3 mb-1">
-                <button
-                  type="button"
-                  onClick={() => { setQError(''); setMode('quick-search') }}
-                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-                <h2 className="text-base font-bold text-text">Is this your restaurant?</h2>
-              </div>
-
-              {selectedPlace.photoUrl && (
-                <div className="rounded-xl overflow-hidden border border-border">
-                  <img
-                    src={selectedPlace.photoUrl}
-                    alt={selectedPlace.name}
-                    className="w-full h-44 object-cover"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2.5 p-4 rounded-xl bg-surface-2 border border-border">
-                <p className="font-bold text-text text-lg">{selectedPlace.name}</p>
-
-                <div className="flex items-start gap-2 text-sm text-muted">
-                  <MapPin size={14} className="mt-0.5 flex-shrink-0" />
-                  <span>{selectedPlace.address}</span>
-                </div>
-
-                {selectedPlace.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted">
-                    <Phone size={14} className="flex-shrink-0" />
-                    <span>{selectedPlace.phone}</span>
-                  </div>
-                )}
-
-                {selectedPlace.rating !== null && (
-                  <div className="flex items-center gap-1.5">
-                    <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                    <span className="text-sm font-semibold text-text">{selectedPlace.rating.toFixed(1)}</span>
-                    <span className="text-sm text-muted">/ 5</span>
-                  </div>
-                )}
-              </div>
-
-              {qError && <ErrorBox>{qError}</ErrorBox>}
-
-              <button
-                type="button"
-                onClick={() => { setQError(''); setMode('quick-tables') }}
-                className={`w-full ${btnCls}`}
-              >
-                This is my restaurant
-              </button>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => { setQError(''); setMode('quick-search') }}
-                  className="text-sm text-muted hover:text-text transition-colors underline underline-offset-2"
-                >
-                  Not the right place?
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Quick tables ─────────────────────────────────────────────── */}
-          {mode === 'quick-tables' && (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3 mb-1">
-                <button
-                  type="button"
-                  onClick={() => { setQError(''); setMode('quick-confirm') }}
-                  className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-                <h2 className="text-base font-bold text-text">How many tables do you have?</h2>
-              </div>
-
-              <div className="space-y-3">
-                {qTables.map((tbl, idx) => (
-                  <div key={tbl.capacity} className="flex items-center gap-4 p-3.5 rounded-xl bg-surface-2 border border-border">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-text">{tbl.capacity} guests</p>
-                      <p className="text-xs text-muted mt-0.5">Table for {tbl.capacity}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setQTables(prev => prev.map((r, i) => i === idx ? { ...r, count: Math.max(0, r.count - 1) } : r))}
-                        className="w-9 h-9 rounded-lg bg-surface border border-border text-text hover:border-muted/50 transition-colors text-lg flex items-center justify-center"
-                      >
-                        −
-                      </button>
-                      <span className="w-8 text-center text-lg font-bold text-text">{tbl.count}</span>
-                      <button
-                        type="button"
-                        onClick={() => setQTables(prev => prev.map((r, i) => i === idx ? { ...r, count: r.count + 1 } : r))}
-                        className="w-9 h-9 rounded-lg bg-surface border border-border text-text hover:border-muted/50 transition-colors text-lg flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {qError && <ErrorBox>{qError}</ErrorBox>}
-
-              <button
-                type="button"
-                disabled={qLoading2}
-                onClick={handleQuickCreate}
-                className={`w-full ${btnCls}`}
-              >
-                {qLoading2 ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Launching...
-                  </span>
-                ) : 'Launch!'}
-              </button>
-            </div>
-          )}
-
-          {/* ── Manual flow ──────────────────────────────────────────────── */}
-          {mode === 'manual' && (
-            <>
-          <ProgressBar step={step} labels={STEP_LABELS} />
-
-          {/* ── Step 1: Basic info ──────────────────────────────────────── */}
-          {step === 0 && (
-            <form
-              onSubmit={e => { e.preventDefault(); setError(''); setStep(1) }}
-              className="space-y-4"
-            >
-              <h2 className="text-base font-bold text-text mb-5">{t.basicInfo}</h2>
-
-              <Field label={t.restaurantNameLabel}>
-                <input
-                  type="text" required value={name} onChange={e => setName(e.target.value)}
-                  placeholder="Restauracja Pod Lipami" className={inputCls}
-                />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field label={t.cuisineLabel}>
-                  <select value={cuisine} onChange={e => setCuisine(e.target.value)} className={inputCls}>
-                    {CUISINE_VALUES.map(c => (
-                      <option key={c.value} value={c.value}>{(t as any)[c.tKey]}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label={t.priceRangeLabel}>
-                  <div className="flex gap-1.5">
-                    {PRICE_RANGES.map(p => (
-                      <button
-                        key={p} type="button" onClick={() => setPriceRange(p)}
-                        className={`flex-1 py-2.5 rounded-lg text-xs font-bold border transition-colors ${
-                          priceRange === p
-                            ? 'bg-accent border-accent text-white'
-                            : 'bg-surface-2 border-border text-muted hover:border-muted/50'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-              </div>
-
-              <Field label={t.descriptionLabel}>
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">Description</label>
                 <textarea
-                  value={description} onChange={e => setDescription(e.target.value)}
-                  placeholder={t.descPlaceholder}
+                  value={basicInfo.description}
+                  onChange={e => setBasicInfo(b => ({ ...b, description: e.target.value }))}
                   rows={3}
+                  placeholder="Tell guests what makes your restaurant special..."
                   className={`${inputCls} resize-none`}
                 />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field label={t.phone}>
-                  <input
-                    type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                    placeholder="+48 500 123 456" className={inputCls}
-                  />
-                </Field>
-                <Field label={t.cityLabel}>
-                  <input
-                    type="text" value={city} onChange={e => setCity(e.target.value)}
-                    placeholder="Warszawa" className={inputCls}
-                  />
-                </Field>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <Field label={t.districtLabel}>
-                  <select value={district} onChange={e => setDistrict(e.target.value)} className={inputCls}>
-                    {WARSAW_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">Cuisine type</label>
+                  <select
+                    value={basicInfo.cuisine}
+                    onChange={e => setBasicInfo(b => ({ ...b, cuisine: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">Select...</option>
+                    {[
+                      'Polish',
+                      'Italian',
+                      'Japanese',
+                      'French',
+                      'Georgian',
+                      'American',
+                      'Mediterranean',
+                      'Asian',
+                      'Mexican',
+                      'Indian',
+                    ].map(c => (
+                      <option key={c}>{c}</option>
+                    ))}
                   </select>
-                </Field>
-                <Field label={t.addressLabel}>
-                  <input
-                    type="text" required value={address} onChange={e => setAddress(e.target.value)}
-                    placeholder="ul. Nowy Świat 12" className={inputCls}
-                  />
-                </Field>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">District</label>
+                  <select
+                    value={basicInfo.district}
+                    onChange={e => setBasicInfo(b => ({ ...b, district: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">Select...</option>
+                    {[
+                      'Śródmieście',
+                      'Mokotów',
+                      'Wola',
+                      'Praga-Południe',
+                      'Ursynów',
+                      'Żoliborz',
+                      'Ochota',
+                      'Targówek',
+                      'Bemowo',
+                      'Bielany',
+                    ].map(d => (
+                      <option key={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-
-              {error && <ErrorBox>{error}</ErrorBox>}
-
-              <div className="pt-1">
-                <button type="submit" className={`w-full ${btnCls}`}>{t.nextArrow}</button>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Price range</label>
+                <div className="flex gap-2">
+                  {['$', '$$', '$$$', '$$$$'].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setBasicInfo(b => ({ ...b, priceRange: p }))}
+                      className={`px-4 py-2 rounded-btn border text-sm font-medium transition-colors ${
+                        basicInfo.priceRange === p
+                          ? 'bg-accent text-white border-accent'
+                          : 'border-border text-muted hover:border-accent'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </form>
+              <input
+                value={basicInfo.address}
+                onChange={e => setBasicInfo(b => ({ ...b, address: e.target.value }))}
+                placeholder="Address"
+                className={inputCls}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  value={basicInfo.phone}
+                  onChange={e => setBasicInfo(b => ({ ...b, phone: e.target.value }))}
+                  placeholder="Phone"
+                  className={inputCls}
+                />
+                <input
+                  value={basicInfo.email}
+                  onChange={e => setBasicInfo(b => ({ ...b, email: e.target.value }))}
+                  type="email"
+                  placeholder="Email"
+                  className={inputCls}
+                />
+              </div>
+              <input
+                value={basicInfo.website}
+                onChange={e => setBasicInfo(b => ({ ...b, website: e.target.value }))}
+                placeholder="Website (optional)"
+                className={inputCls}
+              />
+            </div>
           )}
 
-          {/* ── Step 2: Hours ────────────────────────────────────────────── */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <h2 className="text-base font-bold text-text mb-1">{t.tabHours}</h2>
-              <p className="text-xs text-muted -mt-3">{t.hoursHint}</p>
+          {/* ── Step 2: Hours ── */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted mb-2">
+                Set your opening hours and booking settings.
+              </p>
+              {DAYS_LIST.map((day, i) => (
+                <div
+                  key={day}
+                  className="flex items-center gap-3 p-3 bg-surface-2 border border-border rounded-btn"
+                >
+                  <input
+                    type="checkbox"
+                    id={`day-${i}`}
+                    checked={hours[i].open}
+                    onChange={e =>
+                      setHours(prev =>
+                        prev.map((h, idx) =>
+                          idx === i ? { ...h, open: e.target.checked } : h
+                        )
+                      )
+                    }
+                    className="w-4 h-4 accent-accent"
+                  />
+                  <label htmlFor={`day-${i}`} className="w-24 text-sm font-medium text-text">
+                    {day}
+                  </label>
+                  {hours[i].open ? (
+                    <>
+                      <input
+                        type="time"
+                        value={hours[i].openTime}
+                        onChange={e =>
+                          setHours(prev =>
+                            prev.map((h, idx) =>
+                              idx === i ? { ...h, openTime: e.target.value } : h
+                            )
+                          )
+                        }
+                        className="border border-border rounded-btn px-2 py-1.5 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                      />
+                      <span className="text-muted text-sm">to</span>
+                      <input
+                        type="time"
+                        value={hours[i].closeTime}
+                        onChange={e =>
+                          setHours(prev =>
+                            prev.map((h, idx) =>
+                              idx === i ? { ...h, closeTime: e.target.value } : h
+                            )
+                          )
+                        }
+                        className="border border-border rounded-btn px-2 py-1.5 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                      />
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted italic">Closed</span>
+                  )}
+                </div>
+              ))}
 
-              <div className="space-y-1.5">
-                {DAYS_T.map(({ key, label }, idx) => (
-                  <div key={key} className="flex items-center gap-2 py-2 px-3 bg-surface-2 rounded-lg border border-border">
-                    <span className="text-xs text-muted w-[88px] shrink-0 font-medium">{label}</span>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">
+                    Slot duration (min)
+                  </label>
+                  <select
+                    value={slotDuration}
+                    onChange={e => setSlotDuration(Number(e.target.value))}
+                    className={inputCls}
+                  >
+                    {[30, 45, 60, 90, 120].map(v => (
+                      <option key={v} value={v}>
+                        {v} min
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">
+                    Max advance booking (days)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={maxAdvanceDays}
+                    onChange={e => setMaxAdvanceDays(Number(e.target.value))}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-                    {hours[key].closed ? (
-                      <span className="text-xs text-muted flex-1">{t.closedDay}</span>
-                    ) : (
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="time" value={hours[key].open}
-                          onChange={e => updateDay(key, 'open', e.target.value)}
-                          className="bg-surface border border-border rounded px-2 py-1 text-xs text-text focus:outline-none focus:border-accent transition-colors [color-scheme:dark]"
-                        />
-                        <span className="text-muted text-xs">–</span>
-                        <input
-                          type="time" value={hours[key].close}
-                          onChange={e => updateDay(key, 'close', e.target.value)}
-                          className="bg-surface border border-border rounded px-2 py-1 text-xs text-text focus:outline-none focus:border-accent transition-colors [color-scheme:dark]"
-                        />
-                      </div>
-                    )}
+          {/* ── Step 3: Photos ── */}
+          {step === 3 && (
+            <div>
+              {/* Cover photo */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text mb-2">Cover Photo</label>
+                {coverPhoto ? (
+                  <div className="relative">
+                    <img
+                      src={coverPhoto}
+                      alt="Cover"
+                      className="w-full h-48 object-cover rounded-card"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCoverPhoto('')}
+                      className="absolute top-2 right-2 bg-white rounded-full w-7 h-7 text-sm text-red-500 shadow flex items-center justify-center hover:bg-red-50 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-card cursor-pointer hover:border-accent transition-colors">
+                    <span className="text-3xl mb-2">📷</span>
+                    <span className="text-sm text-muted">
+                      {uploading ? 'Uploading...' : 'Drag & drop or click to upload'}
+                    </span>
+                    <span className="text-xs text-muted mt-1">Recommended: 1200×630px</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => handleUpload(e, 'cover')}
+                      disabled={uploading}
+                    />
+                  </label>
+                )}
+              </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {idx > 0 && !hours[key].closed && (
-                        <button
-                          type="button"
-                          onClick={() => copyFromMonday(key)}
-                          className="text-xs px-2 py-1 rounded-lg border border-border text-muted hover:border-muted/50 transition-colors font-medium"
-                        >
-                          {t.copyFromMonday}
-                        </button>
-                      )}
+              {/* Logo */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text mb-2">Logo</label>
+                {logo ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={logo}
+                      alt="Logo"
+                      className="w-24 h-24 object-cover rounded-card border border-border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLogo('')}
+                      className="absolute top-1 right-1 bg-white rounded-full w-6 h-6 text-xs text-red-500 shadow flex items-center justify-center hover:bg-red-50 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-border rounded-card cursor-pointer hover:border-accent transition-colors">
+                    <span className="text-xl mb-1">🏷</span>
+                    <span className="text-xs text-muted text-center">Logo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => handleUpload(e, 'logo')}
+                      disabled={uploading}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Gallery */}
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Gallery ({gallery.length} photos)
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {gallery.map((url, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={url}
+                        alt={`Gallery ${i + 1}`}
+                        className="w-full h-20 object-cover rounded-btn border border-border"
+                      />
                       <button
                         type="button"
-                        onClick={() => updateDay(key, 'closed', !hours[key].closed)}
-                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors font-medium ${
-                          hours[key].closed
-                            ? 'border-accent/40 text-accent bg-accent/8'
-                            : 'border-border text-muted hover:border-muted/50'
-                        }`}
+                        onClick={() => setGallery(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute top-1 right-1 bg-white rounded-full w-5 h-5 text-xs text-red-500 shadow flex items-center justify-center hover:bg-red-50 transition-colors"
                       >
-                        {hours[key].closed ? t.openDay : t.closeDay}
+                        ✕
                       </button>
                     </div>
+                  ))}
+                  <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-border rounded-btn cursor-pointer hover:border-accent transition-colors">
+                    <span className="text-lg">+</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => handleUpload(e, 'gallery')}
+                      disabled={uploading}
+                    />
+                  </label>
+                </div>
+                {uploading && (
+                  <p className="text-xs text-muted animate-pulse">Uploading image...</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Tables ── */}
+          {step === 4 && (
+            <div>
+              <p className="text-sm text-muted mb-4">
+                Add the tables guests can book. You can always edit these later.
+              </p>
+              <div className="space-y-3">
+                {tables.map((table, i) => (
+                  <div
+                    key={table.id}
+                    className="flex items-center gap-3 p-3 bg-surface border border-border rounded-btn"
+                  >
+                    <input
+                      value={table.name}
+                      onChange={e => updateTable(i, 'name', e.target.value)}
+                      placeholder="Table name"
+                      className="flex-1 border border-border rounded-btn px-3 py-2 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                    />
+                    <input
+                      type="number"
+                      value={table.minGuests}
+                      onChange={e => updateTable(i, 'minGuests', parseInt(e.target.value) || 1)}
+                      min={1}
+                      placeholder="Min"
+                      className="w-16 border border-border rounded-btn px-2 py-2 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                    />
+                    <span className="text-muted text-sm">–</span>
+                    <input
+                      type="number"
+                      value={table.maxGuests}
+                      onChange={e => updateTable(i, 'maxGuests', parseInt(e.target.value) || 1)}
+                      min={1}
+                      placeholder="Max"
+                      className="w-16 border border-border rounded-btn px-2 py-2 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                    />
+                    <select
+                      value={table.zone}
+                      onChange={e => updateTable(i, 'zone', e.target.value)}
+                      className="border border-border rounded-btn px-2 py-2 text-sm text-text bg-surface focus:outline-none focus:border-accent"
+                    >
+                      {['indoor', 'outdoor', 'bar', 'terrace', 'private'].map(z => (
+                        <option key={z}>{z}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setTables(prev => prev.filter((_, idx) => idx !== i))}
+                      className="text-red-400 hover:text-red-600 transition-colors text-lg leading-none"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTables(prev => [
+                      ...prev,
+                      {
+                        id: Date.now().toString(),
+                        name: `Table ${prev.length + 1}`,
+                        minGuests: 1,
+                        maxGuests: 4,
+                        zone: 'indoor',
+                      },
+                    ])
+                  }
+                  className="w-full py-2 border-2 border-dashed border-border rounded-btn text-sm text-muted hover:border-accent hover:text-accent transition-colors"
+                >
+                  + Add Table
+                </button>
+              </div>
+              <p className="mt-3 text-sm text-muted">
+                Total capacity:{' '}
+                <strong className="text-text">
+                  {tables.reduce((s, t) => s + t.maxGuests, 0)} guests
+                </strong>{' '}
+                across{' '}
+                <strong className="text-text">{tables.length} tables</strong>
+              </p>
+            </div>
+          )}
+
+          {/* ── Step 5: Review & Publish ── */}
+          {step === 5 && (
+            <div>
+              <h3 className="text-base font-semibold text-text mb-4">Review before publishing</h3>
+
+              {/* Checklist */}
+              <div className="space-y-2 mb-6">
+                {checklist.map(item => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
+                        item.done ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-muted border border-border'
+                      }`}
+                    >
+                      {item.done ? '✓' : '○'}
+                    </span>
+                    <span className={`text-sm ${item.done ? 'text-text' : 'text-muted'}`}>
+                      {item.label}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setStep(0); setError('') }} className={backCls}>{t.back}</button>
-                <button type="button" onClick={() => { setStep(2); setError('') }} className={btnCls}>{t.nextArrow}</button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Photos ───────────────────────────────────────────── */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-base font-bold text-text mb-5">{t.stepPhotosLabel}</h2>
-
-              <PhotoUpload
-                label={t.coverPhoto}
-                hint={t.photoHint}
-                url={coverImage}
-                uploading={uploadingCover}
-                onUpload={file => uploadPhoto(file, setUploadingCover, setCoverImage)}
-                onRemove={() => setCoverImage(null)}
-                aspectClass="h-44"
-              />
-
-              <PhotoUpload
-                label={t.logoPhoto}
-                url={logoImage}
-                uploading={uploadingLogo}
-                onUpload={file => uploadPhoto(file, setUploadingLogo, setLogoImage)}
-                onRemove={() => setLogoImage(null)}
-                aspectClass="h-32"
-              />
-
-              {error && <ErrorBox>{error}</ErrorBox>}
-
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setStep(1); setError('') }} className={backCls}>{t.back}</button>
-                <button type="button" onClick={() => { setStep(3); setError('') }} className={btnCls}>{t.nextArrow}</button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 4: Tables & slots ───────────────────────────────────── */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-base font-bold text-text mb-5">{t.tables}</h2>
-
-              <Field label={t.tableCountLabel}>
-                <Stepper value={tableCount} onChange={setTableCount} min={0} max={50} />
-              </Field>
-
-              <Field label={t.slotDurationLabel}>
-                <div className="flex gap-3">
-                  {SLOT_DURATIONS.map(d => (
-                    <button
-                      key={d} type="button" onClick={() => setSlotDuration(d)}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-colors ${
-                        slotDuration === d
-                          ? 'bg-accent border-accent text-white'
-                          : 'bg-surface-2 border-border text-muted hover:border-muted/50'
-                      }`}
-                    >
-                      {d} min
-                    </button>
-                  ))}
+              {/* Summary card */}
+              <div className="bg-surface-2 border border-border rounded-card p-4 mb-4">
+                {coverPhoto && (
+                  <img
+                    src={coverPhoto}
+                    alt="Cover"
+                    className="w-full h-32 object-cover rounded-btn mb-3"
+                  />
+                )}
+                <h4 className="text-lg font-bold text-text">
+                  {basicInfo.name || 'Your Restaurant'}
+                </h4>
+                {basicInfo.cuisine && (
+                  <p className="text-sm text-muted mt-0.5">{basicInfo.cuisine}</p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {basicInfo.district && (
+                    <span className="text-xs bg-surface border border-border rounded-chip px-2 py-0.5 text-muted">
+                      {basicInfo.district}
+                    </span>
+                  )}
+                  {basicInfo.priceRange && (
+                    <span className="text-xs bg-surface border border-border rounded-chip px-2 py-0.5 text-muted">
+                      {basicInfo.priceRange}
+                    </span>
+                  )}
+                  {tables.length > 0 && (
+                    <span className="text-xs bg-surface border border-border rounded-chip px-2 py-0.5 text-muted">
+                      {tables.length} tables
+                    </span>
+                  )}
                 </div>
-              </Field>
-
-              <Field label={t.bookingLeadTimeLabel}>
-                <Stepper value={minAdvanceHours} onChange={setMinAdvanceHours} min={0} max={72} />
-              </Field>
-
-              <Field label={t.maxGuestsPerSlotLabel}>
-                <Stepper value={maxGuestsPerSlot} onChange={setMaxGuestsPerSlot} min={1} max={200} />
-              </Field>
-
-              {error && <ErrorBox>{error}</ErrorBox>}
-
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setStep(2); setError('') }} className={backCls}>{t.back}</button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={handleGoLive}
-                  className={btnCls}
-                >
-                  {loading ? t.goingLive : t.goLive}
-                </button>
+                {basicInfo.address && (
+                  <p className="text-xs text-muted mt-2">{basicInfo.address}</p>
+                )}
               </div>
+
+              {!checklist.every(c => c.done) && (
+                <p className="text-xs text-amber bg-amber/10 border border-amber/20 rounded-btn px-3 py-2">
+                  Some items are incomplete. You can still publish and fill them in later from settings.
+                </p>
+              )}
             </div>
           )}
-            </>
-          )}
+        </div>
 
+        {/* Navigation */}
+        <div className="flex justify-between mt-6 pt-6 border-t border-border">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep(s => s - 1)}
+              className="px-6 py-2 border border-border rounded-btn text-sm text-muted hover:bg-surface-2 transition-colors"
+            >
+              Back
+            </button>
+          ) : (
+            <div />
+          )}
+          {step < 5 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={saving}
+              className="px-6 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Next'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={saving}
+              className="px-6 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Publishing...' : 'Publish Restaurant'}
+            </button>
+          )}
         </div>
       </div>
     </div>

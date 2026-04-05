@@ -21,6 +21,8 @@ import { pushRouter } from './routes/push'
 import { citiesRouter } from './routes/cities'
 import { dashboardRouter } from './routes/dashboard'
 import { staffRouter } from './routes/staff'
+import { billingRouter } from './routes/billing'
+import { reviewsRouter } from './routes/reviews'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -60,9 +62,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-// ⚠️  Stripe webhook MUST be registered before express.json()
+// Stripe webhooks MUST be registered before express.json()
 // so the raw body is preserved for signature verification
 app.use('/api/subscriptions', subscriptionsRouter)
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }), billingRouter)
 
 app.use(express.json())
 
@@ -83,6 +86,8 @@ app.use('/api/push', pushRouter)
 app.use('/api/cities', citiesRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/staff', staffRouter)
+app.use('/api/billing', billingRouter)
+app.use('/api/reviews', reviewsRouter)
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))

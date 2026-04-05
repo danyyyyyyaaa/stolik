@@ -33,6 +33,7 @@ model Restaurant {
   isActive    Boolean  @default(true)
   isPremium   Boolean  @default(false)
   plan        String   @default("free") // free | pro | business
+  planStatus  String   @default("active")  // active | past_due | cancelled
 
   // Google Places
   googlePlaceId          String?
@@ -246,11 +247,13 @@ model Reminder {
 
 // ─── REVIEW ──────────────────────────────────────────────────────────────────
 model Review {
-  id        String   @id @default(cuid())
-  rating    Int      // 1-5
-  comment   String?
-  isVisible Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  rating         Int       // 1-5
+  comment        String?
+  isVisible      Boolean   @default(true)
+  ownerReply     String?
+  ownerRepliedAt DateTime?
+  createdAt      DateTime  @default(now())
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String
@@ -282,6 +285,9 @@ model MenuItem {
   imageUrl    String?
   available   Boolean      @default(true)
   sortOrder   Int          @default(0)
+  photoUrl    String?
+  allergens   String[]     @default([])
+  isPopular   Boolean      @default(false)
   category    MenuCategory @relation(fields: [categoryId], references: [id])
   createdAt   DateTime     @default(now())
 
