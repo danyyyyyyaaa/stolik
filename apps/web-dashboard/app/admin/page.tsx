@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Building2, Users, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react'
+import { Building2, Users, Calendar, TrendingUp } from 'lucide-react'
 import { StatsCard } from '@/components/shared/StatsCard'
 import { StatsCardSkeleton } from '@/components/shared/LoadingSkeleton'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -54,7 +54,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-semibold text-text">Recent restaurants</h2>
           <a href="/admin/restaurants" className="text-xs text-accent hover:underline flex items-center gap-1">
-            View all <ArrowUpRight size={12} />
+            View all →
           </a>
         </div>
         {restaurants.length === 0 && !loading ? (

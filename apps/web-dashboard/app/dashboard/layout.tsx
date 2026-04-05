@@ -1,8 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { DashboardSidebar } from '@/components/layouts/DashboardSidebar'
+import { NotificationProvider } from '@/lib/notifications'
+import ToastContainer from '@/components/ToastNotification'
+import { useMyRestaurant } from '@/hooks/useRestaurant'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
@@ -12,6 +15,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </div>
       </main>
+      <ToastContainer />
     </div>
+  )
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { restaurant } = useMyRestaurant()
+  return (
+    <NotificationProvider restaurantId={restaurant?.id ?? null}>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </NotificationProvider>
   )
 }

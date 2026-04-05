@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Camera, Globe, Instagram, Phone, MapPin, Utensils,
+  Camera, Globe, Phone, MapPin, Utensils,
   FileText, CheckCircle, AlertCircle, RefreshCw,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -456,7 +456,7 @@ export default function ProfilePage() {
                 </div>
               </Field>
 
-              <Field label="Instagram" icon={Instagram}>
+              <Field label="Instagram" icon={Globe}>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm">@</span>
                   <input

@@ -6,21 +6,29 @@ export interface Restaurant {
   id: string
   name: string
   slug: string
+  description?: string
   cuisine: string
   district: string
   city: string
   address: string
   phone?: string
   email?: string
+  website?: string
+  instagram?: string
   priceRange: string
   rating: number
   reviewCount: number
   coverImage?: string
+  logoUrl?: string
   isActive: boolean
   isPublished: boolean
   plan: string
+  planStatus?: string
   status?: string
   ownerId: string
+  openingHours?: string
+  slotDuration?: number
+  maxAdvanceDays?: number
   createdAt: string
 }
 
