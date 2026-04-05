@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { requireAdmin } from '../middleware/auth'
@@ -103,18 +104,28 @@ router.get('/users', requireAdmin, async (req, res) => {
   res.json({ users, total, page: parseInt(page as string), limit: parseInt(limit as string) })
 })
 
-// ─── GET /api/admin/stats — platform statistics ─────────────────────────────
+// ─── GET /api/admin/stats — platform statistics (comprehensive) ─────────────
 router.get('/stats', requireAdmin, async (req, res) => {
   const today = new Date(); today.setHours(0,0,0,0)
   const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999)
-  const [totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday] = await Promise.all([
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+
+  const [totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday, bookingsThisMonth, planBreakdown] = await Promise.all([
     prisma.restaurant.count(),
     prisma.restaurant.count({ where: { isActive: true } }),
     prisma.booking.count(),
     prisma.user.count(),
     prisma.booking.count({ where: { date: { gte: today, lte: todayEnd } } }),
+    prisma.booking.count({ where: { date: { gte: monthStart } } }),
+    prisma.restaurant.groupBy({ by: ['plan'], _count: { id: true } }),
   ])
-  res.json({ totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday })
+
+  const plans: Record<string, number> = {}
+  for (const p of planBreakdown) {
+    plans[p.plan ?? 'free'] = p._count.id
+  }
+
+  res.json({ totalRestaurants, activeRestaurants, totalBookings, totalUsers, bookingsToday, bookingsThisMonth, planBreakdown: plans })
 })
 
 // ─── PATCH /api/admin/users/:id/role — change user role ─────────────────────
@@ -141,6 +152,57 @@ router.get('/restaurants/:id/dashboard', requireAdmin, async (req, res) => {
   })
   if (!restaurant) return res.status(404).json({ error: 'Not found' })
   res.json(restaurant)
+})
+
+// ─── POST /api/admin/partners — create a partner ────────────────────────────
+router.post('/partners', requireAdmin, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name: z.string().min(1),
+      email: z.string().email().optional(),
+      phone: z.string().optional(),
+      company: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    const data = schema.parse(req.body)
+    const partner = await prisma.partner.create({ data })
+    res.status(201).json(partner)
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/admin/partners — list all partners ────────────────────────────
+router.get('/partners', requireAdmin, async (req, res, next) => {
+  try {
+    const partners = await prisma.partner.findMany({ orderBy: { createdAt: 'desc' } })
+    res.json(partners)
+  } catch (err) { next(err) }
+})
+
+// ─── PATCH /api/admin/partners/:id — update a partner ───────────────────────
+router.patch('/partners/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name: z.string().min(1).optional(),
+      email: z.string().email().optional(),
+      phone: z.string().optional(),
+      company: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    const data = schema.parse(req.body)
+    const partner = await prisma.partner.update({
+      where: { id: req.params.id },
+      data,
+    })
+    res.json(partner)
+  } catch (err) { next(err) }
+})
+
+// ─── DELETE /api/admin/partners/:id — delete a partner ──────────────────────
+router.delete('/partners/:id', requireAdmin, async (req, res, next) => {
+  try {
+    await prisma.partner.delete({ where: { id: req.params.id } })
+    res.status(204).send()
+  } catch (err) { next(err) }
 })
 
 export { router as adminRouter }

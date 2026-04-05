@@ -18,14 +18,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark')
 
   useEffect(() => {
-    const saved = localStorage.getItem('stolik-theme') as Theme | null
+    const saved = (localStorage.getItem('dinto-theme') || localStorage.getItem('stolik-theme')) as Theme | null
     if (saved === 'light') setTheme('light')
   }, [])
 
   function toggleTheme() {
     setTheme(prev => {
       const next = prev === 'dark' ? 'light' : 'dark'
-      localStorage.setItem('stolik-theme', next)
+      localStorage.setItem('dinto-theme', next)
       if (next === 'light') {
         document.documentElement.setAttribute('data-theme', 'light')
       } else {

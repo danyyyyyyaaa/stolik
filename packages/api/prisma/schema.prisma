@@ -65,12 +65,16 @@ model Restaurant {
   depositRequired  Boolean @default(false)
   depositAmount    Float?
 
+  status    String   @default("active") // "draft" | "active" | "suspended"
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   owner     User         @relation(fields: [ownerId], references: [id])
   ownerId   String
+  partner   Partner?     @relation(fields: [partnerId], references: [id])
+  partnerId String?
   tables    Table[]
   bookings  Booking[]
   guests    GuestProfile[]
@@ -78,7 +82,9 @@ model Restaurant {
   staff             StaffMember[]
   menuCategories    MenuCategory[]
   abandonedBookings AbandonedBooking[]
+  restaurantStaff   RestaurantStaff[]
 
+  @@index([partnerId])
   @@map("restaurants")
 }
 
@@ -111,7 +117,9 @@ model User {
   expoPushToken  String?
   lastActiveAt   DateTime?
   role        String   @default("guest") // guest | owner | admin
+  isActive    Boolean  @default(true)
   isVerified  Boolean  @default(false)
+  lastLoginAt DateTime?
   passwordHash String?
   googleId    String?  @unique
   language    String   @default("pl")
@@ -125,6 +133,7 @@ model User {
   emailVerifications  EmailVerification[]
   passwordResets      PasswordReset[]
   abandonedBookings   AbandonedBooking[]
+  restaurantStaff     RestaurantStaff[]
 
   @@map("users")
 }
@@ -323,4 +332,41 @@ model AbandonedBooking {
   @@index([userId])
   @@index([notificationSent, createdAt])
   @@map("abandoned_bookings")
+}
+
+// ─── PARTNER ─────────────────────────────────────────────────────────────────
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  company     String?
+  commission  Float    @default(10)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  restaurants Restaurant[]
+
+  @@map("partners")
+}
+
+// ─── RESTAURANT STAFF (dashboard invitations) ────────────────────────────────
+model RestaurantStaff {
+  id           String   @id @default(cuid())
+  userId       String
+  restaurantId String
+  role         String   @default("staff") // "manager" | "staff"
+  invitedBy    String?
+  inviteToken  String?  @unique
+  inviteStatus String   @default("pending") // "pending" | "accepted" | "declined"
+  createdAt    DateTime @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, restaurantId])
+  @@index([restaurantId])
+  @@index([inviteToken])
+  @@map("restaurant_staff")
 }

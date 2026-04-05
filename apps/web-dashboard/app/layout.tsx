@@ -11,11 +11,11 @@ const jakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Stolik — Restaurant Dashboard',
+  title: 'Dinto — Restaurant Dashboard',
   description: 'Restaurant booking management system',
 }
 
-const antiFlashScript = `(function(){try{var t=localStorage.getItem('stolik-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})()`
+const antiFlashScript = `(function(){try{var t=localStorage.getItem('dinto-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})()`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,104 +1,99 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import clsx from 'clsx'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
-type User = { id: string; email: string; firstName: string; lastName: string; role: string; isVerified: boolean; createdAt: string }
-const ROLES = ['GUEST', 'OWNER', 'ADMIN']
+import { Search, Users } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { TableRowSkeleton } from '@/components/shared/LoadingSkeleton'
+import { api } from '@/lib/api'
+import { formatDate, getInitials } from '@/lib/utils'
+import { USER_ROLES } from '@/lib/constants'
 
 export default function AdminUsersPage() {
-  const [tok, setTok] = useState<string | null>(null)
-  const [users, setUsers] = useState<User[]>([])
-  const [total, setTotal] = useState(0)
-  const [roleFilter, setRoleFilter] = useState('')
+  const [users, setUsers] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
-  const [changingId, setChangingId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
 
-  const load = useCallback(async (t: string, role: string) => {
+  const load = useCallback(() => {
     setLoading(true)
-    const url = `${API}/api/admin/users${role ? `?role=${role}` : ''}`
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } })
-    const data = await res.json()
-    setUsers(data.users ?? [])
-    setTotal(data.total ?? 0)
-    setLoading(false)
-  }, [])
+    api.get<unknown>('/api/admin/users', { search: search || undefined, role: roleFilter || undefined })
+      .then(res => {
+        const list = Array.isArray(res) ? res : ((res as { users?: unknown[] })?.users ?? (res as { data?: unknown[] })?.data ?? [])
+        setUsers(list as Record<string, unknown>[])
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [search, roleFilter])
 
-  useEffect(() => {
-    const t = localStorage.getItem('stolik_token')
-    setTok(t)
-    if (t) load(t, roleFilter)
-  }, [roleFilter, load])
-
-  async function changeRole(id: string, role: string) {
-    if (!tok) return
-    setChangingId(id)
-    await fetch(`${API}/api/admin/users/${id}/role`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role }),
-    })
-    setUsers(p => p.map(u => u.id === id ? { ...u, role } : u))
-    setChangingId(null)
-  }
+  useEffect(() => { load() }, [load])
 
   return (
-    <div className="flex flex-col min-h-full">
-      <header className="border-b border-border bg-surface px-8 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-text">Users</h1>
-          <p className="text-sm text-muted mt-0.5">{total} total</p>
+    <div>
+      <PageHeader title="Users" description={`${users.length} registered users`} />
+
+      <div className="flex gap-3 mb-5">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..."
+            className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent" />
         </div>
-        <div className="flex gap-1">
-          {['', ...ROLES].map(r => (
-            <button key={r || 'all'} onClick={() => setRoleFilter(r)}
-              className={clsx('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
-                roleFilter === r ? 'bg-accent/15 text-accent border-accent/30' : 'text-muted border-border hover:text-text hover:bg-surface-2')}>
-              {r || 'All'}
-            </button>
-          ))}
-        </div>
-      </header>
-      <div className="flex-1 px-8 py-6">
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-2/40">
-                {['Name', 'Email', 'Role', 'Verified', 'Joined', 'Actions'].map((h, i) => (
-                  <th key={h} className={clsx('px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider', i === 5 ? 'text-right' : 'text-left')}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="animate-pulse">{Array.from({ length: 6 }).map((_, j) => <td key={j} className="px-6 py-4"><div className="h-4 bg-surface-2 rounded" /></td>)}</tr>
-              )) : users.map(u => (
-                <tr key={u.id} className="hover:bg-surface-2/40 transition-colors">
-                  <td className="px-6 py-4 font-medium text-text text-sm">{u.firstName} {u.lastName}</td>
-                  <td className="px-6 py-4 text-sm text-muted">{u.email}</td>
-                  <td className="px-6 py-4">
-                    <span className={clsx('text-xs font-semibold px-2 py-1 rounded-full border',
-                      u.role === 'ADMIN' || u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                      : u.role === 'OWNER' || u.role === 'owner' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                      : 'bg-surface-2 text-muted border-border')}>{u.role}</span>
-                  </td>
-                  <td className="px-6 py-4 text-xs">{u.isVerified ? <span className="text-green-400">✓ Verified</span> : <span className="text-muted">Unverified</span>}</td>
-                  <td className="px-6 py-4 text-sm text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      {ROLES.filter(r => r.toLowerCase() !== u.role.toLowerCase()).map(r => (
-                        <button key={r} onClick={() => changeRole(u.id, r)} disabled={changingId === u.id}
-                          className="px-2 py-1 rounded text-[10px] font-semibold border border-border text-muted hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-50">
-                          → {r}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
+        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+          className="px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text focus:outline-none focus:border-accent">
+          <option value="">All roles</option>
+          <option value="guest">Guest</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-surface-2/50">
+              {['User', 'Role', 'Language', 'Registered', 'Status'].map(h => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={5} />) :
+              users.length === 0 ? (
+                <tr><td colSpan={5}><EmptyState icon={Users} title="No users found" /></td></tr>
+              ) : (
+                users.map(u => (
+                  <tr key={u.id as string} className="border-b border-border hover:bg-surface-2/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl as string} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs text-accent font-bold">
+                            {getInitials(u.firstName as string, u.lastName as string)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-text">{u.firstName as string} {u.lastName as string}</p>
+                          <p className="text-xs text-muted">{u.email as string}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-semibold text-accent capitalize">
+                        {USER_ROLES[u.role as keyof typeof USER_ROLES] ?? u.role as string}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted uppercase text-xs">{u.language as string}</td>
+                    <td className="px-4 py-3 text-xs text-muted">{formatDate(u.createdAt as string)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold ${u.isVerified ? 'text-success' : 'text-warning'}`}>
+                        {u.isVerified ? 'Verified' : 'Unverified'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+          </tbody>
+        </table>
       </div>
     </div>
   )

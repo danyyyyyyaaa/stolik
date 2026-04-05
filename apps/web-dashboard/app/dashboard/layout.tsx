@@ -1,35 +1,17 @@
 'use client'
-
-import { useEffect, useState } from 'react'
-import Sidebar from '@/components/Sidebar'
-import ToastContainer, { OfflineIndicator } from '@/components/ToastNotification'
-import VerifyEmailBanner from '@/components/VerifyEmailBanner'
-import { NotificationProvider } from '@/lib/notifications'
+import { useState } from 'react'
+import { DashboardSidebar } from '@/components/layouts/DashboardSidebar'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [restaurantId, setRestaurantId] = useState<string | null>(null)
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('stolik_active_restaurant')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed?.id) setRestaurantId(parsed.id)
-      }
-    } catch {}
-  }, [])
-
+  const [collapsed, setCollapsed] = useState(false)
   return (
-    <NotificationProvider restaurantId={restaurantId}>
-      <div className="flex h-screen bg-bg overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 min-w-0 overflow-y-auto flex flex-col">
-          <VerifyEmailBanner />
+    <div className="flex h-screen overflow-hidden bg-bg">
+      <DashboardSidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto p-6">
           {children}
-        </main>
-      </div>
-      <ToastContainer />
-      <OfflineIndicator />
-    </NotificationProvider>
+        </div>
+      </main>
+    </div>
   )
 }

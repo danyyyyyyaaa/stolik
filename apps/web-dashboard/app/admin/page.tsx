@@ -1,113 +1,90 @@
 'use client'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Building2, Users, CalendarCheck, TrendingUp, Activity } from 'lucide-react'
-import clsx from 'clsx'
+import { Building2, Users, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react'
+import { StatsCard } from '@/components/shared/StatsCard'
+import { StatsCardSkeleton } from '@/components/shared/LoadingSkeleton'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { api } from '@/lib/api'
+import { formatDate } from '@/lib/utils'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
-
-type Stats = { totalRestaurants: number; activeRestaurants: number; totalBookings: number; totalUsers: number; bookingsToday: number }
-type Restaurant = { id: string; name: string; emoji?: string; isActive: boolean; plan: string; createdAt: string; owner?: { email: string } }
+interface AdminStats {
+  totalRestaurants: number
+  activeRestaurants: number
+  totalUsers: number
+  totalBookings: number
+  todayBookings: number
+  bookingsToday: number
+  monthBookings: number
+}
 
 export default function AdminPage() {
-  const [tok, setTok] = useState<string | null>(null)
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [restaurants, setRestaurants] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
-  const [actionId, setActionId] = useState<string | null>(null)
 
   useEffect(() => {
-    const t = localStorage.getItem('stolik_token')
-    setTok(t)
-    if (!t) return
     Promise.all([
-      fetch(`${API}/api/admin/stats`, { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()),
-      fetch(`${API}/api/admin/restaurants`, { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()),
+      api.get<AdminStats>('/api/admin/stats').catch(() => null),
+      api.get<unknown>('/api/admin/restaurants').catch(() => ({ restaurants: [] })),
     ]).then(([s, r]) => {
-      if (s && typeof s === 'object' && !s.error) setStats(s)
-      setRestaurants(Array.isArray(r) ? r : [])
+      setStats(s)
+      const list = Array.isArray(r) ? r : ((r as { restaurants?: unknown[] })?.restaurants ?? (r as { data?: unknown[] })?.data ?? [])
+      setRestaurants((list as Record<string, unknown>[]).slice(0, 5))
     }).finally(() => setLoading(false))
   }, [])
 
-  async function toggleActive(id: string, active: boolean) {
-    if (!tok) return
-    setActionId(id)
-    const ep = active ? 'deactivate' : 'approve'
-    await fetch(`${API}/api/admin/restaurants/${id}/${ep}`, {
-      method: 'PATCH', headers: { Authorization: `Bearer ${tok}` }
-    })
-    setRestaurants(p => p.map(r => r.id === id ? { ...r, isActive: !active } : r))
-    setActionId(null)
-  }
-
-  if (loading) return <div className="flex items-center justify-center h-full"><span className="text-muted text-sm animate-pulse">Loading…</span></div>
-
-  const CARDS = stats ? [
-    { label: 'Restaurants', value: stats.totalRestaurants, icon: Building2,    color: 'text-blue-400 bg-blue-400/10'   },
-    { label: 'Active',      value: stats.activeRestaurants, icon: Activity,     color: 'text-green-400 bg-green-400/10' },
-    { label: 'Bookings',    value: stats.totalBookings,     icon: CalendarCheck, color: 'text-purple-400 bg-purple-400/10' },
-    { label: 'Users',       value: stats.totalUsers,        icon: Users,        color: 'text-amber-400 bg-amber-400/10' },
-    { label: 'Today',       value: stats.bookingsToday,     icon: TrendingUp,   color: 'text-accent bg-accent/10'       },
-  ] : []
-
   return (
-    <div className="flex flex-col min-h-full">
-      <header className="border-b border-border bg-surface px-8 py-5">
-        <h1 className="text-xl font-bold text-text">Platform Overview</h1>
-        <p className="text-sm text-muted mt-0.5">All restaurants and users on Stolik</p>
-      </header>
-      <div className="flex-1 px-8 py-6 space-y-6">
-        {CARDS.length > 0 && (
-          <div className="grid grid-cols-5 gap-4">
-            {CARDS.map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="bg-surface border border-border rounded-xl p-5 flex items-center gap-3">
-                <div className={clsx('p-2.5 rounded-lg shrink-0', color)}><Icon size={18} /></div>
-                <div>
-                  <p className="text-2xl font-bold text-text tabular-nums">{value}</p>
-                  <p className="text-xs text-muted mt-0.5">{label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div>
+      <PageHeader title="Admin Dashboard" description="Platform overview and management" />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {loading ? Array.from({ length: 4 }).map((_, i) => <StatsCardSkeleton key={i} />) : (
+          <>
+            <StatsCard title="Restaurants"    value={stats?.totalRestaurants ?? 0}                    icon={Building2} />
+            <StatsCard title="Total users"    value={stats?.totalUsers ?? 0}                          icon={Users}       iconColor="text-blue-400" />
+            <StatsCard title="Today bookings" value={stats?.todayBookings ?? stats?.bookingsToday ?? 0} icon={Calendar}    iconColor="text-amber" />
+            <StatsCard title="Month bookings" value={stats?.monthBookings ?? 0}                        icon={TrendingUp} />
+          </>
         )}
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-border"><h2 className="font-semibold text-text">Restaurants</h2></div>
-          <table className="w-full">
+      </div>
+
+      {/* Recent restaurants */}
+      <div className="bg-surface border border-border rounded-card">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="font-semibold text-text">Recent restaurants</h2>
+          <a href="/admin/restaurants" className="text-xs text-accent hover:underline flex items-center gap-1">
+            View all <ArrowUpRight size={12} />
+          </a>
+        </div>
+        {restaurants.length === 0 && !loading ? (
+          <p className="px-5 py-8 text-center text-muted text-sm">No restaurants yet</p>
+        ) : (
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface-2/40">
-                {['Name', 'Owner', 'Plan', 'Status', 'Created', 'Actions'].map((h, i) => (
-                  <th key={h} className={clsx('px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider', i === 5 ? 'text-right' : 'text-left')}>{h}</th>
+              <tr className="border-b border-border">
+                {['Name', 'District', 'Plan', 'Status', 'Created'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {restaurants.map(r => (
-                <tr key={r.id} className="hover:bg-surface-2/40 transition-colors">
-                  <td className="px-6 py-4"><span className="font-medium text-text text-sm">{r.emoji} {r.name}</span></td>
-                  <td className="px-6 py-4 text-sm text-muted">{r.owner?.email ?? '—'}</td>
-                  <td className="px-6 py-4"><span className="text-xs px-2 py-1 bg-surface-2 border border-border rounded-full text-muted">{r.plan}</span></td>
-                  <td className="px-6 py-4">
-                    <span className={clsx('text-xs font-semibold px-2 py-1 rounded-full border', r.isActive ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20')}>
-                      {r.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                <tr key={r.id as string} className="border-b border-border hover:bg-surface-2/30 transition-colors">
+                  <td className="px-4 py-3 font-semibold text-text">{r.name as string}</td>
+                  <td className="px-4 py-3 text-muted">{r.district as string}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-semibold text-accent capitalize">{r.plan as string}</span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-muted">{new Date(r.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => toggleActive(r.id, r.isActive)} disabled={actionId === r.id}
-                        className={clsx('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50',
-                          r.isActive ? 'text-red-400 border-red-500/20 hover:bg-red-500/10' : 'text-green-400 border-green-500/20 hover:bg-green-500/10')}>
-                        {r.isActive ? 'Deactivate' : 'Approve'}
-                      </button>
-                      <Link href={`/admin/restaurants/${r.id}`} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted hover:text-text hover:bg-surface-2 transition-colors">View</Link>
-                    </div>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={r.isActive ? 'confirmed' : 'cancelled'} />
                   </td>
+                  <td className="px-4 py-3 text-muted text-xs">{formatDate(r.createdAt as string)}</td>
                 </tr>
               ))}
-              {restaurants.length === 0 && <tr><td colSpan={6} className="py-16 text-center text-muted text-sm">No restaurants</td></tr>}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
     </div>
   )

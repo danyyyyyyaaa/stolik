@@ -19,6 +19,8 @@ import { adminRouter } from './routes/admin'
 import { menuRouter } from './routes/menu'
 import { pushRouter } from './routes/push'
 import { citiesRouter } from './routes/cities'
+import { dashboardRouter } from './routes/dashboard'
+import { staffRouter } from './routes/staff'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -54,7 +56,7 @@ app.use(cors({
     'http://localhost:3001',
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
@@ -79,6 +81,8 @@ app.use('/api/admin', adminRouter)
 app.use('/api/menu', menuRouter)
 app.use('/api/push', pushRouter)
 app.use('/api/cities', citiesRouter)
+app.use('/api/dashboard', dashboardRouter)
+app.use('/api/staff', staffRouter)
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))
