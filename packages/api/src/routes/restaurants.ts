@@ -289,6 +289,9 @@ const updateRestaurantSchema = z.object({
   dailySummary:     z.boolean().optional(),
   weeklyReport:     z.boolean().optional(),
   openingHours:     z.string().optional(),
+  // Misc fields onboarding may send
+  status:           z.string().optional(),
+  logo:             z.string().optional(),
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
@@ -324,6 +327,33 @@ router.patch('/:id', requireAuth, async (req, res) => {
     res.json(restaurant)
   } catch (err: any) {
     console.error('PATCH /api/restaurants/:id error:', err)
+    res.status(500).json({ error: 'Failed to update restaurant', details: err?.message })
+  }
+})
+
+// ─── PUT /api/restaurants/:id — alias for PATCH (onboarding uses PUT) ────────
+router.put('/:id', requireAuth, async (req, res, next) => {
+  // Reuse the PATCH handler by forwarding — just re-run the same logic
+  const userId = (req as any).userId
+
+  const existing = await prisma.restaurant.findUnique({ where: { id: req.params.id } })
+  if (!existing) return res.status(404).json({ error: 'Restaurant not found' })
+  if (existing.ownerId !== userId) return res.status(403).json({ error: 'Forbidden' })
+
+  const parsed = updateRestaurantSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid data', details: parsed.error.flatten() })
+  }
+
+  try {
+    const { images, ...rest } = parsed.data
+    const restaurant = await prisma.restaurant.update({
+      where: { id: req.params.id },
+      data: { ...rest, ...(images !== undefined ? { images: { set: images } } : {}) },
+    })
+    res.json(restaurant)
+  } catch (err: any) {
+    console.error('PUT /api/restaurants/:id error:', err)
     res.status(500).json({ error: 'Failed to update restaurant', details: err?.message })
   }
 })

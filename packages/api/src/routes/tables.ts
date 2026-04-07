@@ -8,11 +8,15 @@ const prisma = new PrismaClient()
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const createTableSchema = z.object({
-  name:     z.string().min(1),
-  capacity: z.number().int().positive(),
-  posX:     z.number().optional(),
-  posY:     z.number().optional(),
-  shape:    z.enum(['round', 'square', 'rectangle']).default('round'),
+  name:        z.string().min(1),
+  // accept both `capacity` and `maxCapacity` (onboarding sends maxCapacity)
+  capacity:    z.coerce.number().int().positive().optional(),
+  maxCapacity: z.coerce.number().int().positive().optional(),
+  minCapacity: z.coerce.number().int().min(1).optional().default(1),
+  zone:        z.string().optional(),   // onboarding sends zone, store in DB if col exists
+  posX:        z.number().optional(),
+  posY:        z.number().optional(),
+  shape:       z.enum(['round', 'square', 'rectangle']).optional().default('round'),
 })
 
 const updateTableSchema = z.object({
@@ -66,12 +70,30 @@ restaurantTablesRouter.post('/', requireAuth, async (req, res) => {
     return res.status(404).json({ error: 'Restaurant not found or access denied' })
   }
 
+  const parsed = createTableSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid data', details: parsed.error.flatten() })
+  }
+
   try {
-    const data = createTableSchema.parse(req.body)
-    const table = await prisma.table.create({ data: { ...data, restaurantId } })
+    const { capacity, maxCapacity, minCapacity, zone, posX, posY, shape, name } = parsed.data
+    const resolvedCapacity = capacity ?? maxCapacity ?? 4
+
+    const table = await prisma.table.create({
+      data: {
+        restaurantId,
+        name,
+        capacity: resolvedCapacity,
+        minCapacity: minCapacity ?? 1,
+        posX: posX ?? null,
+        posY: posY ?? null,
+        shape: shape ?? 'round',
+      },
+    })
     res.status(201).json(table)
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid data', details: err })
+  } catch (err: any) {
+    console.error('POST /tables error:', err)
+    res.status(500).json({ error: 'Failed to create table', details: err?.message })
   }
 })
 
