@@ -57,9 +57,11 @@ app.use(globalLimiter)
 
 app.use(cors({
   origin: [
-    'https://stolik-dashboard.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
+    'https://stolik-dashboard.vercel.app',
+    'https://stolik-web-dashboard.vercel.app',
+    /\.vercel\.app$/,
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
