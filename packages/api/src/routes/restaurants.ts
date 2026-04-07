@@ -178,21 +178,31 @@ router.get('/:id', async (req, res) => {
   res.json(restaurant)
 })
 
+// Helper: treat empty string as undefined so url/email validators don't trip on ""
+const optStr     = z.string().optional().transform(v => v === '' ? undefined : v)
+const optEmail   = optStr.pipe(z.string().email().optional())
+const optUrl     = optStr.pipe(z.string().url().optional())
+
 // ─── POST /api/restaurants — owner only ──────────────────────────────────────
 const createRestaurantSchema = z.object({
-  name:        z.string().min(2),
-  description: z.string().optional(),
-  cuisine:     z.string().min(2),
-  district:    z.string().min(2),
-  city:        z.string().default('Warszawa'),
-  address:     z.string().min(5),
-  phone:       z.string().optional(),
-  email:       z.string().email().optional(),
-  website:     z.string().url().optional(),
-  instagram:   z.string().optional(),
-  priceRange:  z.enum(['$', '$$', '$$$', '$$$$']).default('$$'),
-  emoji:       z.string().optional(),
-  coverImage:  z.string().optional(),
+  name:             z.string().min(2),
+  description:      z.string().optional(),
+  cuisine:          z.string().optional().default('polish'),
+  district:         z.string().optional().default(''),
+  city:             z.string().optional().default('Warszawa'),
+  address:          z.string().optional().default(''),
+  phone:            optStr,
+  email:            optEmail,
+  website:          optUrl,
+  instagram:        optStr,
+  priceRange:       z.enum(['$', '$$', '$$$', '$$$$']).optional().default('$$'),
+  emoji:            z.string().optional(),
+  coverImage:       z.string().optional(),
+  // Google / integration fields — all optional, ignored on create
+  googlePlaceId:    z.string().optional(),
+  googleSyncEnabled:z.boolean().optional().default(false),
+  googleRating:     z.number().optional(),
+  googleReviewCount:z.number().int().optional(),
 })
 
 router.post('/', requireAuth, async (req, res) => {
@@ -203,56 +213,82 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Only restaurant owners can create restaurants' })
   }
 
-  try {
-    const data = createRestaurantSchema.parse(req.body)
+  const parsed = createRestaurantSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Invalid data',
+      details: parsed.error.flatten(),
+    })
+  }
 
-    const slug = data.name
+  try {
+    const { googlePlaceId, googleSyncEnabled, googleRating, googleReviewCount, ...rest } = parsed.data
+
+    const slug = rest.name
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '')
       + '-' + Date.now().toString(36)
 
     const restaurant = await prisma.restaurant.create({
-      data: { ...data, slug, ownerId: userId },
+      data: {
+        ...rest,
+        slug,
+        ownerId: userId,
+        ...(googlePlaceId   !== undefined ? { googlePlaceId }    : {}),
+        ...(googleSyncEnabled !== undefined ? { googleSyncEnabled } : {}),
+        ...(googleRating    !== undefined ? { googleRating }     : {}),
+        ...(googleReviewCount !== undefined ? { googleReviewCount } : {}),
+      },
     })
 
     res.status(201).json(restaurant)
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid data', details: err })
+  } catch (err: any) {
+    console.error('POST /api/restaurants error:', err)
+    res.status(500).json({ error: 'Failed to create restaurant', details: err?.message })
   }
 })
 
 // ─── PATCH /api/restaurants/:id — owner of this restaurant only ──────────────
 const updateRestaurantSchema = z.object({
-  name:            z.string().min(2).optional(),
-  description:     z.string().optional(),
-  cuisine:         z.string().min(2).optional(),
-  district:        z.string().min(2).optional(),
-  city:            z.string().optional(),
-  address:         z.string().min(5).optional(),
-  phone:           z.string().optional(),
-  email:           z.string().email().optional(),
-  website:         z.string().url().optional(),
-  instagram:       z.string().optional(),
-  priceRange:      z.enum(['$', '$$', '$$$', '$$$$']).optional(),
-  emoji:           z.string().optional(),
-  coverImage:      z.string().optional(),
-  images:          z.array(z.string()).optional(),
-  isActive:        z.boolean().optional(),
-  isPublished:     z.boolean().optional(),
-  slotDuration:    z.number().int().positive().optional(),
-  maxGuestsPerSlot:z.number().int().positive().optional(),
-  minAdvanceHours: z.number().int().min(0).optional(),
-  maxAdvanceDays:  z.number().int().positive().optional(),
-  depositRequired: z.boolean().optional(),
-  depositAmount:   z.number().nonnegative().optional(),
-  openMonday:      z.string().optional(),
-  openTuesday:     z.string().optional(),
-  openWednesday:   z.string().optional(),
-  openThursday:    z.string().optional(),
-  openFriday:      z.string().optional(),
-  openSaturday:    z.string().optional(),
-  openSunday:      z.string().optional(),
+  name:             z.string().min(2).optional(),
+  description:      z.string().optional(),
+  cuisine:          z.string().optional(),
+  district:         z.string().optional(),
+  city:             z.string().optional(),
+  address:          z.string().optional(),
+  phone:            optStr,
+  email:            optEmail,
+  website:          optUrl,
+  instagram:        optStr,
+  priceRange:       z.enum(['$', '$$', '$$$', '$$$$']).optional(),
+  emoji:            z.string().optional(),
+  coverImage:       z.string().optional(),
+  images:           z.array(z.string()).optional(),
+  isActive:         z.boolean().optional(),
+  isPublished:      z.boolean().optional(),
+  slotDuration:     z.number().int().positive().optional(),
+  maxGuestsPerSlot: z.number().int().positive().optional(),
+  minAdvanceHours:  z.number().int().min(0).optional(),
+  maxAdvanceDays:   z.number().int().positive().optional(),
+  depositRequired:  z.boolean().optional(),
+  depositAmount:    z.number().nonnegative().optional(),
+  openMonday:       z.string().optional(),
+  openTuesday:      z.string().optional(),
+  openWednesday:    z.string().optional(),
+  openThursday:     z.string().optional(),
+  openFriday:       z.string().optional(),
+  openSaturday:     z.string().optional(),
+  openSunday:       z.string().optional(),
+  // Google / integration fields
+  googlePlaceId:    z.string().optional(),
+  googleSyncEnabled:z.boolean().optional(),
+  emailNewBooking:  z.boolean().optional(),
+  emailCancellation:z.boolean().optional(),
+  pushNewBooking:   z.boolean().optional(),
+  dailySummary:     z.boolean().optional(),
+  weeklyReport:     z.boolean().optional(),
+  openingHours:     z.string().optional(),
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
@@ -266,9 +302,16 @@ router.patch('/:id', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
+  const parsed = updateRestaurantSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Invalid data',
+      details: parsed.error.flatten(),
+    })
+  }
+
   try {
-    const data = updateRestaurantSchema.parse(req.body)
-    const { images, ...rest } = data
+    const { images, ...rest } = parsed.data
 
     const restaurant = await prisma.restaurant.update({
       where: { id: req.params.id },
@@ -279,8 +322,9 @@ router.patch('/:id', requireAuth, async (req, res) => {
     })
 
     res.json(restaurant)
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid data', details: err })
+  } catch (err: any) {
+    console.error('PATCH /api/restaurants/:id error:', err)
+    res.status(500).json({ error: 'Failed to update restaurant', details: err?.message })
   }
 })
 
