@@ -321,7 +321,7 @@ export default function TerminalPage() {
 
         {/* Footer */}
         <footer className="bg-[#161b22] border-t border-[#30363d] px-5 py-3 flex items-center justify-between shrink-0">
-          <span className="text-xs text-[#484f58] font-medium">Stolik Terminal</span>
+          <span className="text-xs text-[#484f58] font-medium">Dinto Terminal</span>
           <div className="flex items-center gap-1.5">
             {connected ? (
               <>

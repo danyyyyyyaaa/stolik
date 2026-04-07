@@ -5,6 +5,11 @@ import jwt from 'jsonwebtoken'
 import { requireAuth } from '../middleware/auth'
 import { sendBookingConfirmation, scheduleReminders } from '../services/sms'
 import { getIo } from '../lib/socket'
+import {
+  sendBookingConfirmedEmail,
+  sendBookingCancelledEmail,
+  sendNewBookingNotificationEmail,
+} from '../services/email'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -61,6 +66,60 @@ router.post('/', async (req, res) => {
       console.error('[SMS] Confirmation failed:', err)
     )
     scheduleReminders(booking)
+
+    // Upsert GuestProfile (CRM)
+    prisma.guestProfile.upsert({
+      where: { phone_restaurantId: { phone: data.guestPhone, restaurantId: data.restaurantId } },
+      create: {
+        phone:        data.guestPhone,
+        name:         data.guestName,
+        email:        data.guestEmail,
+        restaurantId: data.restaurantId,
+        visitCount:   1,
+        lastVisit:    bookingDate,
+      },
+      update: {
+        name:       data.guestName,
+        email:      data.guestEmail ?? undefined,
+        visitCount: { increment: 1 },
+        lastVisit:  bookingDate,
+      },
+    }).catch(err => console.error('[CRM] GuestProfile upsert failed:', err))
+
+    // Email: confirmation to guest
+    if (data.guestEmail) {
+      const dateLabel = bookingDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      sendBookingConfirmedEmail(data.guestEmail, {
+        guestName:       data.guestName,
+        restaurantName:  booking.restaurant.name,
+        restaurantAddress: booking.restaurant.address ?? undefined,
+        date:            dateLabel,
+        time:            data.time,
+        partySize:       data.guestCount,
+        tableName:       booking.table?.name ?? undefined,
+        notes:           data.notes,
+        bookingRef:      booking.bookingRef,
+      }).catch(err => console.error('[Email] Confirmation failed:', err))
+    }
+
+    // Email: new booking notification to restaurant owner
+    const ownerEmail = booking.restaurant.email
+    if (ownerEmail) {
+      const dateLabel = bookingDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      sendNewBookingNotificationEmail(ownerEmail, {
+        guestName:  data.guestName,
+        guestPhone: data.guestPhone,
+        guestEmail: data.guestEmail,
+        date:       dateLabel,
+        time:       data.time,
+        partySize:  data.guestCount,
+        tableName:  booking.table?.name ?? undefined,
+        notes:      data.notes,
+        source:     data.source,
+        bookingRef: booking.bookingRef,
+        replyTo:    data.guestEmail,
+      }).catch(err => console.error('[Email] Owner notification failed:', err))
+    }
 
     // Real-time: notify restaurant owner
     getIo()?.to(`restaurant:${booking.restaurantId}`).emit('booking:new', {
@@ -273,12 +332,32 @@ router.get('/stats/:restaurantId', requireAuth, async (req, res) => {
 // ─── CANCEL / UPDATE STATUS (PATCH) ──────────────────────────────────────────
 router.patch('/:id/status', requireAuth, async (req, res, next) => {
   try {
-    const { status } = req.body
+    const { status, cancelledByRestaurant } = req.body
     const booking = await prisma.booking.update({
       where: { id: req.params.id },
       data:  { status },
-      include: { restaurant: true, table: { select: { name: true } } },
+      include: { restaurant: { select: { id: true, name: true, slug: true, email: true } }, table: { select: { name: true } } },
     })
+
+    // Email: cancellation to guest
+    if (status === 'cancelled' && booking.guestEmail) {
+      sendBookingCancelledEmail(booking.guestEmail, {
+        guestName:             booking.guestName,
+        restaurantName:        booking.restaurant.name,
+        date:                  booking.date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        time:                  booking.time,
+        cancelledByRestaurant: !!cancelledByRestaurant,
+        restaurantSlug:        booking.restaurant.slug,
+      }).catch(err => console.error('[Email] Cancellation failed:', err))
+    }
+
+    // Email: no-show → increment GuestProfile
+    if (status === 'no_show') {
+      prisma.guestProfile.updateMany({
+        where: { phone: booking.guestPhone, restaurantId: booking.restaurantId },
+        data:  { noShowCount: { increment: 1 } },
+      }).catch(err => console.error('[CRM] NoShow increment failed:', err))
+    }
 
     const io = getIo()
     if (io) {

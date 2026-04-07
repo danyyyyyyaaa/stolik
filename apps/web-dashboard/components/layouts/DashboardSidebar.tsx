@@ -4,11 +4,13 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, BookOpen, Table2, BarChart3,
   UtensilsCrossed, Star, Users, Settings, CreditCard, ChevronLeft,
-  ChevronRight, LogOut, Building2,
+  ChevronRight, LogOut, Building2, Link2,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
 import { useNotifications } from '@/lib/notifications'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
+import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 
 const NAV_ITEMS = [
   { href: '/dashboard',           icon: LayoutDashboard, label: 'Overview' },
@@ -19,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/menu',      icon: UtensilsCrossed, label: 'Menu' },
   { href: '/dashboard/reviews',   icon: Star,            label: 'Reviews' },
   { href: '/dashboard/staff',     icon: Users,           label: 'Staff' },
+  { href: '/dashboard/integrations', icon: Link2,         label: 'Integrations' },
   { href: '/dashboard/settings',  icon: Settings,        label: 'Settings' },
   { href: '/dashboard/billing',   icon: CreditCard,      label: 'Billing' },
 ]
@@ -108,6 +111,10 @@ export function DashboardSidebar({ collapsed, onToggle }: Props) {
           <LogOut size={16} />
           {!collapsed && <span>Log out</span>}
         </button>
+        <div className={`flex items-center mt-0.5 ${collapsed ? 'flex-col gap-1 px-1' : 'gap-1 px-1'}`}>
+          <ThemeToggle compact />
+          {!collapsed && <LanguageSwitcher />}
+        </div>
         <button
           onClick={onToggle}
           className="flex items-center gap-2 px-3 py-2 w-full rounded-btn text-sidebar-text hover:text-white hover:bg-sidebar-hover text-sm transition-colors mt-0.5 justify-center"

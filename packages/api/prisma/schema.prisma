@@ -68,6 +68,10 @@ model Restaurant {
 
   status    String   @default("active") // "draft" | "active" | "suspended"
 
+  googleSyncEnabled Boolean  @default(false)
+  lastGoogleSync    DateTime?
+  notifPrefs        Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -84,6 +88,10 @@ model Restaurant {
   menuCategories    MenuCategory[]
   abandonedBookings AbandonedBooking[]
   restaurantStaff   RestaurantStaff[]
+  googleReviews     GoogleReview[]
+  integrations      Integration[]
+  apiKeys           ApiKey[]
+  smsTemplates      SmsTemplate[]
 
   @@index([partnerId])
   @@map("restaurants")
@@ -375,4 +383,71 @@ model RestaurantStaff {
   @@index([restaurantId])
   @@index([inviteToken])
   @@map("restaurant_staff")
+}
+
+// ─── GOOGLE REVIEW ───────────────────────────────────────────────────────────
+model GoogleReview {
+  id             String   @id @default(uuid())
+  restaurantId   String
+  googleReviewId String   @unique
+  authorName     String
+  authorPhoto    String?
+  rating         Int
+  text           String?
+  publishedAt    DateTime
+  language       String?
+  fetchedAt      DateTime @default(now())
+
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, rating])
+  @@map("google_reviews")
+}
+
+// ─── INTEGRATION ─────────────────────────────────────────────────────────────
+model Integration {
+  id           String   @id @default(uuid())
+  restaurantId String
+  provider     String
+  credentials  Json
+  config       Json
+  status       String   @default("active")
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@unique([restaurantId, provider])
+  @@map("integrations")
+}
+
+// ─── API KEY ──────────────────────────────────────────────────────────────────
+model ApiKey {
+  id           String   @id @default(uuid())
+  restaurantId String
+  key          String   @unique
+  name         String   @default("Default")
+  lastUsedAt   DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@map("api_keys")
+}
+
+// ─── SMS TEMPLATE ─────────────────────────────────────────────────────────────
+model SmsTemplate {
+  id           String   @id @default(uuid())
+  restaurantId String
+  type         String
+  language     String
+  template     String
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@unique([restaurantId, type, language])
+  @@map("sms_templates")
 }

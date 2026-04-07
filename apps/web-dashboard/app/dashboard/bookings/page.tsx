@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, ChevronLeft, ChevronRight, BookOpen,
   Users, Phone, Globe, Layout, MoreVertical, Check, X, Clock, AlertTriangle,
+  Download,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -11,6 +12,7 @@ import { TableRowSkeleton } from '@/components/shared/LoadingSkeleton'
 import { NewBookingModal } from '@/components/bookings/NewBookingModal'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { exportToCSV } from '@/lib/export'
 
 interface Booking {
   id: string
@@ -218,12 +220,46 @@ export default function BookingsPage() {
         title="Bookings"
         description={total > 0 ? `${total} total bookings` : undefined}
         actions={
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-btn transition-colors"
-          >
-            + New Booking
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportToCSV(
+                bookings.map(b => ({
+                  ref: b.bookingRef,
+                  guest: b.guestName,
+                  phone: b.guestPhone,
+                  email: b.guestEmail ?? '',
+                  date: b.date,
+                  time: b.time,
+                  guests: b.guestCount ?? b.partySize ?? 0,
+                  status: b.status,
+                  table: b.table?.name ?? '',
+                  source: b.source,
+                })),
+                'bookings',
+                [
+                  { key: 'ref', label: 'Booking Ref' },
+                  { key: 'guest', label: 'Guest' },
+                  { key: 'phone', label: 'Phone' },
+                  { key: 'email', label: 'Email' },
+                  { key: 'date', label: 'Date' },
+                  { key: 'time', label: 'Time' },
+                  { key: 'guests', label: 'Guests' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'table', label: 'Table' },
+                  { key: 'source', label: 'Source' },
+                ],
+              )}
+              className="flex items-center gap-1.5 px-3 py-2 border border-border bg-surface hover:bg-surface-2 text-muted hover:text-text text-sm font-semibold rounded-btn transition-colors"
+            >
+              <Download size={14} /> Export CSV
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-btn transition-colors"
+            >
+              + New Booking
+            </button>
+          </div>
         }
       />
 

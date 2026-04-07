@@ -7,6 +7,7 @@ import { pl } from 'date-fns/locale'
 import {
   Search, Star, ShieldOff, X, Phone, Mail, Tag,
   CalendarDays, Users, ChevronRight, StickyNote, RefreshCw,
+  Download, ChevronDown,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useT } from '@/lib/i18n'
@@ -25,6 +26,13 @@ type Guest = {
   isBlocked:   boolean
   lastVisit:   string | null
   notes:       string | null
+}
+
+type GuestStats = {
+  totalGuests: number
+  vipCount:    number
+  repeatRate:  number
+  avgVisits:   string
 }
 
 type BookingHistoryItem = {
@@ -48,6 +56,27 @@ const STATUS_COLORS: Record<string, string> = {
   no_show:   'text-red-500    bg-red-500/10',
 }
 
+const SORT_OPTIONS = [
+  { value: 'recent',       label: 'Recent' },
+  { value: 'visits_desc',  label: 'Most visits' },
+  { value: 'visits_asc',   label: 'Fewest visits' },
+  { value: 'noshows_desc', label: 'Most no-shows' },
+  { value: 'name_asc',     label: 'Alphabetical' },
+]
+
+const AVAILABLE_TAGS = ['regular', 'new', 'birthday', 'allergies', 'window-seat', 'quiet-table', 'high-spender', 'group-booker', 'no-show-risk']
+
+// ─── Stat card ────────────────────────────────────────────────────────────────
+
+function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="bg-surface border border-border rounded-xl px-5 py-4">
+      <p className="text-2xl font-bold text-text">{value}</p>
+      <p className="text-xs text-muted mt-1 font-medium">{label}</p>
+      {sub && <p className="text-xs text-muted/60 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -87,6 +116,8 @@ function GuestPanel({
   const [notes,     setNotes]     = useState(guest.notes ?? '')
   const [isVip,     setIsVip]     = useState(guest.isVip)
   const [isBlocked, setIsBlocked] = useState(guest.isBlocked)
+  const [tags,      setTags]      = useState<string[]>(guest.tags)
+  const [tagInput,  setTagInput]  = useState('')
 
   const restaurantId = (() => {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('stolik_active_restaurant') : null
@@ -105,6 +136,7 @@ function GuestPanel({
         setNotes(d.notes ?? '')
         setIsVip(d.isVip)
         setIsBlocked(d.isBlocked)
+        setTags(d.tags ?? [])
       })
       .finally(() => setLoading(false))
   }, [guest.id, restaurantId, token])
@@ -116,17 +148,27 @@ function GuestPanel({
       const res = await fetch(`${API}/api/guests/${restaurantId}/${guest.id}`, {
         method:  'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ notes, isVip, isBlocked }),
+        body:    JSON.stringify({ notes, isVip, isBlocked, tags }),
       })
       const updated = await res.json()
       onUpdated(updated)
     } finally { setSaving(false) }
   }
 
+  function addTag(tag: string) {
+    const t = tag.trim().toLowerCase()
+    if (t && !tags.includes(t)) setTags(prev => [...prev, t])
+    setTagInput('')
+  }
+
+  function removeTag(tag: string) {
+    setTags(prev => prev.filter(t => t !== tag))
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <aside className="relative z-10 w-full max-w-[420px] h-full bg-surface border-l border-border flex flex-col shadow-2xl">
+      <aside className="relative z-10 w-full max-w-[440px] h-full bg-surface border-l border-border flex flex-col shadow-2xl">
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-border">
@@ -160,16 +202,6 @@ function GuestPanel({
               <Phone size={13} className="text-muted shrink-0" />
               <span className="text-text font-mono">{guest.phone}</span>
             </div>
-            {guest.tags.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Tag size={13} className="text-muted shrink-0" />
-                {guest.tags.map(tag => (
-                  <span key={tag} className="text-xs px-2 py-0.5 bg-surface-2 border border-border text-muted rounded-full">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-2 pt-1">
@@ -220,6 +252,47 @@ function GuestPanel({
                 </div>
               </button>
             ))}
+          </div>
+
+          {/* Tags */}
+          <div className="px-6 py-4 border-b border-border">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+              <Tag size={11} /> Tags
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {tags.map(tag => (
+                <span
+                  key={tag}
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded-full"
+                >
+                  {tag}
+                  <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition-colors">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {/* Quick-add standard tags */}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {AVAILABLE_TAGS.filter(t => !tags.includes(t)).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => addTag(tag)}
+                  className="text-xs px-2 py-0.5 bg-surface-2 border border-border text-muted hover:text-text hover:border-accent/40 rounded-full transition-colors"
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
+            {/* Custom tag input */}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput) } }}
+              placeholder="Custom tag, press Enter"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-xs text-text placeholder-muted focus:outline-none focus:border-accent transition-colors"
+            />
           </div>
 
           {/* Notes */}
@@ -302,15 +375,20 @@ function GuestPanel({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function GuestsPage() {
-  const router        = useRouter()
-  const t             = useT()
+  const router = useRouter()
+  const t      = useT()
 
-  const [token,     setToken]     = useState<string | null>(null)
-  const [guests,    setGuests]    = useState<Guest[]>([])
-  const [search,    setSearch]    = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [selected,  setSelected]  = useState<Guest | null>(null)
-  const [activeId,  setActiveId]  = useState<string | null>(null)
+  const [token,    setToken]    = useState<string | null>(null)
+  const [guests,   setGuests]   = useState<Guest[]>([])
+  const [stats,    setStats]    = useState<GuestStats | null>(null)
+  const [search,   setSearch]   = useState('')
+  const [vipOnly,  setVipOnly]  = useState(false)
+  const [sortBy,   setSortBy]   = useState('recent')
+  const [tagFilter, setTagFilter] = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [selected, setSelected] = useState<Guest | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [showSort, setShowSort] = useState(false)
 
   useEffect(() => {
     const tok = localStorage.getItem('stolik_token')
@@ -320,34 +398,65 @@ export default function GuestsPage() {
     if (stored) { try { setActiveId(JSON.parse(stored)?.id) } catch {} }
   }, [router])
 
-  const fetchGuests = useCallback(async (restaurantId: string, q = '') => {
+  const fetchGuests = useCallback(async (restaurantId: string, q = '', vip = false, sort = 'recent', tag = '') => {
     if (!token) return
     setLoading(true)
     try {
-      const params = q ? `?search=${encodeURIComponent(q)}` : ''
-      const res    = await fetch(`${API}/api/guests/${restaurantId}${params}`, {
+      const params = new URLSearchParams()
+      if (q)    params.set('search', q)
+      if (vip)  params.set('vip', 'true')
+      if (sort) params.set('sort', sort)
+      if (tag)  params.set('tag', tag)
+      const res  = await fetch(`${API}/api/guests/${restaurantId}?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      setGuests(Array.isArray(data) ? data : [])
+      if (data.guests) {
+        setGuests(data.guests)
+        setStats(data.stats)
+      } else {
+        // legacy flat array
+        setGuests(Array.isArray(data) ? data : [])
+      }
     } finally { setLoading(false) }
   }, [token])
 
   useEffect(() => {
-    if (activeId) fetchGuests(activeId, search)
+    if (activeId) fetchGuests(activeId, search, vipOnly, sortBy, tagFilter)
   }, [activeId, fetchGuests]) // eslint-disable-line
 
-  // debounce search
+  // debounce search / filters
   useEffect(() => {
     if (!activeId) return
-    const id = setTimeout(() => fetchGuests(activeId, search), 300)
+    const id = setTimeout(() => fetchGuests(activeId, search, vipOnly, sortBy, tagFilter), 300)
     return () => clearTimeout(id)
-  }, [search, activeId, fetchGuests])
+  }, [search, vipOnly, sortBy, tagFilter, activeId, fetchGuests])
 
   function handleGuestUpdated(updated: Guest) {
     setGuests(prev => prev.map(g => g.id === updated.id ? { ...g, ...updated } : g))
     setSelected(prev => prev?.id === updated.id ? { ...prev, ...updated } : prev)
   }
+
+  function exportCSV() {
+    const headers = ['Name', 'Phone', 'Email', 'VIP', 'Visits', 'No-shows', 'Tags', 'Last Visit']
+    const rows = guests.map(g => [
+      g.name ?? '',
+      g.phone,
+      g.email ?? '',
+      g.isVip ? 'Yes' : 'No',
+      g.visitCount,
+      g.noShowCount,
+      g.tags.join(';'),
+      g.lastVisit ? format(parseISO(g.lastVisit), 'yyyy-MM-dd') : '',
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a'); a.href = url; a.download = 'guests.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const sortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? 'Sort'
 
   if (!token) return null
 
@@ -357,32 +466,102 @@ export default function GuestsPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="shrink-0 border-b border-border bg-surface px-8 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-text">{t.guests}</h1>
-          <p className="text-sm text-muted mt-0.5">{t.guestsCount(guests.length)}</p>
+          <h1 className="text-lg font-bold text-text">Guests</h1>
+          <p className="text-sm text-muted mt-0.5">Guest database and CRM</p>
         </div>
+        {guests.length > 0 && (
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm text-text hover:bg-surface-2/80 transition-colors"
+          >
+            <Download size={14} /> Export CSV
+          </button>
+        )}
       </header>
 
       {/* ── Content ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 px-8 py-7">
+      <div className="flex-1 px-8 py-6">
 
-        {/* Search */}
-        <div className="relative mb-5 max-w-sm">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="w-full bg-surface border border-border rounded-lg pl-9 pr-9 py-2.5 text-sm text-text placeholder-muted focus:outline-none focus:border-accent transition-colors"
-          />
-          {search && (
+        {/* Stats bar */}
+        {stats && (
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Guests"  value={stats.totalGuests} />
+            <StatCard label="VIP Guests"    value={stats.vipCount} sub="⭐ marked as VIP" />
+            <StatCard label="Repeat Rate"   value={`${stats.repeatRate}%`} sub="guests with 2+ visits" />
+            <StatCard label="Avg Visits"    value={stats.avgVisits} sub="per guest" />
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex items-center gap-3 mb-5 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Name, phone, or email..."
+              className="w-full bg-surface border border-border rounded-lg pl-9 pr-9 py-2.5 text-sm text-text placeholder-muted focus:outline-none focus:border-accent transition-colors"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* VIP toggle */}
+          <button
+            onClick={() => setVipOnly(v => !v)}
+            className={clsx(
+              'flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border text-sm transition-colors',
+              vipOnly
+                ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400'
+                : 'bg-surface border-border text-muted hover:text-text'
+            )}
+          >
+            <Star size={13} className={vipOnly ? 'fill-yellow-400' : ''} />
+            VIP only
+          </button>
+
+          {/* Tag filter */}
+          <select
+            value={tagFilter}
+            onChange={e => setTagFilter(e.target.value)}
+            className="bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-text focus:outline-none focus:border-accent transition-colors"
+          >
+            <option value="">All tags</option>
+            {AVAILABLE_TAGS.map(tag => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
+
+          {/* Sort */}
+          <div className="relative">
             <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors"
+              onClick={() => setShowSort(v => !v)}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-surface border border-border rounded-lg text-sm text-text hover:bg-surface-2 transition-colors"
             >
-              <X size={14} />
+              {sortLabel} <ChevronDown size={13} className="text-muted" />
             </button>
-          )}
+            {showSort && (
+              <div className="absolute right-0 top-full mt-1 w-44 bg-surface border border-border rounded-xl shadow-xl z-20 py-1">
+                {SORT_OPTIONS.map(o => (
+                  <button
+                    key={o.value}
+                    onClick={() => { setSortBy(o.value); setShowSort(false) }}
+                    className={clsx(
+                      'w-full text-left px-4 py-2 text-sm transition-colors',
+                      sortBy === o.value ? 'text-accent bg-accent/8' : 'text-text hover:bg-surface-2'
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -404,7 +583,7 @@ export default function GuestsPage() {
           ) : guests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted gap-3">
               <p className="text-4xl">👥</p>
-              <p className="text-sm">{search ? t.noResults : t.noGuests}</p>
+              <p className="text-sm">{search || vipOnly || tagFilter ? t.noResults : t.noGuests}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -458,6 +637,11 @@ export default function GuestsPage() {
                         <ShieldOff size={10} /> {t.blocked}
                       </span>
                     )}
+                    {guest.tags.slice(0, 2).map(tag => (
+                      <span key={tag} className="text-xs px-1.5 py-0.5 rounded-full bg-surface-2 border border-border text-muted">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
 
                   <ChevronRight size={14} className="text-border group-hover:text-muted transition-colors" />

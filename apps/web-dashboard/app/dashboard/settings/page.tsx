@@ -5,7 +5,7 @@ import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Skeleton } from '@/components/shared/LoadingSkeleton'
 
-const TABS = ['General', 'Hours', 'Notifications', 'Danger Zone'] as const
+const TABS = ['General', 'Hours', 'Notifications', 'SMS Templates', 'Danger Zone'] as const
 type Tab = typeof TABS[number]
 
 const DISTRICTS = [
@@ -94,6 +94,124 @@ export default function SettingsPage() {
     dailySummary: false,
     weeklyReport: false,
   })
+
+  // SMS Templates tab state
+  const SMS_TYPES = ['booking_confirmed', 'booking_reminder', 'booking_cancelled', 'booking_manual'] as const
+  const SMS_LANGS = ['en', 'pl', 'ru', 'uk'] as const
+  type SmsType = typeof SMS_TYPES[number]
+  type SmsLang = typeof SMS_LANGS[number]
+
+  const SMS_DEFAULTS: Record<SmsType, Record<SmsLang, string>> = {
+    booking_confirmed: {
+      en: 'Hi {guestName}! Booking at {restaurant} confirmed: {date} at {time}, {partySize} guests. See you! — Dinto',
+      pl: 'Cześć {guestName}! Rezerwacja w {restaurant} potwierdzona: {date} o {time}, {partySize} os. Do zobaczenia! — Dinto',
+      ru: 'Привет {guestName}! Бронь в {restaurant} подтверждена: {date} в {time}, {partySize} гостей. До встречи! — Dinto',
+      uk: 'Привіт {guestName}! Бронь у {restaurant} підтверджено: {date} о {time}, {partySize} гостей. До зустрічі! — Dinto',
+    },
+    booking_reminder: {
+      en: 'Reminder: Today at {time} you have a reservation at {restaurant} for {partySize} guests. See you!',
+      pl: 'Przypomnienie: Dziś o {time} masz rezerwację w {restaurant} na {partySize} os. Do zobaczenia!',
+      ru: 'Напоминание: Сегодня в {time} у вас бронь в {restaurant} на {partySize} гостей. До встречи!',
+      uk: 'Нагадування: Сьогодні о {time} у вас бронь у {restaurant} на {partySize} гостей. До зустрічі!',
+    },
+    booking_cancelled: {
+      en: 'Your reservation at {restaurant} ({date}, {time}) has been cancelled. Book again at dinto.pl',
+      pl: 'Rezerwacja w {restaurant} ({date}, {time}) została anulowana. Zarezerwuj ponownie na dinto.pl',
+      ru: 'Ваша бронь в {restaurant} ({date}, {time}) отменена. Забронируйте снова на dinto.pl',
+      uk: 'Вашу бронь у {restaurant} ({date}, {time}) скасовано. Забронюйте знову на dinto.pl',
+    },
+    booking_manual: {
+      en: 'Hi {guestName}! A table has been reserved for you at {restaurant}: {date} at {time}, {partySize} guests. Booking: {bookingCode}',
+      pl: 'Cześć {guestName}! Zarezerwowano dla Ciebie stolik w {restaurant}: {date} o {time}, {partySize} os. Rezerwacja: {bookingCode}',
+      ru: 'Привет {guestName}! Для вас зарезервирован столик в {restaurant}: {date} в {time}, {partySize} гостей. Бронь: {bookingCode}',
+      uk: 'Привіт {guestName}! Для вас зарезервовано столик у {restaurant}: {date} о {time}, {partySize} гостей. Бронь: {bookingCode}',
+    },
+  }
+
+  const SMS_VARS = ['{guestName}', '{restaurant}', '{date}', '{time}', '{partySize}', '{bookingCode}']
+  const SMS_TYPE_LABELS: Record<SmsType, string> = {
+    booking_confirmed: 'Booking Confirmed',
+    booking_reminder: 'Booking Reminder',
+    booking_cancelled: 'Booking Cancelled',
+    booking_manual: 'Manual Booking',
+  }
+
+  const [smsType, setSmsType] = useState<SmsType>('booking_confirmed')
+  const [smsLang, setSmsLang] = useState<SmsLang>('en')
+  const [smsTemplates, setSmsTemplates] = useState<Partial<Record<SmsType, Partial<Record<SmsLang, string>>>>>({})
+  const [smsSaving, setSmsSaving] = useState(false)
+  const [smsSaved, setSmsSaved] = useState(false)
+  const [testingSms, setTestingSms] = useState(false)
+
+  const currentTemplate = smsTemplates[smsType]?.[smsLang] ?? SMS_DEFAULTS[smsType][smsLang]
+
+  function setSmsTemplate(val: string) {
+    setSmsTemplates(t => ({
+      ...t,
+      [smsType]: { ...(t[smsType] ?? {}), [smsLang]: val },
+    }))
+  }
+
+  function insertVar(v: string) {
+    setSmsTemplate(currentTemplate + v)
+  }
+
+  function resetTemplate() {
+    setSmsTemplates(t => ({
+      ...t,
+      [smsType]: { ...(t[smsType] ?? {}), [smsLang]: SMS_DEFAULTS[smsType][smsLang] },
+    }))
+  }
+
+  async function handleSaveSms() {
+    if (!restaurant) return
+    setSmsSaving(true)
+    try {
+      await api.put(`/api/sms-templates`, {
+        restaurantId: restaurant.id,
+        templates: Object.entries(smsTemplates).flatMap(([type, langs]) =>
+          Object.entries(langs ?? {}).map(([lang, template]) => ({ type, language: lang, template }))
+        ),
+      })
+      setSmsSaved(true)
+      setTimeout(() => setSmsSaved(false), 2000)
+    } catch {
+      // silently
+    } finally {
+      setSmsSaving(false)
+    }
+  }
+
+  async function handleTestSms() {
+    if (!restaurant) return
+    setTestingSms(true)
+    try {
+      await api.post('/api/sms-templates/test', {
+        restaurantId: restaurant.id,
+        template: currentTemplate,
+        type: smsType,
+        language: smsLang,
+      })
+    } catch {
+      // silently
+    } finally {
+      setTestingSms(false)
+    }
+  }
+
+  // Preview with sample data
+  const SMS_PREVIEW_DATA: Record<string, string> = {
+    '{guestName}': 'Jan Kowalski',
+    '{restaurant}': restaurant?.name ?? 'Your Restaurant',
+    '{date}': '15 Apr',
+    '{time}': '19:00',
+    '{partySize}': '4',
+    '{bookingCode}': 'DN-1234',
+  }
+  const previewText = currentTemplate.replace(
+    /\{[a-zA-Z]+\}/g,
+    match => SMS_PREVIEW_DATA[match] ?? match
+  )
 
   // Danger Zone state
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -480,6 +598,106 @@ export default function SettingsPage() {
             ))}
           </div>
           <SaveButton onClick={handleSaveNotifs} />
+        </div>
+      )}
+
+      {/* SMS Templates tab */}
+      {activeTab === 'SMS Templates' && (
+        <div className="max-w-2xl space-y-5">
+          {/* Type + Language selectors */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-xs font-semibold text-muted mb-1">Template type</label>
+              <select
+                value={smsType}
+                onChange={e => setSmsType(e.target.value as SmsType)}
+                className="w-full border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent"
+              >
+                {SMS_TYPES.map(t => (
+                  <option key={t} value={t}>{SMS_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted mb-1">Language</label>
+              <div className="flex gap-1">
+                {SMS_LANGS.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setSmsLang(l)}
+                    className={`px-3 py-2 text-xs font-semibold rounded-btn transition-colors ${
+                      smsLang === l ? 'bg-accent text-white' : 'border border-border bg-surface text-muted hover:text-text'
+                    }`}
+                  >
+                    {l.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Available variables */}
+          <div>
+            <p className="text-xs font-semibold text-muted mb-2">Available variables — click to insert</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SMS_VARS.map(v => (
+                <button
+                  key={v}
+                  onClick={() => insertVar(v)}
+                  className="px-2 py-1 bg-accent/10 border border-accent/20 text-accent text-xs font-mono rounded-full hover:bg-accent/20 transition-colors"
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Template textarea */}
+          <div>
+            <label className="block text-xs font-semibold text-muted mb-1">Template</label>
+            <textarea
+              value={currentTemplate}
+              onChange={e => setSmsTemplate(e.target.value)}
+              rows={4}
+              className="w-full border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent resize-none font-mono"
+            />
+            <p className="text-xs text-muted mt-1">{currentTemplate.length} / 160 characters</p>
+          </div>
+
+          {/* Live preview */}
+          <div>
+            <p className="text-xs font-semibold text-muted mb-2">Preview</p>
+            <div className="bg-surface-2 border border-border rounded-xl p-4">
+              <div className="bg-surface border border-border rounded-xl px-4 py-3 max-w-xs">
+                <p className="text-xs text-text leading-relaxed">{previewText}</p>
+              </div>
+              <p className="text-[10px] text-muted mt-2">Sample preview — real values filled at send time</p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={handleSaveSms}
+              disabled={smsSaving}
+              className="px-5 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+            >
+              {smsSaved ? '✓ Saved!' : smsSaving ? 'Saving…' : 'Save template'}
+            </button>
+            <button
+              onClick={resetTemplate}
+              className="px-4 py-2 border border-border rounded-btn text-sm text-muted hover:text-text hover:bg-surface-2 transition-colors"
+            >
+              Reset to default
+            </button>
+            <button
+              onClick={handleTestSms}
+              disabled={testingSms}
+              className="px-4 py-2 border border-border rounded-btn text-sm text-muted hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-60"
+            >
+              {testingSms ? 'Sending…' : 'Send Test SMS'}
+            </button>
+          </div>
         </div>
       )}
 

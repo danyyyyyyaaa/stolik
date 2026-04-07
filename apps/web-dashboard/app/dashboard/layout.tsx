@@ -1,12 +1,26 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DashboardSidebar } from '@/components/layouts/DashboardSidebar'
 import { NotificationProvider } from '@/lib/notifications'
 import ToastContainer from '@/components/ToastNotification'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { GlobalSearch } from '@/components/shared/GlobalSearch'
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
       <DashboardSidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
@@ -16,6 +30,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <ToastContainer />
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )
 }

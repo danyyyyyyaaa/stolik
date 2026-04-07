@@ -23,6 +23,9 @@ import { dashboardRouter } from './routes/dashboard'
 import { staffRouter } from './routes/staff'
 import { billingRouter } from './routes/billing'
 import { reviewsRouter } from './routes/reviews'
+import { googleReviewsRouter } from './routes/google-reviews'
+import { integrationsRouter } from './routes/integrations'
+import { smsTemplatesRouter } from './routes/sms-templates'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -88,6 +91,9 @@ app.use('/api/dashboard', dashboardRouter)
 app.use('/api/staff', staffRouter)
 app.use('/api/billing', billingRouter)
 app.use('/api/reviews', reviewsRouter)
+app.use('/api/restaurants', googleReviewsRouter)  // /:id/google-place, /:id/google-sync, /:id/reviews-combined
+app.use('/api/integrations', integrationsRouter)   // /:restaurantId, /poster/test, /api-keys/:restaurantId, /terminal/:restaurantId/generate-qr
+app.use('/api/sms-templates', smsTemplatesRouter)  // /:restaurantId
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))

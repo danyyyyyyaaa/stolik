@@ -14,32 +14,55 @@ async function ownerOf(restaurantId: string, userId: string) {
   })
 }
 
-// ─── GET /api/guests/:restaurantId — list with optional search ────────────────
+// ─── GET /api/guests/:restaurantId — list with optional search + filters ──────
 
 router.get('/:restaurantId', requireAuth, async (req, res) => {
   const userId = (req as any).userId
   const { restaurantId } = req.params
-  const { search } = req.query
+  const { search, vip, tag, sort } = req.query
 
   const restaurant = await ownerOf(restaurantId, userId)
   if (!restaurant) {
     return res.status(404).json({ error: 'Restaurant not found or access denied' })
   }
 
-  const guests = await prisma.guestProfile.findMany({
-    where: {
-      restaurantId,
-      ...(search ? {
-        OR: [
-          { phone: { contains: search as string, mode: 'insensitive' } },
-          { name:  { contains: search as string, mode: 'insensitive' } },
-        ],
-      } : {}),
-    },
-    orderBy: [{ isVip: 'desc' }, { lastVisit: 'desc' }],
-  })
+  const where: any = { restaurantId }
 
-  res.json(guests)
+  if (search) {
+    where.OR = [
+      { phone: { contains: search as string, mode: 'insensitive' } },
+      { name:  { contains: search as string, mode: 'insensitive' } },
+      { email: { contains: search as string, mode: 'insensitive' } },
+    ]
+  }
+
+  if (vip === 'true') where.isVip = true
+
+  if (tag) where.tags = { has: tag as string }
+
+  // Determine sort order
+  let orderBy: any[] = [{ isVip: 'desc' }, { lastVisit: 'desc' }]
+  if (sort === 'visits_desc')  orderBy = [{ visitCount: 'desc' }]
+  if (sort === 'visits_asc')   orderBy = [{ visitCount: 'asc' }]
+  if (sort === 'name_asc')     orderBy = [{ name: 'asc' }]
+  if (sort === 'noshows_desc') orderBy = [{ noShowCount: 'desc' }]
+  if (sort === 'recent')       orderBy = [{ lastVisit: 'desc' }]
+
+  const [guests, total, vipCount] = await Promise.all([
+    prisma.guestProfile.findMany({ where, orderBy }),
+    prisma.guestProfile.count({ where: { restaurantId } }),
+    prisma.guestProfile.count({ where: { restaurantId, isVip: true } }),
+  ])
+
+  // Repeat rate: guests with 2+ visits
+  const repeatCount = guests.filter(g => g.visitCount >= 2).length
+  const repeatRate  = total > 0 ? Math.round((repeatCount / total) * 100) : 0
+  const avgVisits   = total > 0 ? (guests.reduce((s, g) => s + g.visitCount, 0) / total).toFixed(1) : '0'
+
+  res.json({
+    guests,
+    stats: { totalGuests: total, vipCount, repeatRate, avgVisits },
+  })
 })
 
 // ─── GET /api/guests/:restaurantId/:guestId — guest profile ──────────────────

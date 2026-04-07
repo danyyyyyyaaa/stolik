@@ -550,7 +550,7 @@ export default function AnalyticsPage() {
                         {bookingsByStatus.map((entry, i) => (
                           <Cell
                             key={i}
-                            fill={entry.color ?? STATUS_COLORS[entry.name] ?? '#6b7280'}
+                            fill={entry.color ?? STATUS_COLORS[entry.name ?? ''] ?? '#6b7280'}
                           />
                         ))}
                       </Pie>
@@ -572,7 +572,7 @@ export default function AnalyticsPage() {
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                           style={{ background: item.color ?? STATUS_COLORS[item.name] ?? '#6b7280' }}
                         />
-                        <span className="text-xs text-muted capitalize">{item.name.replace('_', ' ')}</span>
+                        <span className="text-xs text-muted capitalize">{((item.name || (item as any).status || 'unknown') as string).replace(/_/g, ' ')}</span>
                       </div>
                       <span className="text-xs font-semibold text-text">{item.value}</span>
                     </div>

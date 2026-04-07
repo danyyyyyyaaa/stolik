@@ -1,217 +1,269 @@
 'use client'
-import { useState } from 'react'
-import { X, Plus, Minus, Loader2 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
+
+const TIME_SLOTS = [
+  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+  '20:00', '20:30', '21:00', '21:30', '22:00',
+]
+
+interface Table {
+  id: string
+  name: string
+  capacity: number
+}
 
 interface Props {
   restaurantId: string
+  token: string
   onClose: () => void
-  onCreated: () => void
+  onCreated: (booking: Record<string, unknown>) => void
 }
 
-interface FormData {
-  guestName: string
-  guestPhone: string
-  guestEmail: string
-  date: string
-  time: string
-  partySize: number
-  notes: string
-}
+export function NewBookingModal({ restaurantId, token, onClose, onCreated }: Props) {
+  const [form, setForm] = useState({
+    guestName:  '',
+    guestPhone: '',
+    guestEmail: '',
+    date:       new Date().toISOString().slice(0, 10),
+    time:       '19:00',
+    guestCount: 2,
+    tableId:    '',
+    notes:      '',
+    sendSms:    true,
+  })
+  const [tables, setTables] = useState<Table[]>([])
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
 
-const DEFAULT_FORM: FormData = {
-  guestName: '',
-  guestPhone: '',
-  guestEmail: '',
-  date: new Date().toISOString().split('T')[0],
-  time: '19:00',
-  partySize: 2,
-  notes: '',
-}
-
-export function NewBookingModal({ restaurantId, onClose, onCreated }: Props) {
-  const [form, setForm] = useState<FormData>(DEFAULT_FORM)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  function set<K extends keyof FormData>(key: K, value: FormData[K]) {
-    setForm(prev => ({ ...prev, [key]: value }))
-  }
+  useEffect(() => {
+    fetch(`${API}/api/restaurants/${restaurantId}/tables`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then((d: unknown) => {
+        if (Array.isArray(d)) setTables(d as Table[])
+        else if (d && typeof d === 'object' && Array.isArray((d as Record<string, unknown>).tables)) {
+          setTables((d as { tables: Table[] }).tables)
+        }
+      })
+      .catch(() => {})
+  }, [restaurantId, token])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.guestName.trim() || !form.guestPhone.trim() || !form.date || !form.time) {
-      setError('Please fill in all required fields.')
-      return
-    }
-    setLoading(true)
-    setError(null)
+    if (!form.guestName.trim())  { setError('Guest name is required'); return }
+    if (!form.guestPhone.trim()) { setError('Phone is required'); return }
+    setSaving(true)
+    setError('')
     try {
-      await api.post('/api/bookings', {
+      const body: Record<string, unknown> = {
         restaurantId,
-        guestName:  form.guestName.trim(),
-        guestPhone: form.guestPhone.trim(),
-        guestEmail: form.guestEmail.trim() || undefined,
+        guestName:  form.guestName,
+        guestPhone: form.guestPhone,
+        guestEmail: form.guestEmail || undefined,
         date:       form.date,
         time:       form.time,
-        guestCount: form.partySize,
-        notes:      form.notes.trim() || undefined,
-        source:     'dashboard',
+        guestCount: form.guestCount,
+        notes:      form.notes || undefined,
+        source:     'manual',
+      }
+      if (form.tableId) body.tableId = form.tableId
+
+      const res  = await fetch(`${API}/api/bookings`, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
       })
-      onCreated()
+      const data = await res.json() as Record<string, unknown>
+      if (!res.ok) {
+        setError((data.error as string | undefined) || 'Failed to create booking')
+        return
+      }
+      const booking = (data.booking as Record<string, unknown> | undefined) ?? data
+      onCreated(booking)
       onClose()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create booking')
+    } catch {
+      setError('Cannot connect to server')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
+  const inputCls =
+    'w-full bg-surface-2 border border-border rounded-lg px-3.5 py-2.5 text-sm text-text placeholder-muted focus:outline-none focus:border-accent transition-colors'
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-surface border border-border rounded-card shadow-md w-full max-w-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="font-bold text-text text-lg">New Booking</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-text">New Booking</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-btn hover:bg-surface-2 text-muted hover:text-text transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-5 space-y-4">
-            {error && (
-              <div className="px-3 py-2 rounded-btn bg-error/10 border border-error/30 text-sm text-error">
-                {error}
-              </div>
-            )}
-
-            {/* Guest name */}
-            <div>
-              <label className="block text-xs font-semibold text-muted mb-1.5">
-                Guest name <span className="text-error">*</span>
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Guest info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Guest name *</label>
               <input
-                value={form.guestName}
-                onChange={e => set('guestName', e.target.value)}
-                placeholder="John Smith"
+                type="text"
                 required
-                className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent"
+                value={form.guestName}
+                onChange={e => setForm(p => ({ ...p, guestName: e.target.value }))}
+                placeholder="Jan Kowalski"
+                className={inputCls}
               />
             </div>
-
-            {/* Phone + Email */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1.5">
-                  Phone <span className="text-error">*</span>
-                </label>
-                <input
-                  value={form.guestPhone}
-                  onChange={e => set('guestPhone', e.target.value)}
-                  placeholder="+48 600 000 000"
-                  required
-                  className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={form.guestEmail}
-                  onChange={e => set('guestEmail', e.target.value)}
-                  placeholder="guest@email.com"
-                  className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent"
-                />
-              </div>
-            </div>
-
-            {/* Date + Time */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1.5">
-                  Date <span className="text-error">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={e => set('date', e.target.value)}
-                  required
-                  className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text focus:outline-none focus:border-accent"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-muted mb-1.5">
-                  Time <span className="text-error">*</span>
-                </label>
-                <input
-                  type="time"
-                  value={form.time}
-                  onChange={e => set('time', e.target.value)}
-                  required
-                  className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text focus:outline-none focus:border-accent"
-                />
-              </div>
-            </div>
-
-            {/* Party size stepper */}
-            <div>
-              <label className="block text-xs font-semibold text-muted mb-1.5">Party size</label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => set('partySize', Math.max(1, form.partySize - 1))}
-                  className="w-8 h-8 rounded-btn border border-border flex items-center justify-center hover:bg-surface-2 text-text transition-colors"
-                >
-                  <Minus size={14} />
-                </button>
-                <span className="w-8 text-center font-bold text-text">{form.partySize}</span>
-                <button
-                  type="button"
-                  onClick={() => set('partySize', Math.min(20, form.partySize + 1))}
-                  className="w-8 h-8 rounded-btn border border-border flex items-center justify-center hover:bg-surface-2 text-text transition-colors"
-                >
-                  <Plus size={14} />
-                </button>
-                <span className="text-xs text-muted ml-1">guests</span>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-xs font-semibold text-muted mb-1.5">Notes</label>
-              <textarea
-                value={form.notes}
-                onChange={e => set('notes', e.target.value)}
-                placeholder="Allergies, special occasions..."
-                rows={3}
-                className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent resize-none"
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Phone *</label>
+              <input
+                type="tel"
+                required
+                value={form.guestPhone}
+                onChange={e => setForm(p => ({ ...p, guestPhone: e.target.value }))}
+                placeholder="+48 123 456 789"
+                className={inputCls}
               />
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-2 px-5 pb-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider">Email (optional)</label>
+            <input
+              type="email"
+              value={form.guestEmail}
+              onChange={e => setForm(p => ({ ...p, guestEmail: e.target.value }))}
+              placeholder="guest@example.com"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Date *</label>
+              <input
+                type="date"
+                required
+                value={form.date}
+                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                className={inputCls}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Time *</label>
+              <select
+                value={form.time}
+                onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                className={inputCls}
+              >
+                {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Party size + Table */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Party size *</label>
+              <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, guestCount: Math.max(1, p.guestCount - 1) }))}
+                  className="px-3 py-2.5 bg-surface-2 text-text hover:bg-surface-2/80 text-sm font-bold transition-colors"
+                >
+                  -
+                </button>
+                <span className="flex-1 text-center text-sm font-semibold text-text">{form.guestCount}</span>
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, guestCount: Math.min(20, p.guestCount + 1) }))}
+                  className="px-3 py-2.5 bg-surface-2 text-text hover:bg-surface-2/80 text-sm font-bold transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Table</label>
+              <select
+                value={form.tableId}
+                onChange={e => setForm(p => ({ ...p, tableId: e.target.value }))}
+                className={inputCls}
+              >
+                <option value="">Auto-assign</option>
+                {tables.map(t => (
+                  <option key={t.id} value={t.id}>{t.name} (up to {t.capacity})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider">Special requests</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+              rows={2}
+              placeholder="Allergies, special occasions..."
+              className={`${inputCls} resize-none`}
+            />
+          </div>
+
+          {/* SMS toggle */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div
+              role="switch"
+              aria-checked={form.sendSms}
+              onClick={() => setForm(p => ({ ...p, sendSms: !p.sendSms }))}
+              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${
+                form.sendSms ? 'bg-accent' : 'bg-surface-2 border border-border'
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  form.sendSms ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </div>
+            <span className="text-sm text-text">Send SMS confirmation to guest</span>
+          </label>
+
+          {error && (
+            <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-2.5">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold border border-border rounded-btn hover:bg-surface-2 text-muted hover:text-text transition-colors"
+              className="flex-1 py-2.5 border border-border rounded-lg text-sm text-text hover:bg-surface-2 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-accent hover:bg-accent-hover text-white rounded-btn transition-colors disabled:opacity-60"
+              disabled={saving}
+              className="flex-1 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
             >
-              {loading && <Loader2 size={14} className="animate-spin" />}
-              Create booking
+              {saving ? 'Creating...' : 'Create Booking'}
             </button>
           </div>
         </form>

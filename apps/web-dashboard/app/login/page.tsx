@@ -139,7 +139,10 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted/50">
-          &copy; {new Date().getFullYear()} Dinto. All rights reserved.
+          &copy; {new Date().getFullYear()} Dinto.{' '}
+          <Link href="/terms" className="hover:text-muted/80 transition-colors">Terms</Link>
+          {' · '}
+          <Link href="/privacy" className="hover:text-muted/80 transition-colors">Privacy</Link>
         </p>
       </div>
     </div>

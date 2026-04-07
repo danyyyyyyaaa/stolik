@@ -91,7 +91,7 @@ export default function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0">
             <Utensils size={15} className="text-accent" />
           </div>
-          <span className="font-bold text-text text-base tracking-tight">Stolik</span>
+          <span className="font-bold text-text text-base tracking-tight">Dinto</span>
         </div>
 
         {/* Restaurant picker */}
