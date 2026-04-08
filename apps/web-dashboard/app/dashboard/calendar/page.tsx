@@ -11,6 +11,7 @@ import { CalendarDayView } from '@/components/calendar/CalendarDayView'
 import { BookingDetailModal } from '@/components/calendar/BookingDetailModal'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { useT } from '@/lib/i18n'
 
 export interface BookingData {
   id: string
@@ -88,6 +89,7 @@ function CalendarSkeleton() {
 
 export default function CalendarPage() {
   const { restaurant } = useMyRestaurant()
+  const t = useT()
 
   const [view, setView] = useState<CalendarView>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -183,7 +185,7 @@ export default function CalendarPage() {
                 onClick={fetchDays}
                 className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-btn transition-colors"
               >
-                <RefreshCw size={14} /> Retry
+                <RefreshCw size={14} /> {t.refresh}
               </button>
             }
           />

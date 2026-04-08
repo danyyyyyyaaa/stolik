@@ -56,6 +56,7 @@ interface AppState {
   myBookings:         Booking[]
   lastBooking:        Booking | null
   pendingBooking:     PendingBooking | null
+  favoriteIds:        string[]
 
   setToken:           (token: string | null) => Promise<void>
   setUser:            (user: User | null) => void
@@ -63,6 +64,8 @@ interface AppState {
   setMyBookings:      (bookings: Booking[]) => void
   setLastBooking:     (booking: Booking | null) => void
   setPendingBooking:  (booking: PendingBooking | null) => void
+  setFavoriteIds:     (ids: string[]) => void
+  toggleFavoriteId:   (id: string) => void
   logout:             () => Promise<void>
 }
 
@@ -73,6 +76,7 @@ export const useAppStore = create<AppState>((set) => ({
   myBookings:         [],
   lastBooking:        null,
   pendingBooking:     null,
+  favoriteIds:        [],
 
   setToken: async (token) => {
     try {
@@ -97,12 +101,20 @@ export const useAppStore = create<AppState>((set) => ({
 
   setPendingBooking: (pendingBooking) => set({ pendingBooking }),
 
+  setFavoriteIds: (favoriteIds) => set({ favoriteIds }),
+
+  toggleFavoriteId: (id) => set(state => ({
+    favoriteIds: state.favoriteIds.includes(id)
+      ? state.favoriteIds.filter(f => f !== id)
+      : [...state.favoriteIds, id],
+  })),
+
   logout: async () => {
     try {
       await SecureStore.deleteItemAsync(TOKEN_KEY)
     } catch {
       // ignore
     }
-    set({ token: null, user: null, myBookings: [] })
+    set({ token: null, user: null, myBookings: [], favoriteIds: [] })
   },
 }))

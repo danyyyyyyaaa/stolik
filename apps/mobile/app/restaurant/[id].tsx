@@ -10,6 +10,7 @@ import { useTheme } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore, type PendingBooking } from '../../src/store/useAppStore'
 import { getSlots, getRestaurant } from '../../src/api/restaurants'
+import { toggleFavorite } from '../../src/api/favorites'
 import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { Stars } from '../../src/components/Stars'
@@ -184,6 +185,21 @@ export default function RestaurantScreen() {
   const restaurants        = useAppStore(s => s.restaurants)
   const token              = useAppStore(s => s.token)
   const setPendingBooking  = useAppStore(s => s.setPendingBooking)
+  const favoriteIds        = useAppStore(s => s.favoriteIds)
+  const toggleFavoriteId   = useAppStore(s => s.toggleFavoriteId)
+  const isFavorited        = !!id && favoriteIds.includes(id)
+  const [togglingFav, setTogglingFav] = useState(false)
+
+  async function handleToggleFavorite() {
+    if (!token) { setLoginModal(true); return }
+    if (!id || togglingFav) return
+    setTogglingFav(true)
+    try {
+      await toggleFavorite(id)
+      toggleFavoriteId(id)
+    } catch {}
+    finally { setTogglingFav(false) }
+  }
 
   // Try store first, fall back to mock, then fetch from API
   const storeR = restaurants.find(x => x.id === id)
@@ -299,6 +315,11 @@ export default function RestaurantScreen() {
                   </Text>
                 </View>
               )}
+              {(r as any)?.hasParking && (
+                <View style={[s.openBadge, { backgroundColor: '#1C4ED8' }]}>
+                  <Text style={s.openBadgeText}>🅿 {t.parking_available}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -338,6 +359,7 @@ export default function RestaurantScreen() {
                   [t.cuisine_label,   getCuisineName(cuisine, t), null],
                   [t.address,         nr.address,            'address'],
                   [t.tel,             (r as any)?.phone,     'phone'],
+                  ...(((r as any)?.hasParking) ? [[t.parking_details, (r as any)?.parkingDetails || t.parking_available, null]] : []),
                 ].filter(([, v]) => v).map(([k, v, type]) => (
                   <View key={String(k)} style={[s.infoRow, { borderBottomColor: th.border }]}>
                     <Text style={[s.infoKey, { color: th.textSub }]}>{k}</Text>
@@ -485,6 +507,13 @@ export default function RestaurantScreen() {
       <View style={[s.backWrap, { top: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.85}>
           <Feather name="chevron-left" size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Favorite button ── */}
+      <View style={[s.favWrap, { top: insets.top + 12 }]}>
+        <TouchableOpacity onPress={handleToggleFavorite} style={s.backBtn} activeOpacity={0.85} disabled={togglingFav}>
+          <Feather name="heart" size={20} color={isFavorited ? '#FF6B6B' : '#fff'} fill={isFavorited ? '#FF6B6B' : 'none'} />
         </TouchableOpacity>
       </View>
 
@@ -646,8 +675,9 @@ function makeStyles(th: any) {
     reviewStars:      { flexDirection: 'row', gap: 2 },
     reviewText:       { fontSize: 13, lineHeight: 20 },
 
-    // Back button
+    // Back + favorite buttons
     backWrap:         { position: 'absolute', left: 16, zIndex: 10 },
+    favWrap:          { position: 'absolute', right: 16, zIndex: 10 },
     backBtn:          { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
 
     // Booking bar

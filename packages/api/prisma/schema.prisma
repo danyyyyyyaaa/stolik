@@ -66,6 +66,14 @@ model Restaurant {
   depositRequired  Boolean @default(false)
   depositAmount    Float?
 
+  // Birthday perks
+  birthdayPerkEnabled     Boolean @default(false)
+  birthdayPerkDescription String?
+
+  // Parking
+  hasParking      Boolean @default(false)
+  parkingDetails  String?
+
   status    String   @default("active") // "draft" | "active" | "suspended"
 
   googleSyncEnabled Boolean  @default(false)
@@ -92,6 +100,10 @@ model Restaurant {
   integrations      Integration[]
   apiKeys           ApiKey[]
   smsTemplates      SmsTemplate[]
+  favorites         UserFavorite[]
+  waitlist          Waitlist[]
+  deals             RestaurantDeal[]
+  promotion         RestaurantPromotion?
 
   @@index([partnerId])
   @@map("restaurants")
@@ -132,6 +144,10 @@ model User {
   passwordHash String?
   googleId    String?  @unique
   language    String   @default("pl")
+  dateOfBirth  DateTime?
+  referralCode String?  @unique
+  referredById String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -143,6 +159,11 @@ model User {
   passwordResets      PasswordReset[]
   abandonedBookings   AbandonedBooking[]
   restaurantStaff     RestaurantStaff[]
+  favorites           UserFavorite[]
+  phoneVerifications  PhoneVerification[]
+  waitlistEntries     Waitlist[]
+  referralsGiven      Referral[]          @relation("Referrer")
+  referralsReceived   Referral[]          @relation("Referred")
 
   @@map("users")
 }
@@ -152,6 +173,7 @@ model EmailVerification {
   id        String    @id @default(uuid())
   token     String    @unique
   userId    String
+  newEmail  String?   // set when used for email-change flow (null = initial registration)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   usedAt    DateTime?
@@ -160,6 +182,22 @@ model EmailVerification {
   @@index([userId])
   @@index([token])
   @@map("email_verifications")
+}
+
+// ─── PHONE VERIFICATION ───────────────────────────────────────────────────────
+model PhoneVerification {
+  id        String    @id @default(uuid())
+  code      String
+  userId    String
+  newPhone  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("phone_verifications")
 }
 
 // ─── REFRESH TOKEN ────────────────────────────────────────────────────────────
@@ -186,8 +224,13 @@ model Booking {
   time        String   // "19:00"
   guestCount  Int
   duration    Int      @default(90) // minutes
-  notes       String?
+  notes              String?
+  specialRequests    String?   // free-text allergy / dietary notes
+  seatingPreference  String?   // window | kids | quiet | wheelchair
+  allergies          String[]  // ["gluten-free","vegan",...]
   source      String   @default("app") // app | widget | manual | instagram
+  isBirthdayBooking Boolean @default(false)
+  shortCode   String?  @unique // 8-char public share code
 
   // Guest info (may not be registered user)
   guestName   String
@@ -450,4 +493,98 @@ model SmsTemplate {
 
   @@unique([restaurantId, type, language])
   @@map("sms_templates")
+}
+
+// ─── USER FAVORITE ────────────────────────────────────────────────────────────
+model UserFavorite {
+  id           String   @id @default(cuid())
+  userId       String
+  restaurantId String
+  createdAt    DateTime @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, restaurantId])
+  @@map("user_favorites")
+}
+
+// ─── WAITLIST ─────────────────────────────────────────────────────────────────
+model Waitlist {
+  id           String    @id @default(cuid())
+  restaurantId String
+  date         DateTime
+  timeSlot     String    // "19:00"
+  partySize    Int
+  guestName    String
+  guestPhone   String
+  guestEmail   String?
+  userId       String?
+  status       String    @default("waiting") // waiting | notified | expired | booked
+  notifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, date, timeSlot])
+  @@map("waitlist")
+}
+
+// ─── REFERRAL ────────────────────────────────────────────────────────────────
+model Referral {
+  id           String    @id @default(cuid())
+  referrerId   String
+  referredId   String
+  status       String    @default("pending") // pending | completed
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  referrer     User      @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred     User      @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, referredId])
+  @@index([referredId])
+  @@map("referrals")
+}
+
+// ─── RESTAURANT DEAL ─────────────────────────────────────────────────────────
+model RestaurantDeal {
+  id           String    @id @default(cuid())
+  restaurantId String
+  title        String
+  description  String?
+  discountType String    @default("percent") // percent | fixed | freeitem
+  discountValue Float?
+  code         String?
+  validFrom    DateTime?
+  validUntil   DateTime?
+  isActive     Boolean   @default(true)
+  maxUses      Int?
+  usedCount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@map("restaurant_deals")
+}
+
+// ─── RESTAURANT PROMOTION (ADS) ──────────────────────────────────────────────
+model RestaurantPromotion {
+  id           String    @id @default(cuid())
+  restaurantId String    @unique
+  isActive     Boolean   @default(false)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  budget       Float?
+  impressions  Int       @default(0)
+  clicks       Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("restaurant_promotions")
 }

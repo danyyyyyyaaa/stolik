@@ -84,6 +84,42 @@ export interface Translations {
   coming_soon: string; route: string; my_location: string
   faq: string; contact_us: string; terms: string; help: string
   all_restaurants: string
+  // special requests (booking form)
+  special_requests_section: string
+  seating_preference: string
+  seating_window: string; seating_kids: string; seating_quiet: string; seating_wheelchair: string
+  allergies_section: string
+  allergy_gluten: string; allergy_nuts: string; allergy_lactose: string; allergy_vegan: string; allergy_halal: string
+  notes_label: string; notes_placeholder: string
+  // date of birth (profile)
+  dob_label: string; dob_hint: string; dob_placeholder: string; dob_invalid: string
+  // parking
+  parking_available: string; parking_details: string
+  // favorites
+  favorites_label: string; favorites_empty: string; favorites_empty_sub: string
+  add_to_favorites: string; remove_from_favorites: string
+  // book again
+  book_again: string
+  // waitlist
+  join_waitlist: string; waitlist_joined: string; leave_waitlist: string
+  waitlist_position: string; waitlist_notify_title: string; waitlist_notify_body: string
+  no_slots_join: string
+  // share booking
+  share_booking: string
+  // change email/phone
+  change_email: string; change_phone: string; new_email: string; new_phone: string
+  send_code: string; sending_code: string; verify_code: string
+  code_sent_email: string; code_sent_phone: string; code_invalid: string
+  email_changed: string; phone_changed: string
+  enter_verification_code: string
+  // deals
+  deals_label: string; deals_empty: string; deal_expires: string; deal_off: string; deals_at: string
+  // referral
+  invite_friends: string; your_referral_code: string; referral_copy: string; referral_copied: string
+  referral_share: string; referral_count: string; referral_pending: string
+  referral_code_field: string; referral_code_placeholder: string
+  // ads
+  sponsored: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -165,6 +201,31 @@ const T: Record<LangKey, Translations> = {
     coming_soon: 'Coming soon', route: 'Route', my_location: 'My location',
     faq: 'FAQ', contact_us: 'Contact us', terms: 'Terms of use', help: 'Help',
     all_restaurants: 'All restaurants',
+    special_requests_section: 'Special requests',
+    seating_preference: 'Seating preference',
+    seating_window: 'Window seat', seating_kids: 'Kids table', seating_quiet: 'Quiet area', seating_wheelchair: 'Wheelchair',
+    allergies_section: 'Allergies & dietary',
+    allergy_gluten: 'Gluten-free', allergy_nuts: 'Nut allergy', allergy_lactose: 'Lactose-free', allergy_vegan: 'Vegan', allergy_halal: 'Halal',
+    notes_label: 'Notes (optional)', notes_placeholder: 'Any other requests...',
+    dob_label: 'Date of birth', dob_hint: 'Used for birthday perks at restaurants', dob_placeholder: 'DD.MM.YYYY', dob_invalid: 'Enter a valid date (DD.MM.YYYY)',
+    parking_available: 'Parking available', parking_details: 'Parking',
+    favorites_label: 'Favorites', favorites_empty: 'No saved restaurants yet', favorites_empty_sub: 'Tap the heart on a restaurant to save it here',
+    add_to_favorites: 'Add to favorites', remove_from_favorites: 'Remove from favorites',
+    book_again: 'Book again',
+    join_waitlist: 'Join waitlist', waitlist_joined: 'Added to waitlist!', leave_waitlist: 'Leave waitlist',
+    waitlist_position: 'You are #{n} on the waitlist', waitlist_notify_title: 'Table available!', waitlist_notify_body: 'A table opened up — book now!',
+    no_slots_join: 'No tables available. Join the waitlist and we\'ll notify you.',
+    share_booking: 'Share booking',
+    change_email: 'Change email', change_phone: 'Change phone', new_email: 'New email address', new_phone: 'New phone number',
+    send_code: 'Send code', sending_code: 'Sending…', verify_code: 'Verify',
+    code_sent_email: 'Verification link sent to your new email', code_sent_phone: 'SMS code sent to your new number',
+    code_invalid: 'Invalid or expired code', email_changed: 'Email updated!', phone_changed: 'Phone updated!',
+    enter_verification_code: 'Enter the 6-digit code',
+    deals_label: 'Deals 🔥', deals_empty: 'No active deals right now', deal_expires: 'Expires', deal_off: 'off', deals_at: 'at',
+    invite_friends: 'Invite friends', your_referral_code: 'Your referral code', referral_copy: 'Copy', referral_copied: 'Copied!',
+    referral_share: 'Share code', referral_count: 'Friends invited', referral_pending: 'Pending',
+    referral_code_field: 'Referral code (optional)', referral_code_placeholder: 'Enter referral code',
+    sponsored: 'Ad',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
@@ -244,6 +305,31 @@ const T: Record<LangKey, Translations> = {
     coming_soon: 'Wkrótce', route: 'Trasa', my_location: 'Moja lokalizacja',
     faq: 'FAQ', contact_us: 'Skontaktuj się', terms: 'Warunki użytkowania', help: 'Pomoc',
     all_restaurants: 'Wszystkie restauracje',
+    special_requests_section: 'Specjalne życzenia',
+    seating_preference: 'Preferencje miejsca',
+    seating_window: 'Przy oknie', seating_kids: 'Stolik dla dzieci', seating_quiet: 'Cicha strefa', seating_wheelchair: 'Dostęp dla wózka',
+    allergies_section: 'Alergie i dieta',
+    allergy_gluten: 'Bezglutenowe', allergy_nuts: 'Alergia na orzechy', allergy_lactose: 'Bez laktozy', allergy_vegan: 'Wegańskie', allergy_halal: 'Halal',
+    notes_label: 'Uwagi (opcjonalnie)', notes_placeholder: 'Inne prośby...',
+    dob_label: 'Data urodzenia', dob_hint: 'Używana do zniżek urodzinowych w restauracjach', dob_placeholder: 'DD.MM.RRRR', dob_invalid: 'Podaj poprawną datę (DD.MM.RRRR)',
+    parking_available: 'Parking dostępny', parking_details: 'Parking',
+    favorites_label: 'Ulubione', favorites_empty: 'Brak zapisanych restauracji', favorites_empty_sub: 'Kliknij serce na restauracji, aby ją tu zapisać',
+    add_to_favorites: 'Dodaj do ulubionych', remove_from_favorites: 'Usuń z ulubionych',
+    book_again: 'Zarezerwuj ponownie',
+    join_waitlist: 'Dołącz do listy oczekujących', waitlist_joined: 'Dodano do listy!', leave_waitlist: 'Opuść listę',
+    waitlist_position: 'Jesteś #{n} na liście oczekujących', waitlist_notify_title: 'Stolik dostępny!', waitlist_notify_body: 'Zwolnił się stolik — zarezerwuj teraz!',
+    no_slots_join: 'Brak wolnych stolików. Dołącz do listy oczekujących, a powiadomimy Cię.',
+    share_booking: 'Udostępnij rezerwację',
+    change_email: 'Zmień email', change_phone: 'Zmień telefon', new_email: 'Nowy adres email', new_phone: 'Nowy numer telefonu',
+    send_code: 'Wyślij kod', sending_code: 'Wysyłanie…', verify_code: 'Weryfikuj',
+    code_sent_email: 'Link weryfikacyjny wysłany na nowy email', code_sent_phone: 'Kod SMS wysłany na nowy numer',
+    code_invalid: 'Nieprawidłowy lub wygasły kod', email_changed: 'Email zaktualizowany!', phone_changed: 'Telefon zaktualizowany!',
+    enter_verification_code: 'Wpisz 6-cyfrowy kod',
+    deals_label: 'Oferty 🔥', deals_empty: 'Brak aktywnych ofert', deal_expires: 'Ważna do', deal_off: 'zniżki', deals_at: 'w',
+    invite_friends: 'Zaproś znajomych', your_referral_code: 'Twój kod polecający', referral_copy: 'Kopiuj', referral_copied: 'Skopiowano!',
+    referral_share: 'Udostępnij kod', referral_count: 'Zaproszeni znajomi', referral_pending: 'Oczekuje',
+    referral_code_field: 'Kod polecający (opcjonalnie)', referral_code_placeholder: 'Wpisz kod polecający',
+    sponsored: 'Reklama',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
@@ -323,6 +409,31 @@ const T: Record<LangKey, Translations> = {
     coming_soon: 'Скоро', route: 'Маршрут', my_location: 'Моя позиция',
     faq: 'FAQ', contact_us: 'Связаться', terms: 'Условия использования', help: 'Помощь',
     all_restaurants: 'Все рестораны',
+    special_requests_section: 'Особые пожелания',
+    seating_preference: 'Предпочтения по месту',
+    seating_window: 'У окна', seating_kids: 'Детский столик', seating_quiet: 'Тихая зона', seating_wheelchair: 'Доступ для колясок',
+    allergies_section: 'Аллергии и диета',
+    allergy_gluten: 'Без глютена', allergy_nuts: 'Аллергия на орехи', allergy_lactose: 'Без лактозы', allergy_vegan: 'Веганское', allergy_halal: 'Халяль',
+    notes_label: 'Примечания (необязательно)', notes_placeholder: 'Другие пожелания...',
+    dob_label: 'Дата рождения', dob_hint: 'Используется для скидок на день рождения в ресторанах', dob_placeholder: 'ДД.ММ.ГГГГ', dob_invalid: 'Введите корректную дату (ДД.ММ.ГГГГ)',
+    parking_available: 'Парковка есть', parking_details: 'Парковка',
+    favorites_label: 'Избранное', favorites_empty: 'Нет сохранённых ресторанов', favorites_empty_sub: 'Нажмите сердечко у ресторана, чтобы сохранить его здесь',
+    add_to_favorites: 'Добавить в избранное', remove_from_favorites: 'Убрать из избранного',
+    book_again: 'Забронировать снова',
+    join_waitlist: 'Встать в очередь', waitlist_joined: 'Добавлены в очередь!', leave_waitlist: 'Покинуть очередь',
+    waitlist_position: 'Вы #{n} в очереди', waitlist_notify_title: 'Столик свободен!', waitlist_notify_body: 'Освободился столик — бронируйте сейчас!',
+    no_slots_join: 'Нет свободных столиков. Встаньте в очередь и мы уведомим вас.',
+    share_booking: 'Поделиться бронью',
+    change_email: 'Изменить email', change_phone: 'Изменить телефон', new_email: 'Новый email', new_phone: 'Новый номер телефона',
+    send_code: 'Отправить код', sending_code: 'Отправка…', verify_code: 'Подтвердить',
+    code_sent_email: 'Ссылка подтверждения отправлена на новый email', code_sent_phone: 'SMS-код отправлен на новый номер',
+    code_invalid: 'Неверный или устаревший код', email_changed: 'Email обновлён!', phone_changed: 'Телефон обновлён!',
+    enter_verification_code: 'Введите 6-значный код',
+    deals_label: 'Акции 🔥', deals_empty: 'Активных акций нет', deal_expires: 'До', deal_off: 'скидка', deals_at: 'в',
+    invite_friends: 'Пригласить друзей', your_referral_code: 'Ваш реферальный код', referral_copy: 'Копировать', referral_copied: 'Скопировано!',
+    referral_share: 'Поделиться кодом', referral_count: 'Приглашено друзей', referral_pending: 'Ожидает',
+    referral_code_field: 'Реферальный код (необязательно)', referral_code_placeholder: 'Введите реферальный код',
+    sponsored: 'Реклама',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
@@ -402,6 +513,31 @@ const T: Record<LangKey, Translations> = {
     coming_soon: 'Скоро', route: 'Маршрут', my_location: 'Моя позиція',
     faq: 'FAQ', contact_us: 'Зв\'язатись', terms: 'Умови використання', help: 'Допомога',
     all_restaurants: 'Всі ресторани',
+    special_requests_section: 'Особливі побажання',
+    seating_preference: 'Уподобання щодо місця',
+    seating_window: 'Біля вікна', seating_kids: 'Дитячий столик', seating_quiet: 'Тиха зона', seating_wheelchair: 'Доступ для візочків',
+    allergies_section: 'Алергії та дієта',
+    allergy_gluten: 'Без глютену', allergy_nuts: 'Алергія на горіхи', allergy_lactose: 'Без лактози', allergy_vegan: 'Веганське', allergy_halal: 'Халяль',
+    notes_label: 'Примітки (необов\'язково)', notes_placeholder: 'Інші побажання...',
+    dob_label: 'Дата народження', dob_hint: 'Використовується для знижок на день народження в ресторанах', dob_placeholder: 'ДД.ММ.РРРР', dob_invalid: 'Введіть коректну дату (ДД.ММ.РРРР)',
+    parking_available: 'Є паркування', parking_details: 'Паркування',
+    favorites_label: 'Обрані', favorites_empty: 'Немає збережених ресторанів', favorites_empty_sub: 'Натисніть серце на ресторані, щоб зберегти його тут',
+    add_to_favorites: 'Додати до обраних', remove_from_favorites: 'Видалити з обраних',
+    book_again: 'Забронювати знову',
+    join_waitlist: 'Стати в чергу', waitlist_joined: 'Додано в чергу!', leave_waitlist: 'Покинути чергу',
+    waitlist_position: 'Ви #{n} у черзі', waitlist_notify_title: 'Столик вільний!', waitlist_notify_body: 'Звільнився столик — бронюйте зараз!',
+    no_slots_join: 'Немає вільних столиків. Станьте в чергу і ми повідомимо вас.',
+    share_booking: 'Поділитися бронню',
+    change_email: 'Змінити email', change_phone: 'Змінити телефон', new_email: 'Новий email', new_phone: 'Новий номер телефону',
+    send_code: 'Надіслати код', sending_code: 'Надсилання…', verify_code: 'Підтвердити',
+    code_sent_email: 'Посилання підтвердження надіслано на новий email', code_sent_phone: 'SMS-код надіслано на новий номер',
+    code_invalid: 'Невірний або застарілий код', email_changed: 'Email оновлено!', phone_changed: 'Телефон оновлено!',
+    enter_verification_code: 'Введіть 6-значний код',
+    deals_label: 'Акції 🔥', deals_empty: 'Активних акцій немає', deal_expires: 'До', deal_off: 'знижка', deals_at: 'у',
+    invite_friends: 'Запросити друзів', your_referral_code: 'Ваш реферальний код', referral_copy: 'Копіювати', referral_copied: 'Скопійовано!',
+    referral_share: 'Поділитися кодом', referral_count: 'Запрошено друзів', referral_pending: 'Очікує',
+    referral_code_field: 'Реферальний код (необов\'язково)', referral_code_placeholder: 'Введіть реферальний код',
+    sponsored: 'Реклама',
   },
 }
 

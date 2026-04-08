@@ -224,8 +224,9 @@ function RestaurantCard({
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()
   }
 
-  const isOpen     = (r as any).isOpen !== false
+  const isOpen      = (r as any).isOpen !== false
   const reviewCount = (r as any).reviewCount as number | undefined
+  const isPromoted  = !!(r as any).isPromoted
 
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }, { scale }] }}>
@@ -248,6 +249,11 @@ function RestaurantCard({
               <View style={s.openBadge}>
                 <View style={s.openDot} />
                 <Text style={s.openTxt}>{t.available_now}</Text>
+              </View>
+            )}
+            {isPromoted && (
+              <View style={s.adBadge}>
+                <Text style={s.adTxt}>{t.sponsored as string}</Text>
               </View>
             )}
           </View>
@@ -316,6 +322,18 @@ const s = StyleSheet.create({
   locTxt:      { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', flex: 1 },
   reserveBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: radii.md, marginTop: 2 },
   reserveTxt:  { color: '#fff', fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold' },
+  adBadge:     { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  adTxt:       { color: '#fff', fontSize: 10, fontFamily: 'PlusJakartaSans_600SemiBold', letterSpacing: 0.5 },
+})
+
+// ─── Deal card styles ─────────────────────────────────────────────────────────
+const dc = StyleSheet.create({
+  card:     { width: 180, borderRadius: radii.md, borderWidth: 1, padding: 12, marginRight: 12 },
+  badge:    { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm, marginBottom: 8 },
+  badgeTxt: { color: '#fff', fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold' },
+  restName: { fontSize: 11, fontFamily: 'PlusJakartaSans_400Regular', marginBottom: 3 },
+  title:    { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold', marginBottom: 6, lineHeight: 18 },
+  expire:   { fontSize: 10, fontFamily: 'PlusJakartaSans_400Regular' },
 })
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -330,6 +348,7 @@ export default function HomeScreen() {
   const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS)
   const [loading,         setLoading]         = useState(true)
   const [refreshing,      setRefreshing]      = useState(false)
+  const [deals,           setDeals]           = useState<any[]>([])
 
   const activeFilterCount = countActiveFilters(filters)
 
@@ -352,6 +371,12 @@ export default function HomeScreen() {
     if (restaurants.length === 0) setRestaurants(MOCK_RESTAURANTS)
     setLoading(false)
     load()
+    // Load deals
+    const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
+    fetch(`${apiBase}/api/deals`)
+      .then(r => r.json())
+      .then(d => setDeals(Array.isArray(d) ? d.slice(0, 6) : []))
+      .catch(() => {})
   }, [])
 
   const onRefresh = useCallback(async () => {
@@ -495,6 +520,46 @@ export default function HomeScreen() {
                         r={item}
                         onPress={() => router.push(`/restaurant/${item.id}`)}
                       />
+                    )}
+                  />
+                </View>
+              )}
+
+              {/* ── Deals 🔥 ── */}
+              {deals.length > 0 && (
+                <View style={hs.section}>
+                  <View style={hs.sectionHead}>
+                    <Text style={[hs.sectionTitle, { color: th.text }]}>{t.deals_label as string}</Text>
+                  </View>
+                  <FlatList
+                    data={deals}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={d => d.id}
+                    contentContainerStyle={{ paddingRight: 16 }}
+                    renderItem={({ item: deal }) => (
+                      <TouchableOpacity
+                        onPress={() => router.push(`/restaurant/${deal.restaurant?.id ?? deal.restaurantId}`)}
+                        activeOpacity={0.85}
+                        style={[dc.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
+                      >
+                        <View style={[dc.badge, { backgroundColor: colors.primaryAccent }]}>
+                          <Text style={dc.badgeTxt}>
+                            {deal.discountType === 'freeitem' ? '🎁 Free'
+                              : deal.discountType === 'percent' ? `${deal.discountValue}% ${t.deal_off as string}`
+                              : `${deal.discountValue} PLN ${t.deal_off as string}`}
+                          </Text>
+                        </View>
+                        <Text style={[dc.restName, { color: th.textSub }]} numberOfLines={1}>
+                          {deal.restaurant?.name ?? ''}
+                        </Text>
+                        <Text style={[dc.title, { color: th.text }]} numberOfLines={2}>{deal.title}</Text>
+                        {deal.validUntil && (
+                          <Text style={[dc.expire, { color: th.textMuted }]}>
+                            {t.deal_expires as string}: {new Date(deal.validUntil).toLocaleDateString()}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
                     )}
                   />
                 </View>

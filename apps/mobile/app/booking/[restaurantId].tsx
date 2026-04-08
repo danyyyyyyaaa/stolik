@@ -40,10 +40,17 @@ export default function BookingScreen() {
     user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : ''
   )
   const [phone,     setPhone]     = useState('')
+  const [seating,   setSeating]   = useState<string | null>(null)
+  const [allergies, setAllergies] = useState<string[]>([])
+  const [notes,     setNotes]     = useState('')
   const [slots,     setSlots]     = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState('')
+  const [waitlistTime, setWaitlistTime] = useState('19:00')
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false)
+  const [waitlistDone, setWaitlistDone] = useState(false)
+  const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null)
 
   useEffect(() => {
     if (!params.restaurantId || !date) return
@@ -56,6 +63,32 @@ export default function BookingScreen() {
       .catch(() => setSlots(mockTimes))
       .finally(() => setLoadingSlots(false))
   }, [params.restaurantId, date, guests])
+
+  async function handleJoinWaitlist() {
+    if (!params.restaurantId || !name.trim() || !phone.trim()) return
+    setJoiningWaitlist(true)
+    try {
+      const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
+      const token = useAppStore.getState().token
+      const res = await fetch(`${apiBase}/api/restaurants/${params.restaurantId}/waitlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          date,
+          timeSlot: waitlistTime,
+          partySize: guests,
+          guestName: name.trim() || 'Guest',
+          guestPhone: phone.trim() || '000000000',
+        }),
+      })
+      const json = await res.json()
+      setWaitlistPosition(json.position ?? null)
+      setWaitlistDone(true)
+    } catch { /* ignore */ } finally { setJoiningWaitlist(false) }
+  }
 
   async function handleConfirm() {
     if (!params.restaurantId) return
@@ -75,6 +108,9 @@ export default function BookingScreen() {
         guestName:    name.trim(),
         guestPhone:   phone.trim(),
         source:       'app',
+        ...(seating   ? { seatingPreference: seating as any } : {}),
+        ...(allergies.length > 0 ? { allergies } : {}),
+        ...(notes.trim() ? { specialRequests: notes.trim() } : {}),
       })
       const booking = { ...result.booking, restaurant: r }
       setLastBooking(booking)
@@ -148,7 +184,41 @@ export default function BookingScreen() {
             {loadingSlots
               ? <ActivityIndicator color={th.accent} style={{ marginVertical: 10 }} />
               : slots.length === 0 && date
-              ? <Text style={[s.hint, { color: th.textMuted }]}>{t.no_slots as string}</Text>
+              ? (
+                <View>
+                  <Text style={[s.hint, { color: th.textMuted }]}>{t.no_slots as string}</Text>
+                  {waitlistDone ? (
+                    <View style={[s.errorBox, { backgroundColor: th.accent + '18', borderColor: th.accent + '40' }]}>
+                      <Feather name="check-circle" size={14} color={th.accent} />
+                      <Text style={[s.errorText, { color: th.accent }]}>
+                        {t.waitlist_joined as string}
+                        {waitlistPosition != null ? ` (#${waitlistPosition})` : ''}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ marginTop: 10, gap: 8 }}>
+                      <TextInput
+                        value={waitlistTime}
+                        onChangeText={setWaitlistTime}
+                        placeholder="19:00"
+                        placeholderTextColor={th.textMuted}
+                        style={[s.input, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text, marginBottom: 0 }]}
+                      />
+                      <TouchableOpacity
+                        onPress={handleJoinWaitlist}
+                        disabled={joiningWaitlist}
+                        activeOpacity={0.85}
+                        style={[s.confirmBtn, { backgroundColor: th.textSub, opacity: joiningWaitlist ? 0.7 : 1 }]}
+                      >
+                        {joiningWaitlist
+                          ? <ActivityIndicator color="#fff" />
+                          : <Text style={s.confirmBtnText}>{t.join_waitlist as string}</Text>
+                        }
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )
               : (
                 <View style={s.timeGrid}>
                   {slots.map(ti => {
@@ -201,6 +271,63 @@ export default function BookingScreen() {
               placeholderTextColor={th.textMuted}
               keyboardType="phone-pad"
               style={[s.input, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text, marginBottom: 0 }]}
+            />
+          </Section>
+
+          {/* Special Requests */}
+          <Section icon="sliders" label={t.special_requests_section as string} th={th}>
+            {/* Seating preference */}
+            <Text style={[s.subLabel, { color: th.textMuted }]}>{t.seating_preference as string}</Text>
+            <View style={s.chipGrid}>
+              {([
+                { key: 'window',      label: t.seating_window },
+                { key: 'kids',        label: t.seating_kids },
+                { key: 'quiet',       label: t.seating_quiet },
+                { key: 'wheelchair',  label: t.seating_wheelchair },
+              ] as { key: string; label: string }[]).map(opt => {
+                const active = seating === opt.key
+                return (
+                  <TouchableOpacity key={opt.key}
+                    onPress={() => setSeating(active ? null : opt.key)}
+                    activeOpacity={0.8}
+                    style={[s.chip, { backgroundColor: active ? th.accent : th.bgCard, borderColor: active ? 'transparent' : th.border }]}>
+                    <Text style={[s.chipText, { color: active ? '#fff' : th.textSub }]}>{opt.label as string}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            {/* Allergies */}
+            <Text style={[s.subLabel, { color: th.textMuted, marginTop: 14 }]}>{t.allergies_section as string}</Text>
+            <View style={s.chipGrid}>
+              {([
+                { key: 'Gluten-free',   label: t.allergy_gluten },
+                { key: 'Nut allergy',   label: t.allergy_nuts },
+                { key: 'Lactose-free',  label: t.allergy_lactose },
+                { key: 'Vegan',         label: t.allergy_vegan },
+                { key: 'Halal',         label: t.allergy_halal },
+              ] as { key: string; label: string }[]).map(opt => {
+                const active = allergies.includes(opt.key)
+                return (
+                  <TouchableOpacity key={opt.key}
+                    onPress={() => setAllergies(a => active ? a.filter(x => x !== opt.key) : [...a, opt.key])}
+                    activeOpacity={0.8}
+                    style={[s.chip, { backgroundColor: active ? th.accent : th.bgCard, borderColor: active ? 'transparent' : th.border }]}>
+                    <Text style={[s.chipText, { color: active ? '#fff' : th.textSub }]}>{opt.label as string}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            {/* Notes */}
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder={t.notes_placeholder as string}
+              placeholderTextColor={th.textMuted}
+              multiline
+              numberOfLines={3}
+              style={[s.input, s.textarea, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text, marginTop: 14, marginBottom: 0 }]}
             />
           </Section>
 
@@ -271,6 +398,8 @@ function styles(th: any) {
     guestNum:      { fontSize: 22, fontWeight: '700' },
     guestLabel:    { fontSize: 15, fontWeight: '400' },
     input:         { borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, marginBottom: 12 },
+    textarea:      { minHeight: 80, paddingTop: 14, textAlignVertical: 'top' },
+    subLabel:      { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 8 },
     errorBox:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, padding: 12, borderWidth: 1, marginBottom: 16 },
     errorText:     { fontSize: 13, flex: 1 },
     confirmBtn:    { paddingVertical: 17, borderRadius: 14, alignItems: 'center' },

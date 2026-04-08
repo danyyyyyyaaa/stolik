@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Share } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useTheme } from '../src/theme'
@@ -108,6 +108,16 @@ export default function ConfirmedScreen() {
     { label: t.booking_id as string,value: b.bookingRef ?? b.id },
   ] : []
 
+  async function handleShare() {
+    if (!b) return
+    const restName = rest?.name ?? 'the restaurant'
+    const shortCode = (b as any).shortCode
+    const link = shortCode ? `https://stolik.pl/b/${shortCode}` : ''
+    await Share.share({
+      message: `${t.share_booking as string}: ${restName}, ${fmtDate(b.date)} at ${b.time ?? ''}${link ? `\n${link}` : ''}`,
+    })
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: th.bg }]} edges={['top', 'bottom']}>
       <View style={styles.container}>
@@ -157,6 +167,15 @@ export default function ConfirmedScreen() {
           >
             <Text style={styles.primaryBtnText}>{t.view_booking as string}</Text>
           </TouchableOpacity>
+          {b && (
+            <TouchableOpacity
+              onPress={handleShare}
+              activeOpacity={0.85}
+              style={[styles.secondaryBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
+            >
+              <Text style={[styles.secondaryBtnText, { color: th.textSub }]}>{t.share_booking as string}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => router.navigate('/(tabs)/')}
             activeOpacity={0.85}

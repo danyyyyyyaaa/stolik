@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Skeleton } from '@/components/shared/LoadingSkeleton'
 import { formatDate, getInitials } from '@/lib/utils'
 import { Star } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 
 interface Review {
   id: string
@@ -42,6 +43,7 @@ export default function ReviewsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest')
   const [replyingId, setReplyingId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
+  const t = useT()
 
   useEffect(() => {
     if (!restaurant) return
@@ -87,7 +89,7 @@ export default function ReviewsPage() {
   if (restaurantLoading || loading) {
     return (
       <div>
-        <PageHeader title="Reviews" description="Guest feedback and ratings" />
+        <PageHeader title={t.reviews} description={t.reviewsDesc} />
         <div className="space-y-3">
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-12 w-full" />
@@ -101,9 +103,9 @@ export default function ReviewsPage() {
   if (error) {
     return (
       <div>
-        <PageHeader title="Reviews" description="Guest feedback and ratings" />
+        <PageHeader title={t.reviews} description={t.reviewsDesc} />
         <div className="bg-surface border border-border rounded-card p-6 text-sm text-red-500">
-          Failed to load reviews: {error}
+          {t.failedLoadReviews}: {error}
         </div>
       </div>
     )
@@ -111,7 +113,7 @@ export default function ReviewsPage() {
 
   return (
     <div>
-      <PageHeader title="Reviews" description="Guest feedback and ratings" />
+      <PageHeader title={t.reviews} description={t.reviewsDesc} />
 
       {/* Summary section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -125,7 +127,7 @@ export default function ReviewsPage() {
               </span>
             ))}
           </div>
-          <div className="text-sm text-muted mt-1">{totalCount} reviews</div>
+          <div className="text-sm text-muted mt-1">{t.guestsCount(totalCount)}</div>
         </div>
 
         {/* Right: distribution bars */}
@@ -160,7 +162,7 @@ export default function ReviewsPage() {
                 : 'bg-surface border border-border text-muted hover:text-text'
             }`}
           >
-            All
+            {t.reviewsAll}
           </button>
           {[5, 4, 3, 2, 1].map(star => (
             <button
@@ -181,10 +183,10 @@ export default function ReviewsPage() {
           onChange={e => setSortBy(e.target.value as typeof sortBy)}
           className="border border-border rounded-btn px-3 py-1.5 text-sm bg-surface text-text focus:outline-none focus:border-accent"
         >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="highest">Highest</option>
-          <option value="lowest">Lowest</option>
+          <option value="newest">{t.reviewsNewest}</option>
+          <option value="oldest">{t.reviewsOldest}</option>
+          <option value="highest">{t.reviewsHighest}</option>
+          <option value="lowest">{t.reviewsLowest}</option>
         </select>
       </div>
 
@@ -193,8 +195,8 @@ export default function ReviewsPage() {
         <div className="bg-surface border border-border rounded-card">
           <EmptyState
             icon={Star}
-            title="No reviews yet"
-            description="Reviews will appear here when guests rate your restaurant."
+            title={t.noReviewsYet}
+            description={t.noReviewsDesc}
           />
         </div>
       ) : (
@@ -237,7 +239,7 @@ export default function ReviewsPage() {
               {review.ownerReply ? (
                 <div className="bg-surface-2 rounded-btn p-3 border-l-2 border-accent">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs font-semibold text-accent">Restaurant</span>
+                    <span className="text-xs font-semibold text-accent">{t.restaurantShort}</span>
                     <span className="text-xs text-muted">{formatDate(review.ownerRepliedAt!)}</span>
                   </div>
                   <p className="text-sm text-text">{review.ownerReply}</p>
@@ -247,7 +249,7 @@ export default function ReviewsPage() {
                   <textarea
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
-                    placeholder="Write your reply..."
+                    placeholder={t.writeReplyPlaceholder}
                     rows={3}
                     className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-accent resize-none bg-surface text-text"
                   />
@@ -256,13 +258,13 @@ export default function ReviewsPage() {
                       onClick={() => handleReply(review.id)}
                       className="px-4 py-1.5 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent/90"
                     >
-                      Send Reply
+                      {t.sendReply}
                     </button>
                     <button
                       onClick={() => { setReplyingId(null); setReplyText('') }}
                       className="px-4 py-1.5 border border-border rounded-btn text-sm text-muted hover:bg-surface-2"
                     >
-                      Cancel
+                      {t.cancel}
                     </button>
                   </div>
                 </div>
@@ -271,7 +273,7 @@ export default function ReviewsPage() {
                   onClick={() => { setReplyingId(review.id); setReplyText('') }}
                   className="text-xs text-accent hover:underline mt-1"
                 >
-                  Reply to review
+                  {t.replyToReview}
                 </button>
               )}
             </div>

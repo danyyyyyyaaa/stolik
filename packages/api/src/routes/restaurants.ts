@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
     } : {}),
   }
 
+  const now = new Date()
   const restaurants = await prisma.restaurant.findMany({
     where,
     select: {
@@ -34,10 +35,28 @@ router.get('/', async (req, res) => {
       priceRange: true, rating: true, reviewCount: true,
       emoji: true, coverImage: true, isPremium: true,
       googleRating: true, latitude: true, longitude: true,
+      promotion: { select: { isActive: true, startsAt: true, endsAt: true } },
     },
     orderBy: [{ isPremium: 'desc' }, { rating: 'desc' }],
   })
 
+  const result = restaurants.map(r => {
+    const p = (r as any).promotion
+    const isPromoted = !!(p?.isActive && (!p.startsAt || p.startsAt <= now) && (!p.endsAt || p.endsAt >= now))
+    const { promotion: _, ...rest } = r as any
+    return { ...rest, isPromoted }
+  }).sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0) || (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0))
+
+  res.json(result)
+})
+
+// ─── GET /api/restaurants/my — owner's own restaurants (auth required) ─────────
+router.get('/my', requireAuth, async (req, res) => {
+  const userId = (req as any).userId
+  const restaurants = await prisma.restaurant.findMany({
+    where: { ownerId: userId },
+    orderBy: { createdAt: 'desc' },
+  })
   res.json(restaurants)
 })
 
@@ -273,6 +292,10 @@ const updateRestaurantSchema = z.object({
   maxAdvanceDays:   z.number().int().positive().optional(),
   depositRequired:  z.boolean().optional(),
   depositAmount:    z.number().nonnegative().optional(),
+  birthdayPerkEnabled:     z.boolean().optional(),
+  birthdayPerkDescription: z.string().optional(),
+  hasParking:              z.boolean().optional(),
+  parkingDetails:          z.string().optional(),
   openMonday:       z.string().optional(),
   openTuesday:      z.string().optional(),
   openWednesday:    z.string().optional(),

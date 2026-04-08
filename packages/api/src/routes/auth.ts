@@ -3,9 +3,13 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
-import { randomUUID } from 'crypto'
+import { randomUUID, randomBytes } from 'crypto'
 import { requireAuth } from '../middleware/auth'
 import { sendVerificationEmail } from '../services/email'
+
+function generateReferralCode(): string {
+  return randomBytes(4).toString('hex').toUpperCase()
+}
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -21,12 +25,13 @@ const loginSchema = z.object({
 })
 
 const registerSchema = z.object({
-  email:     z.string().email(),
-  password:  z.string().min(6),
-  firstName: z.string().min(1),
-  lastName:  z.string().min(1),
-  phone:     z.string().optional(),
-  role:      z.enum(['guest', 'owner']).default('guest'),
+  email:        z.string().email(),
+  password:     z.string().min(6),
+  firstName:    z.string().min(1),
+  lastName:     z.string().min(1),
+  phone:        z.string().optional(),
+  role:         z.enum(['guest', 'owner']).default('guest'),
+  referralCode: z.string().optional(),
 })
 
 const refreshSchema = z.object({
@@ -69,11 +74,26 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: first?.message ?? 'Invalid data' })
   }
 
-  const { password, ...userData } = parsed.data
+  const { password, referralCode: inputReferralCode, ...userData } = parsed.data
   try {
     const passwordHash = await bcrypt.hash(password, 10)
-    const user = await prisma.user.create({
-      data: { ...userData, passwordHash },
+    const newReferralCode = generateReferralCode()
+
+    // Find referrer if code provided
+    let referrerId: string | undefined
+    if (inputReferralCode) {
+      const referrer = await prisma.user.findUnique({ where: { referralCode: inputReferralCode.toUpperCase() } })
+      if (referrer) referrerId = referrer.id
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: { ...userData, passwordHash, referralCode: newReferralCode, ...(referrerId ? { referredById: referrerId } : {}) },
+      })
+      if (referrerId) {
+        await tx.referral.create({ data: { referrerId, referredId: u.id } }).catch(() => {})
+      }
+      return u
     })
 
     const accessToken  = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_TTL })
@@ -174,7 +194,13 @@ router.get('/me', requireAuth, async (req, res) => {
   const userId = (req as any).userId
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) return res.status(404).json({ error: 'User not found' })
-  res.json(buildUserPayload(user))
+  const payload = buildUserPayload(user)
+  res.json({
+    ...payload,
+    birthdayMonth: user.dateOfBirth ? user.dateOfBirth.getMonth() + 1 : null,
+    birthdayDay:   user.dateOfBirth ? user.dateOfBirth.getDate()       : null,
+    hasDob:        !!user.dateOfBirth,
+  })
 })
 
 // ─── CHANGE PASSWORD ─────────────────────────────────────────────────────────
@@ -347,9 +373,102 @@ router.post('/reset-password', async (req, res) => {
   }
 })
 
+// ─── CHANGE EMAIL (step 1: send verification to new address) ─────────────────
+router.post('/change-email', requireAuth, async (req, res) => {
+  const { newEmail } = req.body
+  const userId = (req as any).userId
+  if (!newEmail || !newEmail.includes('@')) return res.status(400).json({ error: 'Invalid email' })
+
+  const taken = await prisma.user.findFirst({ where: { email: newEmail, NOT: { id: userId } } })
+  if (taken) return res.status(409).json({ error: 'Email already in use' })
+
+  const token     = randomUUID()
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFY_TTL_HOURS * 60 * 60 * 1000)
+  await prisma.emailVerification.create({ data: { token, userId, newEmail, expiresAt } })
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true } })
+  sendVerificationEmail(newEmail, user?.firstName ?? 'there', token).catch(err =>
+    console.error('[Email] Change-email verification failed:', err)
+  )
+  res.json({ success: true })
+})
+
+// ─── CHANGE EMAIL (step 2: confirm via token) ─────────────────────────────────
+router.post('/verify-new-email', requireAuth, async (req, res) => {
+  const { token } = req.body
+  const userId = (req as any).userId
+  if (!token) return res.status(400).json({ error: 'Token required' })
+
+  const record = await prisma.emailVerification.findUnique({ where: { token } })
+  if (!record || record.userId !== userId || !record.newEmail) {
+    return res.status(400).json({ error: 'Invalid token' })
+  }
+  if (record.usedAt || record.expiresAt < new Date()) {
+    return res.status(400).json({ error: 'Token expired or already used' })
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { email: record.newEmail } }),
+    prisma.emailVerification.update({ where: { token }, data: { usedAt: new Date() } }),
+  ])
+
+  res.json({ success: true, email: record.newEmail })
+})
+
+// ─── CHANGE PHONE (step 1: send 6-digit SMS code) ────────────────────────────
+router.post('/change-phone', requireAuth, async (req, res) => {
+  const { newPhone } = req.body
+  const userId = (req as any).userId
+  if (!newPhone || newPhone.length < 9) return res.status(400).json({ error: 'Invalid phone number' })
+
+  const code      = String(Math.floor(100000 + Math.random() * 900000))
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 min
+
+  // Invalidate previous codes for this user
+  await prisma.phoneVerification.deleteMany({ where: { userId } })
+  await prisma.phoneVerification.create({ data: { code, userId, newPhone, expiresAt } })
+
+  // Send via Twilio if configured, otherwise log
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken  = process.env.TWILIO_AUTH_TOKEN
+  const fromNumber = process.env.TWILIO_FROM_NUMBER
+  if (accountSid && authToken && fromNumber) {
+    const twilio = (await import('twilio')).default(accountSid, authToken)
+    await twilio.messages.create({
+      from: fromNumber,
+      to:   newPhone,
+      body: `Stolik: Your verification code is ${code}. Valid for 15 minutes.`,
+    }).catch(err => console.error('[SMS] Change-phone code failed:', err))
+  } else {
+    console.log(`[SMS] Change-phone code for ${newPhone}: ${code}`)
+  }
+
+  res.json({ success: true })
+})
+
+// ─── CHANGE PHONE (step 2: verify code) ──────────────────────────────────────
+router.post('/verify-new-phone', requireAuth, async (req, res) => {
+  const { code } = req.body
+  const userId = (req as any).userId
+  if (!code) return res.status(400).json({ error: 'Code required' })
+
+  const record = await prisma.phoneVerification.findFirst({
+    where: { userId, code, usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!record) return res.status(400).json({ error: 'Invalid or expired code' })
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { phone: record.newPhone } }),
+    prisma.phoneVerification.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+  ])
+
+  res.json({ success: true, phone: record.newPhone })
+})
+
 // ─── UPDATE PROFILE ──────────────────────────────────────────────────────────
 router.patch('/profile', requireAuth, async (req, res) => {
-  const { firstName, lastName, phone, avatarUrl } = req.body
+  const { firstName, lastName, phone, avatarUrl, dateOfBirth } = req.body
   const userId = (req as any).userId
 
   try {
@@ -360,11 +479,26 @@ router.patch('/profile', requireAuth, async (req, res) => {
         ...(lastName !== undefined && { lastName }),
         ...(phone !== undefined && { phone }),
         ...(avatarUrl !== undefined && { avatarUrl }),
+        // Accept ISO date string or null; never expose exact DOB to restaurants
+        ...(dateOfBirth !== undefined && {
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        }),
         lastActiveAt: new Date(),
       },
-      select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatarUrl: true, role: true, isVerified: true }
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        phone: true, avatarUrl: true, role: true, isVerified: true,
+        dateOfBirth: true,
+      }
     })
-    res.json(user)
+    // Strip exact DOB before sending — expose only month + day for birthday perks
+    const { dateOfBirth: dob, ...rest } = user
+    res.json({
+      ...rest,
+      birthdayMonth: dob ? dob.getMonth() + 1 : null,   // 1-12
+      birthdayDay:   dob ? dob.getDate()        : null,
+      hasDob:        !!dob,
+    })
   } catch (err) {
     console.error('Update profile error:', err)
     res.status(500).json({ error: 'Failed to update profile' })

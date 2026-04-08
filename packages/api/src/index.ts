@@ -26,6 +26,11 @@ import { reviewsRouter } from './routes/reviews'
 import { googleReviewsRouter } from './routes/google-reviews'
 import { integrationsRouter } from './routes/integrations'
 import { smsTemplatesRouter } from './routes/sms-templates'
+import { favoritesRouter } from './routes/favorites'
+import { waitlistRouter } from './routes/waitlist'
+import { dealsRouter } from './routes/deals'
+import { referralsRouter } from './routes/referrals'
+import { promotionsRouter } from './routes/promotions'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -97,6 +102,11 @@ app.use('/api/reviews', reviewsRouter)
 app.use('/api/restaurants', googleReviewsRouter)  // /:id/google-place, /:id/google-sync, /:id/reviews-combined
 app.use('/api/integrations', integrationsRouter)   // /:restaurantId, /poster/test, /api-keys/:restaurantId, /terminal/:restaurantId/generate-qr
 app.use('/api/sms-templates', smsTemplatesRouter)  // /:restaurantId
+app.use('/api/favorites', favoritesRouter)
+app.use('/api/restaurants/:id/waitlist', waitlistRouter)
+app.use('/api', dealsRouter)                            // /api/deals + /api/restaurants/:id/deals
+app.use('/api/referrals', referralsRouter)
+app.use('/api/restaurants', promotionsRouter)           // /api/restaurants/:id/promotions
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))

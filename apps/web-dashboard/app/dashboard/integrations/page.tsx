@@ -8,6 +8,7 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { useT } from '@/lib/i18n'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -315,6 +316,7 @@ function QRModal({ restaurantId, onClose }: { restaurantId: string; onClose: () 
 // ── API Key Panel ──────────────────────────────────────────────────────────
 
 function ApiKeyPanel({ restaurantId }: { restaurantId: string }) {
+  const t = useT()
   const [keys, setKeys] = useState<ApiKeyRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -380,7 +382,7 @@ function ApiKeyPanel({ restaurantId }: { restaurantId: string }) {
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-btn transition-colors"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? t.copied : t.copy}
             </button>
           </div>
         </div>
@@ -513,6 +515,7 @@ function IntegrationCard({ logo, title, description, status, onConnect, onDiscon
 
 export default function IntegrationsPage() {
   const { restaurant } = useMyRestaurant()
+  const t = useT()
   const [integrations, setIntegrations] = useState<Record<string, Integration>>({})
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>({ connected: false })
   const [loading, setLoading] = useState(true)
@@ -565,8 +568,8 @@ export default function IntegrationsPage() {
   return (
     <div>
       <PageHeader
-        title="Integrations"
-        description="Connect your restaurant systems and third-party tools"
+        title={t.integrationsLabel}
+        description={t.integrationsDesc}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react'
 import { View, Animated, Platform, StyleSheet } from 'react-native'
 import { Tabs } from 'expo-router'
 import {
-  Home, Search, MapPin, BookMarked, User,
+  Home, Search, MapPin, BookMarked, User, Heart,
 } from 'lucide-react-native'
 import { useTheme, colors, radii, shadows } from '../../src/theme'
 import { useLang } from '../../src/i18n'
@@ -138,6 +138,15 @@ export default function TabLayout() {
           title: t.bookings_label,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon Icon={BookMarked} color={color} focused={focused} accentColor={activeColor} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: t.favorites_label,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={Heart} color={color} focused={focused} accentColor={activeColor} />
           ),
         }}
       />

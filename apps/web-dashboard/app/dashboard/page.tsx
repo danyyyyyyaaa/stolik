@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { useT } from '@/lib/i18n'
 
 interface OverviewData {
   todayBookings: number
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [todayBookings, setTodayBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const t = useT()
 
   useEffect(() => {
     if (!restaurant?.id) return
@@ -60,10 +62,10 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Overview"
+        title={t.overview}
         description={restaurant
           ? `${restaurant.name} · ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`
-          : 'Loading...'}
+          : t.loading}
       />
 
       {/* Stats grid */}
@@ -73,28 +75,28 @@ export default function DashboardPage() {
         ) : (
           <>
             <StatsCard
-              title="Today's bookings"
+              title={t.bookingsToday}
               value={overview?.todayBookings ?? 0}
               trend={overview?.trend}
-              subtitle="vs yesterday"
+              subtitle={t.vsYesterday}
               icon={Calendar}
             />
             <StatsCard
-              title="Guests expected"
+              title={t.guestsExpected}
               value={overview?.guestsExpected ?? 0}
-              subtitle="today"
+              subtitle={t.todaySubtitle}
               icon={Users}
               iconColor="text-blue-400"
             />
             <StatsCard
-              title="This month"
+              title={t.thisMonth}
               value={overview?.monthBookings ?? 0}
-              subtitle="total bookings"
+              subtitle={t.total.toLowerCase()}
               icon={TrendingUp}
               iconColor="text-amber"
             />
             <StatsCard
-              title="Avg rating"
+              title={t.avgRatingLabel}
               value={overview?.avgRating ? overview.avgRating.toFixed(1) : '—'}
               icon={Star}
               iconColor="text-amber"
@@ -107,10 +109,10 @@ export default function DashboardPage() {
         {/* Today's bookings */}
         <div className="lg:col-span-2 bg-surface border border-border rounded-card">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-text">Today&apos;s bookings</h2>
+            <h2 className="font-semibold text-text">{t.bookingsToday}</h2>
             {overview?.pendingCount ? (
               <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-chip font-semibold">
-                {overview.pendingCount} pending
+                {overview.pendingCount} {t.pending.toLowerCase()}
               </span>
             ) : null}
           </div>
@@ -119,7 +121,7 @@ export default function DashboardPage() {
               {[0, 1, 2].map(i => <div key={i} className="animate-pulse h-14 bg-surface-2 rounded-btn" />)}
             </div>
           ) : todayBookings.length === 0 ? (
-            <EmptyState icon={Calendar} title="No bookings today" description="Your bookings for today will appear here" />
+            <EmptyState icon={Calendar} title={t.noBookingsToday} description={t.bookingsTodayWillAppear} />
           ) : (
             <div className="divide-y divide-border">
               {todayBookings.map(b => (
@@ -139,28 +141,28 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <div className="bg-surface border border-border rounded-card">
           <div className="px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-text">Quick actions</h2>
+            <h2 className="font-semibold text-text">{t.quickActions}</h2>
           </div>
           <div className="p-4 space-y-2">
             <a href="/dashboard/bookings" className="flex items-center gap-3 p-3 rounded-btn hover:bg-surface-2 transition-colors">
               <Calendar size={18} className="text-success flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-text">Manage bookings</p>
-                <p className="text-xs text-muted">Confirm or cancel pending</p>
+                <p className="text-sm font-medium text-text">{t.manageBookingsLabel}</p>
+                <p className="text-xs text-muted">{t.confirmOrCancelDesc}</p>
               </div>
             </a>
             <a href="/dashboard/calendar" className="flex items-center gap-3 p-3 rounded-btn hover:bg-surface-2 transition-colors">
               <Calendar size={18} className="text-accent flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-text">View calendar</p>
-                <p className="text-xs text-muted">See weekly &amp; monthly view</p>
+                <p className="text-sm font-medium text-text">{t.viewCalendarLabel}</p>
+                <p className="text-xs text-muted">{t.seeWeeklyDesc}</p>
               </div>
             </a>
             <a href="/dashboard/analytics" className="flex items-center gap-3 p-3 rounded-btn hover:bg-surface-2 transition-colors">
               <TrendingUp size={18} className="text-amber flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-text">Analytics</p>
-                <p className="text-xs text-muted">Revenue &amp; booking trends</p>
+                <p className="text-sm font-medium text-text">{t.analyticsLabel}</p>
+                <p className="text-xs text-muted">{t.revenueBookingTrends}</p>
               </div>
             </a>
           </div>

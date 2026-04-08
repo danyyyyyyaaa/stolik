@@ -11,6 +11,7 @@ import { useTheme, colors, radii, shadows } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import { useAppStore } from '../../src/store/useAppStore'
 import { login, register, changePassword, deleteAccount, updateProfile, uploadAvatar } from '../../src/api/auth'
+import { getReferralStats, type ReferralStats } from '../../src/api/referrals'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
 import { isEnabled, setEnabled, requestPermissions } from '../../src/notifications'
 import ForgotPasswordScreen from '../../src/screens/ForgotPasswordScreen'
@@ -21,13 +22,14 @@ type AuthMode = 'login' | 'register'
 function AuthForm({ th, t }: { th: any; t: any }) {
   const { setToken, setUser, pendingBooking, setPendingBooking } = useAppStore()
   const [mode,       setMode]       = useState<AuthMode>('login')
-  const [firstName,  setFirstName]  = useState('')
-  const [lastName,   setLastName]   = useState('')
-  const [email,      setEmail]      = useState('')
-  const [password,   setPassword]   = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState('')
-  const [showForgot, setShowForgot] = useState(false)
+  const [firstName,    setFirstName]    = useState('')
+  const [lastName,     setLastName]     = useState('')
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
+  const [referralCode, setReferralCode] = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState('')
+  const [showForgot,   setShowForgot]   = useState(false)
 
   if (showForgot) return <ForgotPasswordScreen onBack={() => setShowForgot(false)} />
 
@@ -38,7 +40,7 @@ function AuthForm({ th, t }: { th: any; t: any }) {
     try {
       const res = mode === 'login'
         ? await login(email.trim(), password)
-        : await register(firstName.trim(), lastName.trim(), email.trim(), password)
+        : await register(firstName.trim(), lastName.trim(), email.trim(), password, referralCode.trim() || undefined)
       await setToken(res.token)
       setUser(res.user)
 
@@ -127,6 +129,17 @@ function AuthForm({ th, t }: { th: any; t: any }) {
           style={[af.input, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text }]}
         />
 
+        {mode === 'register' && (
+          <TextInput
+            value={referralCode}
+            onChangeText={setReferralCode}
+            placeholder={t.referral_code_placeholder as string}
+            placeholderTextColor={th.textMuted}
+            autoCapitalize="characters"
+            style={[af.input, { backgroundColor: th.bgCard, borderColor: th.inputBorder, color: th.text }]}
+          />
+        )}
+
         {mode === 'login' && (
           <TouchableOpacity onPress={() => setShowForgot(true)} style={{ alignSelf: 'flex-end', marginBottom: 8, marginTop: -4 }}>
             <Text style={{ fontSize: 13, color: th.accent }}>{t.forgot_password}</Text>
@@ -177,12 +190,42 @@ function EditProfileForm({ th, t, onClose }: { th: any; t: any; onClose: () => v
   const { user, setUser } = useAppStore()
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName,  setLastName]  = useState(user?.lastName  ?? '')
-  const [phone,     setPhone]     = useState('')
+  const [phone,     setPhone]     = useState((user as any)?.phone ?? '')
+  const [dob,       setDob]       = useState('')
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
 
-  function handleSave() {
-    if (!firstName.trim() || !lastName.trim()) return
-    setUser({ ...(user as any), firstName: firstName.trim(), lastName: lastName.trim() })
-    onClose()
+  // Parse DD.MM.YYYY → ISO string, or null to clear
+  function parseDob(raw: string): string | null | undefined {
+    if (!raw.trim()) return null  // clear DOB
+    const parts = raw.trim().split('.')
+    if (parts.length !== 3) return undefined  // invalid
+    const [dd, mm, yyyy] = parts
+    const d = new Date(`${yyyy}-${mm}-${dd}`)
+    if (isNaN(d.getTime())) return undefined  // invalid
+    return d.toISOString()
+  }
+
+  async function handleSave() {
+    if (!firstName.trim() || !lastName.trim()) { setError(t.fill_fields); return }
+    const parsedDob = dob.trim() ? parseDob(dob) : undefined
+    if (parsedDob === undefined && dob.trim()) { setError(t.dob_invalid); return }
+    setLoading(true)
+    setError('')
+    try {
+      const updated = await updateProfile({
+        firstName: firstName.trim(),
+        lastName:  lastName.trim(),
+        phone:     phone.trim() || undefined,
+        ...(parsedDob !== undefined ? { dateOfBirth: parsedDob } : {}),
+      })
+      setUser({ ...(user as any), ...updated })
+      onClose()
+    } catch (e: any) {
+      setError(e.message ?? t.booking_error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -210,12 +253,25 @@ function EditProfileForm({ th, t, onClose }: { th: any; t: any; onClose: () => v
         keyboardType="phone-pad"
         style={[epf.input, { backgroundColor: th.bgCardAlt, borderColor: th.border, color: th.text }]}
       />
+      <TextInput
+        value={dob}
+        onChangeText={setDob}
+        placeholder={t.dob_placeholder}
+        placeholderTextColor={th.textMuted}
+        keyboardType="numbers-and-punctuation"
+        style={[epf.input, { backgroundColor: th.bgCardAlt, borderColor: th.border, color: th.text }]}
+      />
+      <Text style={[epf.hint, { color: th.textMuted }]}>{t.dob_hint}</Text>
+      {error ? <Text style={[epf.error, { color: th.error ?? '#e53e3e' }]}>{error}</Text> : null}
       <View style={epf.btnRow}>
         <TouchableOpacity onPress={onClose} style={[epf.cancelBtn, { borderColor: th.border }]}>
           <Text style={[epf.cancelText, { color: th.textSub }]}>{t.cancel}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleSave} style={[epf.saveBtn, { backgroundColor: th.accent }]}>
-          <Text style={epf.saveText}>{t.save}</Text>
+        <TouchableOpacity onPress={handleSave} disabled={loading}
+          style={[epf.saveBtn, { backgroundColor: th.accent, opacity: loading ? 0.7 : 1 }]}>
+          {loading
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <Text style={epf.saveText}>{t.save}</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -226,6 +282,8 @@ const epf = StyleSheet.create({
   wrap:       { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12 },
   label:      { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 12 },
   input:      { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, marginBottom: 10 },
+  hint:       { fontSize: 11, marginBottom: 10, marginTop: -6 },
+  error:      { fontSize: 12, marginBottom: 8 },
   btnRow:     { flexDirection: 'row', gap: 10, marginTop: 4 },
   cancelBtn:  { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   cancelText: { fontSize: 14, fontWeight: '500' },
@@ -297,6 +355,159 @@ function ChangePasswordForm({ th, t, onClose }: { th: any; t: any; onClose: () =
   )
 }
 
+// ─── Change email form ─────────────────────────────────────────────────────────
+function ChangeEmailForm({ th, t, onClose }: { th: any; t: any; onClose: () => void }) {
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const [done,    setDone]    = useState(false)
+  const { token } = useAppStore()
+
+  async function handleSend() {
+    if (!email.trim()) { setError(t.fill_fields); return }
+    setLoading(true); setError('')
+    try {
+      const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
+      const res = await fetch(`${apiBase}/api/auth/change-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newEmail: email.trim() }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error ?? 'Error') }
+      setDone(true)
+    } catch (e: any) {
+      setError(e.message ?? t.booking_error)
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <View style={[epf.wrap, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+      <Text style={[epf.label, { color: th.textMuted }]}>{t.change_email.toUpperCase()}</Text>
+      {done ? (
+        <Text style={{ color: th.accent, textAlign: 'center', paddingVertical: 8 }}>✓ {t.code_sent_email}</Text>
+      ) : (
+        <>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder={t.new_email}
+            placeholderTextColor={th.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={[epf.input, { backgroundColor: th.bgCardAlt, borderColor: th.border, color: th.text }]}
+          />
+          {error ? <Text style={{ color: th.error, fontSize: 12, marginBottom: 8 }}>{error}</Text> : null}
+          <View style={epf.btnRow}>
+            <TouchableOpacity onPress={onClose} style={[epf.cancelBtn, { borderColor: th.border }]}>
+              <Text style={[epf.cancelText, { color: th.textSub }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSend} disabled={loading} style={[epf.saveBtn, { backgroundColor: th.accent }]}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={epf.saveText}>{t.send_code}</Text>}
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </View>
+  )
+}
+
+// ─── Change phone form ─────────────────────────────────────────────────────────
+function ChangePhoneForm({ th, t, onClose }: { th: any; t: any; onClose: () => void }) {
+  const [phone,   setPhone]   = useState('')
+  const [code,    setCode]    = useState('')
+  const [step,    setStep]    = useState<'phone' | 'code'>('phone')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const [done,    setDone]    = useState(false)
+  const { token, user, setUser } = useAppStore()
+
+  async function handleSendCode() {
+    if (!phone.trim()) { setError(t.fill_fields); return }
+    setLoading(true); setError('')
+    try {
+      const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
+      const res = await fetch(`${apiBase}/api/auth/change-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPhone: phone.trim() }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error ?? 'Error') }
+      setStep('code')
+    } catch (e: any) {
+      setError(e.message ?? t.booking_error)
+    } finally { setLoading(false) }
+  }
+
+  async function handleVerify() {
+    if (!code.trim()) { setError(t.fill_fields); return }
+    setLoading(true); setError('')
+    try {
+      const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
+      const res = await fetch(`${apiBase}/api/auth/verify-new-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code: code.trim() }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error ?? t.code_invalid) }
+      if (user) setUser({ ...user, phone: phone.trim() })
+      setDone(true)
+      setTimeout(onClose, 1500)
+    } catch (e: any) {
+      setError(e.message ?? t.booking_error)
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <View style={[epf.wrap, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+      <Text style={[epf.label, { color: th.textMuted }]}>{t.change_phone.toUpperCase()}</Text>
+      {done ? (
+        <Text style={{ color: th.accent, textAlign: 'center', paddingVertical: 8 }}>✓ {t.phone_changed}</Text>
+      ) : step === 'phone' ? (
+        <>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            placeholder={t.new_phone}
+            placeholderTextColor={th.textMuted}
+            keyboardType="phone-pad"
+            style={[epf.input, { backgroundColor: th.bgCardAlt, borderColor: th.border, color: th.text }]}
+          />
+          {error ? <Text style={{ color: th.error, fontSize: 12, marginBottom: 8 }}>{error}</Text> : null}
+          <View style={epf.btnRow}>
+            <TouchableOpacity onPress={onClose} style={[epf.cancelBtn, { borderColor: th.border }]}>
+              <Text style={[epf.cancelText, { color: th.textSub }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSendCode} disabled={loading} style={[epf.saveBtn, { backgroundColor: th.accent }]}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={epf.saveText}>{t.send_code}</Text>}
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={{ color: th.textSub, fontSize: 13, marginBottom: 10 }}>{t.code_sent_phone}</Text>
+          <TextInput
+            value={code}
+            onChangeText={setCode}
+            placeholder={t.enter_verification_code}
+            placeholderTextColor={th.textMuted}
+            keyboardType="number-pad"
+            style={[epf.input, { backgroundColor: th.bgCardAlt, borderColor: th.border, color: th.text }]}
+          />
+          {error ? <Text style={{ color: th.error, fontSize: 12, marginBottom: 8 }}>{error}</Text> : null}
+          <View style={epf.btnRow}>
+            <TouchableOpacity onPress={() => { setStep('phone'); setCode('') }} style={[epf.cancelBtn, { borderColor: th.border }]}>
+              <Text style={[epf.cancelText, { color: th.textSub }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleVerify} disabled={loading} style={[epf.saveBtn, { backgroundColor: th.accent }]}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={epf.saveText}>{t.verify_code}</Text>}
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </View>
+  )
+}
+
 // ─── Profile view (logged in) ──────────────────────────────────────────────────
 function ProfileView({ th, t }: { th: any; t: any }) {
   const { themeKey, toggle } = useTheme()
@@ -328,16 +539,21 @@ function ProfileView({ th, t }: { th: any; t: any }) {
     )
   }
 
-  const [langPickerOpen,  setLangPickerOpen]  = useState(false)
-  const [editProfileOpen, setEditProfileOpen] = useState(false)
-  const [changePwdOpen,   setChangePwdOpen]   = useState(false)
-  const [notificationsOn, setNotificationsOn] = useState(true)
-  const [avatarUploading, setAvatarUploading] = useState(false)
-  const [faqOpen,         setFaqOpen]         = useState(false)
-  const [openFaqIdx,      setOpenFaqIdx]      = useState<number | null>(null)
+  const [referralStats,     setReferralStats]     = useState<ReferralStats | null>(null)
+  const [referralCopied,    setReferralCopied]    = useState(false)
+  const [langPickerOpen,    setLangPickerOpen]    = useState(false)
+  const [editProfileOpen,   setEditProfileOpen]   = useState(false)
+  const [changePwdOpen,     setChangePwdOpen]     = useState(false)
+  const [changeEmailOpen,   setChangeEmailOpen]   = useState(false)
+  const [changePhoneOpen,   setChangePhoneOpen]   = useState(false)
+  const [notificationsOn,   setNotificationsOn]   = useState(true)
+  const [avatarUploading,   setAvatarUploading]   = useState(false)
+  const [faqOpen,           setFaqOpen]           = useState(false)
+  const [openFaqIdx,        setOpenFaqIdx]        = useState<number | null>(null)
 
   useEffect(() => {
     isEnabled().then(v => setNotificationsOn(v))
+    getReferralStats().then(setReferralStats).catch(() => {})
   }, [])
 
   async function toggleNotifications(v: boolean) {
@@ -475,8 +691,8 @@ function ProfileView({ th, t }: { th: any; t: any }) {
         )}
 
         <TouchableOpacity
-          onPress={() => { setEditProfileOpen(false); setChangePwdOpen(v => !v) }}
-          style={[pv.row, { borderBottomWidth: 0 }]}
+          onPress={() => { setEditProfileOpen(false); setChangeEmailOpen(false); setChangePhoneOpen(false); setChangePwdOpen(v => !v) }}
+          style={[pv.row, { borderBottomColor: th.border }]}
           activeOpacity={0.7}
         >
           <View style={pv.rowLabel}>
@@ -489,6 +705,109 @@ function ProfileView({ th, t }: { th: any; t: any }) {
         {changePwdOpen && (
           <View style={{ padding: 12, paddingTop: 0 }}>
             <ChangePasswordForm th={th} t={t} onClose={() => setChangePwdOpen(false)} />
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={() => { setEditProfileOpen(false); setChangePwdOpen(false); setChangePhoneOpen(false); setChangeEmailOpen(v => !v) }}
+          style={[pv.row, { borderBottomColor: th.border }]}
+          activeOpacity={0.7}
+        >
+          <View style={pv.rowLabel}>
+            <Edit2 size={15} color={th.textSub} strokeWidth={1.75} />
+            <Text style={[pv.rowLabelText, { color: th.text }]}>{t.change_email}</Text>
+          </View>
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+        </TouchableOpacity>
+
+        {changeEmailOpen && (
+          <View style={{ padding: 12, paddingTop: 0 }}>
+            <ChangeEmailForm th={th} t={t} onClose={() => setChangeEmailOpen(false)} />
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={() => { setEditProfileOpen(false); setChangePwdOpen(false); setChangeEmailOpen(false); setChangePhoneOpen(v => !v) }}
+          style={[pv.row, { borderBottomWidth: 0 }]}
+          activeOpacity={0.7}
+        >
+          <View style={pv.rowLabel}>
+            <Edit2 size={15} color={th.textSub} strokeWidth={1.75} />
+            <Text style={[pv.rowLabelText, { color: th.text }]}>{t.change_phone}</Text>
+          </View>
+          <ChevronRight size={16} color={th.textMuted} strokeWidth={1.75} />
+        </TouchableOpacity>
+
+        {changePhoneOpen && (
+          <View style={{ padding: 12, paddingTop: 0 }}>
+            <ChangePhoneForm th={th} t={t} onClose={() => setChangePhoneOpen(false)} />
+          </View>
+        )}
+      </View>
+
+      {/* ── Invite Friends (Referral) ── */}
+      <Text style={[pv.sectionLabel, { color: th.textMuted }]}>{(t.invite_friends as string).toUpperCase()}</Text>
+      <View style={[pv.card, { backgroundColor: th.bgCard, borderColor: th.border }]}>
+        {referralStats ? (
+          <>
+            {/* Code box */}
+            <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: th.border }}>
+              <Text style={[{ fontSize: 11, color: th.textMuted, marginBottom: 6 }]}>{t.your_referral_code as string}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ flex: 1, backgroundColor: th.bgCardAlt, borderRadius: 8, borderWidth: 1, borderColor: th.border, paddingHorizontal: 12, paddingVertical: 10 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: th.text, letterSpacing: 2 }}>
+                    {referralStats.referralCode}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      const Clipboard = await import('expo-clipboard').catch(() => null)
+                      if (Clipboard) await Clipboard.setStringAsync(referralStats.referralCode)
+                    } catch {}
+                    setReferralCopied(true)
+                    setTimeout(() => setReferralCopied(false), 2000)
+                  }}
+                  style={[{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: th.border, backgroundColor: th.bgCardAlt }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: referralCopied ? th.accent : th.textSub }}>
+                    {referralCopied ? t.referral_copied as string : t.referral_copy as string}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  const { Share } = require('react-native')
+                  Share.share({ message: `${t.referral_share as string}: ${referralStats.referralCode}` })
+                }}
+                style={{ marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: th.accent, alignItems: 'center' }}
+                activeOpacity={0.85}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t.referral_share as string}</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Stats */}
+            <View style={{ flexDirection: 'row', padding: 14, gap: 12 }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: th.text }}>{referralStats.totalReferrals}</Text>
+                <Text style={{ fontSize: 11, color: th.textMuted, marginTop: 2 }}>{t.referral_count as string}</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: th.border }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: th.accent }}>{referralStats.completedReferrals}</Text>
+                <Text style={{ fontSize: 11, color: th.textMuted, marginTop: 2 }}>Completed</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: th.border }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: th.text }}>{referralStats.pendingReferrals}</Text>
+                <Text style={{ fontSize: 11, color: th.textMuted, marginTop: 2 }}>{t.referral_pending as string}</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={pv.row}>
+            <Text style={[pv.rowLabelText, { color: th.textMuted }]}>{t.loading}</Text>
           </View>
         )}
       </View>

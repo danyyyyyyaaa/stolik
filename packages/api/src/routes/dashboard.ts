@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, requireRestaurant } from '../middleware/auth'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -8,10 +8,9 @@ const prisma = new PrismaClient()
 // ─── GET /api/dashboard/overview?restaurantId=xxx ────────────────────────────
 // Returns: today's bookings count, guests expected, pending count,
 //          avg rating, trend vs yesterday, month total
-router.get('/overview', requireAuth, async (req, res, next) => {
+router.get('/overview', requireAuth, requireRestaurant, async (req, res, next) => {
   try {
-    const { restaurantId } = req.query
-    if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
+    const restaurantId = ((req as any).restaurant.id) as string
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -23,15 +22,15 @@ router.get('/overview', requireAuth, async (req, res, next) => {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
 
     const [todayBookings, yesterdayBookings, pendingBookings, monthBookings, avgRating] = await Promise.all([
-      prisma.booking.count({ where: { restaurantId: String(restaurantId), date: { gte: today, lt: tomorrow }, status: { not: 'cancelled' } } }),
-      prisma.booking.count({ where: { restaurantId: String(restaurantId), date: { gte: yesterday, lt: today }, status: { not: 'cancelled' } } }),
-      prisma.booking.count({ where: { restaurantId: String(restaurantId), date: { gte: today, lt: tomorrow }, status: 'pending' } }),
-      prisma.booking.count({ where: { restaurantId: String(restaurantId), date: { gte: monthStart }, status: { not: 'cancelled' } } }),
-      prisma.review.aggregate({ where: { restaurantId: String(restaurantId) }, _avg: { rating: true } }),
+      prisma.booking.count({ where: { restaurantId, date: { gte: today, lt: tomorrow }, status: { not: 'cancelled' } } }),
+      prisma.booking.count({ where: { restaurantId, date: { gte: yesterday, lt: today }, status: { not: 'cancelled' } } }),
+      prisma.booking.count({ where: { restaurantId, date: { gte: today, lt: tomorrow }, status: 'pending' } }),
+      prisma.booking.count({ where: { restaurantId, date: { gte: monthStart }, status: { not: 'cancelled' } } }),
+      prisma.review.aggregate({ where: { restaurantId }, _avg: { rating: true } }),
     ])
 
     const guestsToday = await prisma.booking.aggregate({
-      where: { restaurantId: String(restaurantId), date: { gte: today, lt: tomorrow }, status: { not: 'cancelled' } },
+      where: { restaurantId, date: { gte: today, lt: tomorrow }, status: { not: 'cancelled' } },
       _sum: { guestCount: true },
     })
 
@@ -49,17 +48,18 @@ router.get('/overview', requireAuth, async (req, res, next) => {
 
 // ─── GET /api/dashboard/calendar?restaurantId=xxx&month=2026-04 ──────────────
 // Returns days array with booking counts, guest counts, and full booking details per day
-router.get('/calendar', requireAuth, async (req, res, next) => {
+router.get('/calendar', requireAuth, requireRestaurant, async (req, res, next) => {
   try {
-    const { restaurantId, month } = req.query
-    if (!restaurantId || !month) return res.status(400).json({ error: 'restaurantId and month required' })
+    const restaurantId = ((req as any).restaurant.id) as string
+    const { month } = req.query
+    if (!month) return res.status(400).json({ error: 'month required' })
 
     const [year, m] = String(month).split('-').map(Number)
     const start = new Date(year, m - 1, 1)
     const end = new Date(year, m, 1)
 
     const bookings = await prisma.booking.findMany({
-      where: { restaurantId: String(restaurantId), date: { gte: start, lt: end } },
+      where: { restaurantId, date: { gte: start, lt: end } },
       include: { table: { select: { name: true } } },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
     })
@@ -101,10 +101,11 @@ function calcEndTime(time: string, duration: number): string {
 // ─── GET /api/dashboard/analytics?restaurantId=xxx&from=2026-01-01&to=2026-04-01
 // Returns: KPIs with change %, bookings over time, status breakdown, peak hours heatmap,
 //          guest distribution, table utilization, top guests
-router.get('/analytics', requireAuth, async (req, res, next) => {
+router.get('/analytics', requireAuth, requireRestaurant, async (req, res, next) => {
   try {
-    const { restaurantId, from, to } = req.query
-    if (!restaurantId || !from || !to) return res.status(400).json({ error: 'restaurantId, from, to required' })
+    const restaurantId = ((req as any).restaurant.id) as string
+    const { from, to } = req.query
+    if (!from || !to) return res.status(400).json({ error: 'from and to required' })
 
     const fromDate = new Date(String(from))
     const toDate = new Date(String(to))
@@ -116,14 +117,14 @@ router.get('/analytics', requireAuth, async (req, res, next) => {
 
     const [bookings, prevBookings, tables] = await Promise.all([
       prisma.booking.findMany({
-        where: { restaurantId: String(restaurantId), date: { gte: fromDate, lte: toDate } },
+        where: { restaurantId, date: { gte: fromDate, lte: toDate } },
         include: { table: { select: { name: true } } },
       }),
       prisma.booking.findMany({
-        where: { restaurantId: String(restaurantId), date: { gte: prevFrom, lte: prevTo } },
+        where: { restaurantId, date: { gte: prevFrom, lte: prevTo } },
         select: { userId: true, guestCount: true, status: true },
       }),
-      prisma.table.findMany({ where: { restaurantId: String(restaurantId) }, select: { id: true, name: true } }),
+      prisma.table.findMany({ where: { restaurantId }, select: { id: true, name: true } }),
     ])
 
     const total = bookings.length
@@ -141,6 +142,17 @@ router.get('/analytics', requireAuth, async (req, res, next) => {
     const prevNoShowRate = prevTotal > 0 ? (prevNoShows / prevTotal) * 100 : 0
     const cancelRate = total > 0 ? (cancellations / total) * 100 : 0
     const prevCancelRate = prevTotal > 0 ? (prevCancellations / prevTotal) * 100 : 0
+
+    // New KPIs
+    const totalGuests = bookings.reduce((s, b) => s + b.guestCount, 0)
+    const confirmed   = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed').length
+    const bookingConversion = total > 0 ? parseFloat(((confirmed / total) * 100).toFixed(1)) : 0
+
+    const phoneVisits: Record<string, number> = {}
+    for (const b of bookings) phoneVisits[b.guestPhone] = (phoneVisits[b.guestPhone] ?? 0) + 1
+    const totalUniqueGuests = Object.keys(phoneVisits).length
+    const repeatGuests = Object.values(phoneVisits).filter(v => v > 1).length
+    const repeatGuestRate = totalUniqueGuests > 0 ? parseFloat(((repeatGuests / totalUniqueGuests) * 100).toFixed(1)) : 0
 
     const avgLeadTime = bookings.length > 0
       ? bookings.reduce((s, b) => {
@@ -223,7 +235,11 @@ router.get('/analytics', requireAuth, async (req, res, next) => {
         noShowRate: parseFloat(noShowRate.toFixed(1)), noShowRateChange: pctChange(noShowRate, prevNoShowRate),
         cancellationRate: parseFloat(cancelRate.toFixed(1)), cancellationRateChange: pctChange(cancelRate, prevCancelRate),
         avgLeadTimeDays: parseFloat(avgLeadTime.toFixed(1)), avgLeadTimeDaysChange: null,
+        totalGuests,
+        bookingConversion,
+        repeatGuestRate,
       },
+      dailyBookingsTrend: Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b)).map(([date,v])=>({ date, total: v.confirmed+v.cancelled+v.noShow, ...v })),
       bookingsOverTime,
       bookingsByStatus,
       peakHoursHeatmap,

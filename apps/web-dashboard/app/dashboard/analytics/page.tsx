@@ -17,6 +17,7 @@ import { StatsCardSkeleton, Skeleton } from '@/components/shared/LoadingSkeleton
 import { EmptyState } from '@/components/shared/EmptyState'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
+import { useT } from '@/lib/i18n'
 
 // ---- Types ----------------------------------------------------------------
 
@@ -155,6 +156,7 @@ function ChartSkeleton({ height = 200 }: { height?: number }) {
 // ---- Heatmap --------------------------------------------------------------
 
 function PeakHoursHeatmap({ data }: { data: PeakHoursItem[] }) {
+  const t = useT()
   const HOURS = Array.from({ length: 13 }, (_, i) => i + 10)
   const maxCount = Math.max(...data.map(d => d.count), 1)
 
@@ -188,11 +190,11 @@ function PeakHoursHeatmap({ data }: { data: PeakHoursItem[] }) {
         </div>
       ))}
       <div className="flex items-center gap-2 mt-3 justify-end">
-        <span className="text-[10px] text-muted">Less</span>
+        <span className="text-[10px] text-muted">{t.lessPeak}</span>
         {[0.1, 0.3, 0.55, 0.75, 1].map(o => (
           <div key={o} className="w-4 h-4 rounded-sm" style={{ background: `rgba(27,122,74,${o})` }} />
         ))}
-        <span className="text-[10px] text-muted">More</span>
+        <span className="text-[10px] text-muted">{t.morePeak}</span>
       </div>
     </div>
   )
@@ -201,7 +203,8 @@ function PeakHoursHeatmap({ data }: { data: PeakHoursItem[] }) {
 // ---- Table Utilization ----------------------------------------------------
 
 function TableUtilizationChart({ data }: { data: TableUtilItem[] }) {
-  if (!data.length) return <p className="text-sm text-muted text-center py-8">No table data</p>
+  const t = useT()
+  if (!data.length) return <p className="text-sm text-muted text-center py-8">{t.noTableDataMsg}</p>
 
   return (
     <div className="space-y-3">
@@ -230,16 +233,17 @@ function TableUtilizationChart({ data }: { data: TableUtilItem[] }) {
 // ---- Top Guests table -----------------------------------------------------
 
 function TopGuestsTable({ data }: { data: TopGuestItem[] }) {
-  if (!data.length) return <p className="text-sm text-muted text-center py-8">No guest data</p>
+  const t = useT()
+  if (!data.length) return <p className="text-sm text-muted text-center py-8">{t.noGuestDataMsg}</p>
 
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-border">
           <th className="text-left text-xs text-muted font-semibold pb-2 w-8">#</th>
-          <th className="text-left text-xs text-muted font-semibold pb-2">Name</th>
-          <th className="text-right text-xs text-muted font-semibold pb-2">Visits</th>
-          <th className="text-right text-xs text-muted font-semibold pb-2">Last visit</th>
+          <th className="text-left text-xs text-muted font-semibold pb-2">{t.guest}</th>
+          <th className="text-right text-xs text-muted font-semibold pb-2">{t.visits}</th>
+          <th className="text-right text-xs text-muted font-semibold pb-2">{t.lastVisit}</th>
         </tr>
       </thead>
       <tbody>
@@ -260,6 +264,7 @@ function TopGuestsTable({ data }: { data: TopGuestItem[] }) {
 
 export default function AnalyticsPage() {
   const { restaurant } = useMyRestaurant()
+  const t = useT()
   const [data, setData]       = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
@@ -280,7 +285,7 @@ export default function AnalyticsPage() {
       })
       setData(res)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load analytics')
+      setError(e instanceof Error ? e.message : t.failedLoadAnalytics)
     } finally {
       setLoading(false)
     }
@@ -311,6 +316,9 @@ export default function AnalyticsPage() {
   const noShowRate         = kpis?.noShowRate        ?? Number(data?.noShowRate     ?? 0)
   const cancellationRate   = kpis?.cancellationRate  ?? Number(data?.cancellationRate ?? 0)
   const avgLeadTimeDays    = kpis?.avgLeadTimeDays   ?? 0
+  const totalGuests        = (kpis as any)?.totalGuests        ?? 0
+  const bookingConversion  = (kpis as any)?.bookingConversion  ?? 0
+  const repeatGuestRate    = (kpis as any)?.repeatGuestRate    ?? 0
 
   // Resolve chart data
   const bookingsOverTime: BookingsOverTimeItem[] = data?.bookingsOverTime
@@ -340,7 +348,7 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <PageHeader title="Analytics" description="Booking performance and trends" />
+      <PageHeader title={t.analyticsLabel} description={t.analyticsPageDesc} />
 
       {/* Preset row */}
       <div className="flex items-center gap-2 flex-wrap mb-6">
@@ -367,7 +375,7 @@ export default function AnalyticsPage() {
               : 'border border-border bg-surface hover:bg-surface-2 text-muted hover:text-text'
           }`}
         >
-          Custom
+          {t.customRange}
         </button>
         {customMode && (
           <div className="flex items-center gap-2">
@@ -388,7 +396,7 @@ export default function AnalyticsPage() {
               onClick={handleCustomApply}
               className="px-3 py-1.5 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-btn transition-colors"
             >
-              Apply
+              {t.applyBtn}
             </button>
           </div>
         )}
@@ -399,14 +407,14 @@ export default function AnalyticsPage() {
         <div className="mb-6">
           <EmptyState
             icon={BookOpen}
-            title="Failed to load analytics"
+            title={t.failedLoadAnalytics}
             description={error}
             action={
               <button
                 onClick={() => fetchAnalytics(fromDate, toDate)}
                 className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-btn transition-colors"
               >
-                Retry
+                {t.retryBtn}
               </button>
             }
           />
@@ -416,50 +424,18 @@ export default function AnalyticsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {loading ? (
-          Array.from({ length: 6 }).map((_, i) => <StatsCardSkeleton key={i} />)
+          Array.from({ length: 9 }).map((_, i) => <StatsCardSkeleton key={i} />)
         ) : (
           <>
-            <StatsCard
-              title="Total Bookings"
-              value={totalBookings}
-              trend={kpis?.totalBookingsChange}
-              icon={BookOpen}
-            />
-            <StatsCard
-              title="Unique Guests"
-              value={uniqueGuests}
-              trend={kpis?.uniqueGuestsChange}
-              icon={Users}
-              iconColor="text-blue-400"
-            />
-            <StatsCard
-              title="Avg Party Size"
-              value={typeof avgPartySize === 'number' ? avgPartySize.toFixed(1) : avgPartySize}
-              trend={kpis?.avgPartySizeChange}
-              icon={Users}
-              iconColor="text-amber"
-            />
-            <StatsCard
-              title="No-show Rate"
-              value={`${typeof noShowRate === 'number' ? noShowRate.toFixed(1) : noShowRate}%`}
-              trend={kpis?.noShowRateChange}
-              icon={XCircle}
-              iconColor="text-error"
-            />
-            <StatsCard
-              title="Cancellation Rate"
-              value={`${typeof cancellationRate === 'number' ? cancellationRate.toFixed(1) : cancellationRate}%`}
-              trend={kpis?.cancellationRateChange}
-              icon={TrendingDown}
-              iconColor="text-warning"
-            />
-            <StatsCard
-              title="Avg Lead Time"
-              value={`${avgLeadTimeDays} days`}
-              trend={kpis?.avgLeadTimeDaysChange}
-              icon={Clock}
-              iconColor="text-indigo-400"
-            />
+            <StatsCard title={t.totalBookingsKpi} value={totalBookings} trend={kpis?.totalBookingsChange} icon={BookOpen} />
+            <StatsCard title={t.uniqueGuestsKpi} value={uniqueGuests} trend={kpis?.uniqueGuestsChange} icon={Users} iconColor="text-blue-400" />
+            <StatsCard title={t.totalGuestsKpi} value={totalGuests} icon={Users} iconColor="text-emerald-400" />
+            <StatsCard title={t.avgPartySizeKpi} value={typeof avgPartySize === 'number' ? avgPartySize.toFixed(1) : avgPartySize} trend={kpis?.avgPartySizeChange} icon={Users} iconColor="text-amber" />
+            <StatsCard title={t.bookingConversionKpi} value={`${bookingConversion}%`} icon={TrendingDown} iconColor="text-accent" />
+            <StatsCard title={t.repeatGuestRateKpi} value={`${repeatGuestRate}%`} icon={Users} iconColor="text-purple-400" />
+            <StatsCard title={t.noShowRateLabel} value={`${typeof noShowRate === 'number' ? noShowRate.toFixed(1) : noShowRate}%`} trend={kpis?.noShowRateChange} icon={XCircle} iconColor="text-error" />
+            <StatsCard title={t.cancellationRateKpi} value={`${typeof cancellationRate === 'number' ? cancellationRate.toFixed(1) : cancellationRate}%`} trend={kpis?.cancellationRateChange} icon={TrendingDown} iconColor="text-warning" />
+            <StatsCard title={t.avgLeadTimeKpi} value={`${avgLeadTimeDays} ${t.daysUnit}`} trend={kpis?.avgLeadTimeDaysChange} icon={Clock} iconColor="text-indigo-400" />
           </>
         )}
       </div>
@@ -469,9 +445,9 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* 1. Bookings over time — full width */}
-          <SectionCard title="Bookings Over Time" fullWidth>
+          <SectionCard title={t.bookingsOverTimeChart} fullWidth>
             {bookingsOverTime.length === 0 ? (
-              <p className="text-sm text-muted text-center py-8">No data for this period</p>
+              <p className="text-sm text-muted text-center py-8">{t.noDataPeriod}</p>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={bookingsOverTime} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
@@ -530,9 +506,9 @@ export default function AnalyticsPage() {
           </SectionCard>
 
           {/* 2. Bookings by Status — pie chart */}
-          <SectionCard title="Bookings by Status">
+          <SectionCard title={t.bookingsByStatusChart}>
             {bookingsByStatus.length === 0 ? (
-              <p className="text-sm text-muted text-center py-8">No data</p>
+              <p className="text-sm text-muted text-center py-8">{t.noDataPeriod}</p>
             ) : (
               <div className="flex items-center gap-4">
                 <div className="relative">
@@ -583,18 +559,18 @@ export default function AnalyticsPage() {
           </SectionCard>
 
           {/* 3. Peak Hours Heatmap — full width */}
-          <SectionCard title="Peak Hours Heatmap" fullWidth>
+          <SectionCard title={t.peakHoursChart} fullWidth>
             {peakHoursData.length === 0 ? (
-              <p className="text-sm text-muted text-center py-8">No peak hours data</p>
+              <p className="text-sm text-muted text-center py-8">{t.noPeakDataMsg}</p>
             ) : (
               <PeakHoursHeatmap data={peakHoursData} />
             )}
           </SectionCard>
 
           {/* 4. Guest Distribution */}
-          <SectionCard title="Guest Distribution">
+          <SectionCard title={t.guestDistChart}>
             {guestDistribution.length === 0 ? (
-              <p className="text-sm text-muted text-center py-8">No data</p>
+              <p className="text-sm text-muted text-center py-8">{t.noDataPeriod}</p>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={guestDistribution} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
@@ -609,12 +585,12 @@ export default function AnalyticsPage() {
           </SectionCard>
 
           {/* 5. Table Utilization */}
-          <SectionCard title="Table Utilization">
+          <SectionCard title={t.tableUtilChart}>
             <TableUtilizationChart data={tableUtilization} />
           </SectionCard>
 
           {/* 6. Top Guests */}
-          <SectionCard title="Top Guests">
+          <SectionCard title={t.topGuestsLabel}>
             <TopGuestsTable data={topGuests} />
           </SectionCard>
 

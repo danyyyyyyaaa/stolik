@@ -252,6 +252,70 @@ export const T = {
     clickToUpload:    'Kliknij, aby przesłać',
     notifNewBooking: 'Nowa rezerwacja', notifCancelled: 'Rezerwacja anulowana', notifUpdated: 'Status rezerwacji zmieniony', notifOffline: 'Offline',
     verifyEmailBanner: 'Potwierdź adres email. Sprawdź skrzynkę lub', verifyEmailResend: 'wyślij ponownie', verifyEmailSent: 'Link wysłany!',
+    // Nav labels
+    calendar: 'Kalendarz', staff: 'Personel',
+    // Page titles & descriptions
+    overview: 'Przegląd', overviewDesc: 'Twój dashboard na dziś',
+    reviews: 'Recenzje', reviewsDesc: 'Opinie gości i oceny',
+    analyticsLabel: 'Analityka', analyticsPageDesc: 'Wydajność rezerwacji i trendy',
+    integrationsLabel: 'Integracje', integrationsDesc: 'Połącz narzędzia i zarządzaj dostępem API',
+    // Dashboard overview
+    guestsExpected: 'Oczekiwani goście', thisMonth: 'Ten miesiąc',
+    avgRatingLabel: 'Śr. ocena', vsYesterday: 'vs wczoraj', todaySubtitle: 'dzisiaj',
+    quickActions: 'Szybkie akcje',
+    manageBookingsLabel: 'Zarządzaj rezerwacjami', confirmOrCancelDesc: 'Potwierdź lub anuluj oczekujące',
+    viewCalendarLabel: 'Podgląd kalendarza', seeWeeklyDesc: 'Widok tygodniowy i miesięczny',
+    revenueBookingTrends: 'Przychody i trendy rezerwacji',
+    bookingsTodayWillAppear: 'Rezerwacje na dziś pojawią się tutaj',
+    // Reviews
+    reviewsAll: 'Wszystkie', reviewsNewest: 'Najnowsze', reviewsOldest: 'Najstarsze',
+    reviewsHighest: 'Najwyżej oceniane', reviewsLowest: 'Najniżej oceniane',
+    noReviewsYet: 'Brak recenzji', noReviewsDesc: 'Recenzje pojawią się tutaj, gdy goście ocenią Twoją restaurację.',
+    replyToReview: 'Odpowiedz na recenzję', sendReply: 'Wyślij odpowiedź',
+    writeReplyPlaceholder: 'Napisz odpowiedź...', restaurantShort: 'Restauracja',
+    failedLoadReviews: 'Nie można załadować recenzji',
+    // Analytics KPIs
+    totalBookingsKpi: 'Wszystkie rezerwacje', uniqueGuestsKpi: 'Unikalni goście',
+    avgPartySizeKpi: 'Śr. wielkość grupy', noShowRateLabel: 'Wskaźnik no-show',
+    cancellationRateKpi: 'Wskaźnik anulowań', avgLeadTimeKpi: 'Śr. czas poprzedzający',
+    daysUnit: 'dni',
+    // Analytics charts
+    bookingsOverTimeChart: 'Rezerwacje w czasie', bookingsByStatusChart: 'Rezerwacje według statusu',
+    peakHoursChart: 'Mapa godzin szczytu', guestDistChart: 'Rozkład gości',
+    tableUtilChart: 'Wykorzystanie stolików', topGuestsLabel: 'Najlepsi goście',
+    noDataPeriod: 'Brak danych dla tego okresu', failedLoadAnalytics: 'Nie można załadować analityki',
+    retryBtn: 'Spróbuj ponownie', customRange: 'Własny', applyBtn: 'Zastosuj',
+    lessPeak: 'Mniej', morePeak: 'Więcej',
+    noTableDataMsg: 'Brak danych stołów', noGuestDataMsg: 'Brak danych gości', noPeakDataMsg: 'Brak danych godzin szczytu',
+    birthdayPerkTitle: 'Zniżki urodzinowe', birthdayPerkDesc: 'Goście z urodzinami w ciągu 3 dni od rezerwacji otrzymają specjalną ofertę',
+    birthdayPerkLabel: 'Włącz zniżki urodzinowe', birthdayPerkDescLabel: 'Opis oferty',
+    birthdayPerkDescPlaceholder: 'np. Darmowy deser dla gości urodzinowych', birthdayBookingBadge: 'Urodziny',
+    parkingTitle: 'Parking', parkingDesc: 'Poinformuj gości, czy dostępny jest parking',
+    parkingDetailsLabel: 'Szczegóły parkingu', parkingDetailsPlaceholder: 'np. Bezpłatny parking przed restauracją',
+    waitlistTab: 'Lista oczekujących', waitlistEmpty: 'Lista oczekujących jest pusta', waitlistNotify: 'Powiadom',
+    waitlistNotifying: 'Wysyłanie…', waitlistStatus: 'Status', waitlistPartySize: 'Liczba osób',
+    waitlistJoinedAt: 'Dołączył', waitlistNotified: 'Powiadomiony',
+    // Deals / Promotions
+    dealsNav: 'Promocje', dealsPageDesc: 'Zarządzaj zniżkami i ofertami specjalnymi',
+    newDeal: 'Nowa oferta', dealTitle: 'Tytuł oferty', dealDesc: 'Opis', dealType: 'Typ rabatu',
+    dealTypePercent: 'Procent', dealTypeFixed: 'Kwota stała', dealTypeFreeitem: 'Gratis',
+    dealValue: 'Wartość', dealCode: 'Kod promocyjny', dealValidFrom: 'Od dnia', dealValidUntil: 'Do dnia',
+    dealMaxUses: 'Maks. użyć', dealActive: 'Aktywna', dealInactive: 'Nieaktywna',
+    dealSave: 'Zapisz ofertę', dealDelete: 'Usuń ofertę', dealsEmpty: 'Brak ofert. Stwórz pierwszą!',
+    dealActivate: 'Aktywuj', dealDeactivate: 'Dezaktywuj',
+    // Referrals
+    referralNav: 'Polecenia', referralCode: 'Twój kod polecający', referralStats: 'Statystyki poleceń',
+    referralTotal: 'Łącznie poleceń', referralPending: 'Oczekujące', referralCompleted: 'Zakończone',
+    referralName: 'Imię', referralJoined: 'Dołączył', referralStatus: 'Status', referralEmpty: 'Brak poleceń',
+    // Ads Manager
+    adsNav: 'Reklamy', adsPageDesc: 'Promuj restaurację w wynikach wyszukiwania',
+    adsBoostTitle: 'Promowane wyniki', adsBoostDesc: 'Twoja restauracja pojawi się na górze listy',
+    adsActive: 'Reklama aktywna', adsInactive: 'Reklama nieaktywna', adsActivate: 'Włącz promocję',
+    adsDeactivate: 'Wyłącz promocję', adsStartDate: 'Data rozpoczęcia', adsEndDate: 'Data zakończenia',
+    adsBudget: 'Dzienny budżet (PLN)', adsImpressions: 'Wyświetlenia', adsClicks: 'Kliknięcia',
+    adsSave: 'Zapisz kampanię', adsSaved: 'Kampania zapisana',
+    // Analytics new KPIs
+    totalGuestsKpi: 'Łącznie gości', bookingConversionKpi: 'Konwersja', repeatGuestRateKpi: 'Powracający goście',
   },
   EN: {
     bookings:        'Bookings',
@@ -477,6 +541,70 @@ export const T = {
     clickToUpload:    'Click to upload',
     notifNewBooking: 'New booking', notifCancelled: 'Booking cancelled', notifUpdated: 'Booking status updated', notifOffline: 'Offline',
     verifyEmailBanner: 'Please verify your email. Check your inbox or', verifyEmailResend: 'resend link', verifyEmailSent: 'Link sent!',
+    // Nav labels
+    calendar: 'Calendar', staff: 'Staff',
+    // Page titles & descriptions
+    overview: 'Overview', overviewDesc: 'Your dashboard for today',
+    reviews: 'Reviews', reviewsDesc: 'Guest feedback and ratings',
+    analyticsLabel: 'Analytics', analyticsPageDesc: 'Booking performance and trends',
+    integrationsLabel: 'Integrations', integrationsDesc: 'Connect tools and manage API access',
+    // Dashboard overview
+    guestsExpected: 'Guests expected', thisMonth: 'This month',
+    avgRatingLabel: 'Avg rating', vsYesterday: 'vs yesterday', todaySubtitle: 'today',
+    quickActions: 'Quick actions',
+    manageBookingsLabel: 'Manage bookings', confirmOrCancelDesc: 'Confirm or cancel pending',
+    viewCalendarLabel: 'View calendar', seeWeeklyDesc: 'See weekly & monthly view',
+    revenueBookingTrends: 'Revenue & booking trends',
+    bookingsTodayWillAppear: 'Your bookings for today will appear here',
+    // Reviews
+    reviewsAll: 'All', reviewsNewest: 'Newest', reviewsOldest: 'Oldest',
+    reviewsHighest: 'Highest rated', reviewsLowest: 'Lowest rated',
+    noReviewsYet: 'No reviews yet', noReviewsDesc: 'Reviews will appear here when guests rate your restaurant.',
+    replyToReview: 'Reply to review', sendReply: 'Send reply',
+    writeReplyPlaceholder: 'Write your reply...', restaurantShort: 'Restaurant',
+    failedLoadReviews: 'Failed to load reviews',
+    // Analytics KPIs
+    totalBookingsKpi: 'Total Bookings', uniqueGuestsKpi: 'Unique Guests',
+    avgPartySizeKpi: 'Avg Party Size', noShowRateLabel: 'No-show Rate',
+    cancellationRateKpi: 'Cancellation Rate', avgLeadTimeKpi: 'Avg Lead Time',
+    daysUnit: 'days',
+    // Analytics charts
+    bookingsOverTimeChart: 'Bookings Over Time', bookingsByStatusChart: 'Bookings by Status',
+    peakHoursChart: 'Peak Hours Heatmap', guestDistChart: 'Guest Distribution',
+    tableUtilChart: 'Table Utilization', topGuestsLabel: 'Top Guests',
+    noDataPeriod: 'No data for this period', failedLoadAnalytics: 'Failed to load analytics',
+    retryBtn: 'Retry', customRange: 'Custom', applyBtn: 'Apply',
+    lessPeak: 'Less', morePeak: 'More',
+    noTableDataMsg: 'No table data', noGuestDataMsg: 'No guest data', noPeakDataMsg: 'No peak hours data',
+    birthdayPerkTitle: 'Birthday perks', birthdayPerkDesc: 'Guests with a birthday within 3 days of their booking get a special perk',
+    birthdayPerkLabel: 'Enable birthday perks', birthdayPerkDescLabel: 'Perk description',
+    birthdayPerkDescPlaceholder: 'e.g. Free dessert for birthday guests', birthdayBookingBadge: 'Birthday',
+    parkingTitle: 'Parking', parkingDesc: 'Let guests know if parking is available',
+    parkingDetailsLabel: 'Parking details', parkingDetailsPlaceholder: 'e.g. Free parking in front of the restaurant',
+    waitlistTab: 'Waitlist', waitlistEmpty: 'Waitlist is empty', waitlistNotify: 'Notify',
+    waitlistNotifying: 'Sending…', waitlistStatus: 'Status', waitlistPartySize: 'Party size',
+    waitlistJoinedAt: 'Joined', waitlistNotified: 'Notified',
+    // Deals / Promotions
+    dealsNav: 'Promotions', dealsPageDesc: 'Manage discounts and special offers',
+    newDeal: 'New deal', dealTitle: 'Deal title', dealDesc: 'Description', dealType: 'Discount type',
+    dealTypePercent: 'Percent', dealTypeFixed: 'Fixed amount', dealTypeFreeitem: 'Free item',
+    dealValue: 'Value', dealCode: 'Promo code', dealValidFrom: 'Valid from', dealValidUntil: 'Valid until',
+    dealMaxUses: 'Max uses', dealActive: 'Active', dealInactive: 'Inactive',
+    dealSave: 'Save deal', dealDelete: 'Delete deal', dealsEmpty: 'No deals yet. Create your first!',
+    dealActivate: 'Activate', dealDeactivate: 'Deactivate',
+    // Referrals
+    referralNav: 'Referrals', referralCode: 'Your referral code', referralStats: 'Referral stats',
+    referralTotal: 'Total referrals', referralPending: 'Pending', referralCompleted: 'Completed',
+    referralName: 'Name', referralJoined: 'Joined', referralStatus: 'Status', referralEmpty: 'No referrals yet',
+    // Ads Manager
+    adsNav: 'Ads', adsPageDesc: 'Promote your restaurant in search results',
+    adsBoostTitle: 'Promoted results', adsBoostDesc: 'Your restaurant will appear at the top of the list',
+    adsActive: 'Ad is active', adsInactive: 'Ad is inactive', adsActivate: 'Activate promotion',
+    adsDeactivate: 'Deactivate promotion', adsStartDate: 'Start date', adsEndDate: 'End date',
+    adsBudget: 'Daily budget (PLN)', adsImpressions: 'Impressions', adsClicks: 'Clicks',
+    adsSave: 'Save campaign', adsSaved: 'Campaign saved',
+    // Analytics new KPIs
+    totalGuestsKpi: 'Total guests', bookingConversionKpi: 'Conversion rate', repeatGuestRateKpi: 'Repeat guests',
   },
   RU: {
     bookings:        'Бронирования',
@@ -702,6 +830,70 @@ export const T = {
     clickToUpload:    'Нажмите для загрузки',
     notifNewBooking: 'Новая бронь', notifCancelled: 'Бронь отменена', notifUpdated: 'Статус брони изменён', notifOffline: 'Офлайн',
     verifyEmailBanner: 'Подтвердите email. Проверьте почту или', verifyEmailResend: 'отправить повторно', verifyEmailSent: 'Ссылка отправлена!',
+    // Nav labels
+    calendar: 'Календарь', staff: 'Персонал',
+    // Page titles & descriptions
+    overview: 'Обзор', overviewDesc: 'Ваш дашборд на сегодня',
+    reviews: 'Отзывы', reviewsDesc: 'Отзывы гостей и рейтинги',
+    analyticsLabel: 'Аналитика', analyticsPageDesc: 'Эффективность бронирований и тренды',
+    integrationsLabel: 'Интеграции', integrationsDesc: 'Подключите инструменты и управляйте доступом API',
+    // Dashboard overview
+    guestsExpected: 'Ожидаемые гости', thisMonth: 'В этом месяце',
+    avgRatingLabel: 'Ср. рейтинг', vsYesterday: 'vs вчера', todaySubtitle: 'сегодня',
+    quickActions: 'Быстрые действия',
+    manageBookingsLabel: 'Управление бронями', confirmOrCancelDesc: 'Подтвердить или отменить ожидающие',
+    viewCalendarLabel: 'Просмотр календаря', seeWeeklyDesc: 'Еженедельный и ежемесячный вид',
+    revenueBookingTrends: 'Доходы и тренды бронирований',
+    bookingsTodayWillAppear: 'Брони на сегодня появятся здесь',
+    // Reviews
+    reviewsAll: 'Все', reviewsNewest: 'Сначала новые', reviewsOldest: 'Сначала старые',
+    reviewsHighest: 'Лучшие оценки', reviewsLowest: 'Худшие оценки',
+    noReviewsYet: 'Отзывов нет', noReviewsDesc: 'Отзывы появятся здесь, когда гости оценят ваш ресторан.',
+    replyToReview: 'Ответить на отзыв', sendReply: 'Отправить ответ',
+    writeReplyPlaceholder: 'Напишите ответ...', restaurantShort: 'Ресторан',
+    failedLoadReviews: 'Не удалось загрузить отзывы',
+    // Analytics KPIs
+    totalBookingsKpi: 'Всего бронирований', uniqueGuestsKpi: 'Уникальных гостей',
+    avgPartySizeKpi: 'Ср. размер группы', noShowRateLabel: 'Процент no-show',
+    cancellationRateKpi: 'Процент отмен', avgLeadTimeKpi: 'Ср. время заявки',
+    daysUnit: 'дн.',
+    // Analytics charts
+    bookingsOverTimeChart: 'Брони по времени', bookingsByStatusChart: 'Брони по статусам',
+    peakHoursChart: 'Карта пиковых часов', guestDistChart: 'Распределение гостей',
+    tableUtilChart: 'Загрузка столиков', topGuestsLabel: 'Топ гостей',
+    noDataPeriod: 'Нет данных за этот период', failedLoadAnalytics: 'Не удалось загрузить аналитику',
+    retryBtn: 'Повторить', customRange: 'Произвольный', applyBtn: 'Применить',
+    lessPeak: 'Меньше', morePeak: 'Больше',
+    noTableDataMsg: 'Нет данных о столиках', noGuestDataMsg: 'Нет данных о гостях', noPeakDataMsg: 'Нет данных о пиковых часах',
+    birthdayPerkTitle: 'Скидки ко дню рождения', birthdayPerkDesc: 'Гости с днём рождения в течение 3 дней от бронирования получают особое предложение',
+    birthdayPerkLabel: 'Включить скидки ко дню рождения', birthdayPerkDescLabel: 'Описание предложения',
+    birthdayPerkDescPlaceholder: 'напр. Бесплатный десерт для именинников', birthdayBookingBadge: 'День рождения',
+    parkingTitle: 'Парковка', parkingDesc: 'Сообщите гостям, доступна ли парковка',
+    parkingDetailsLabel: 'Детали парковки', parkingDetailsPlaceholder: 'напр. Бесплатная парковка перед рестораном',
+    waitlistTab: 'Список ожидания', waitlistEmpty: 'Список ожидания пуст', waitlistNotify: 'Уведомить',
+    waitlistNotifying: 'Отправка…', waitlistStatus: 'Статус', waitlistPartySize: 'Кол-во гостей',
+    waitlistJoinedAt: 'Добавлен', waitlistNotified: 'Уведомлён',
+    // Deals / Promotions
+    dealsNav: 'Акции', dealsPageDesc: 'Управляйте скидками и спецпредложениями',
+    newDeal: 'Новая акция', dealTitle: 'Название акции', dealDesc: 'Описание', dealType: 'Тип скидки',
+    dealTypePercent: 'Процент', dealTypeFixed: 'Фиксированная', dealTypeFreeitem: 'Бесплатно',
+    dealValue: 'Значение', dealCode: 'Промокод', dealValidFrom: 'Действует с', dealValidUntil: 'Действует до',
+    dealMaxUses: 'Макс. использований', dealActive: 'Активна', dealInactive: 'Неактивна',
+    dealSave: 'Сохранить акцию', dealDelete: 'Удалить акцию', dealsEmpty: 'Акций нет. Создайте первую!',
+    dealActivate: 'Активировать', dealDeactivate: 'Деактивировать',
+    // Referrals
+    referralNav: 'Рефералы', referralCode: 'Ваш реферальный код', referralStats: 'Статистика',
+    referralTotal: 'Всего рефералов', referralPending: 'Ожидают', referralCompleted: 'Завершены',
+    referralName: 'Имя', referralJoined: 'Присоединился', referralStatus: 'Статус', referralEmpty: 'Рефералов нет',
+    // Ads Manager
+    adsNav: 'Реклама', adsPageDesc: 'Продвигайте ресторан в результатах поиска',
+    adsBoostTitle: 'Продвигаемые результаты', adsBoostDesc: 'Ваш ресторан появится вверху списка',
+    adsActive: 'Реклама активна', adsInactive: 'Реклама неактивна', adsActivate: 'Включить продвижение',
+    adsDeactivate: 'Выключить продвижение', adsStartDate: 'Дата начала', adsEndDate: 'Дата окончания',
+    adsBudget: 'Дневной бюджет (PLN)', adsImpressions: 'Показы', adsClicks: 'Клики',
+    adsSave: 'Сохранить кампанию', adsSaved: 'Кампания сохранена',
+    // Analytics new KPIs
+    totalGuestsKpi: 'Всего гостей', bookingConversionKpi: 'Конверсия', repeatGuestRateKpi: 'Постоянные гости',
   },
   UK: {
     bookings:        'Бронювання',
@@ -927,6 +1119,70 @@ export const T = {
     clickToUpload:    'Натисніть для завантаження',
     notifNewBooking: 'Нове бронювання', notifCancelled: 'Бронювання скасовано', notifUpdated: 'Статус бронювання змінено', notifOffline: 'Офлайн',
     verifyEmailBanner: 'Підтвердіть email. Перевірте пошту або', verifyEmailResend: 'надіслати повторно', verifyEmailSent: 'Посилання надіслано!',
+    // Nav labels
+    calendar: 'Календар', staff: 'Персонал',
+    // Page titles & descriptions
+    overview: 'Огляд', overviewDesc: 'Ваш дашборд на сьогодні',
+    reviews: 'Відгуки', reviewsDesc: 'Відгуки гостей та рейтинги',
+    analyticsLabel: 'Аналітика', analyticsPageDesc: 'Ефективність бронювань та тренди',
+    integrationsLabel: 'Інтеграції', integrationsDesc: 'Підключіть інструменти та керуйте доступом API',
+    // Dashboard overview
+    guestsExpected: 'Очікувані гості', thisMonth: 'Цього місяця',
+    avgRatingLabel: 'Ср. рейтинг', vsYesterday: 'vs вчора', todaySubtitle: 'сьогодні',
+    quickActions: 'Швидкі дії',
+    manageBookingsLabel: 'Управління бронями', confirmOrCancelDesc: 'Підтвердити або скасувати очікуючі',
+    viewCalendarLabel: 'Перегляд календаря', seeWeeklyDesc: 'Щотижневий та щомісячний вид',
+    revenueBookingTrends: 'Доходи та тренди бронювань',
+    bookingsTodayWillAppear: 'Брони на сьогодні з\'являться тут',
+    // Reviews
+    reviewsAll: 'Всі', reviewsNewest: 'Спочатку нові', reviewsOldest: 'Спочатку старі',
+    reviewsHighest: 'Найвищі оцінки', reviewsLowest: 'Найнижчі оцінки',
+    noReviewsYet: 'Відгуків немає', noReviewsDesc: 'Відгуки з\'являться тут, коли гості оцінять ваш ресторан.',
+    replyToReview: 'Відповісти на відгук', sendReply: 'Надіслати відповідь',
+    writeReplyPlaceholder: 'Напишіть відповідь...', restaurantShort: 'Ресторан',
+    failedLoadReviews: 'Не вдалося завантажити відгуки',
+    // Analytics KPIs
+    totalBookingsKpi: 'Всього бронювань', uniqueGuestsKpi: 'Унікальних гостей',
+    avgPartySizeKpi: 'Ср. розмір групи', noShowRateLabel: 'Відсоток no-show',
+    cancellationRateKpi: 'Відсоток скасувань', avgLeadTimeKpi: 'Ср. час заявки',
+    daysUnit: 'дн.',
+    // Analytics charts
+    bookingsOverTimeChart: 'Бронювання у часі', bookingsByStatusChart: 'Бронювання за статусом',
+    peakHoursChart: 'Карта пікових годин', guestDistChart: 'Розподіл гостей',
+    tableUtilChart: 'Завантаженість столиків', topGuestsLabel: 'Топ гостей',
+    noDataPeriod: 'Немає даних за цей період', failedLoadAnalytics: 'Не вдалося завантажити аналітику',
+    retryBtn: 'Повторити', customRange: 'Власний', applyBtn: 'Застосувати',
+    lessPeak: 'Менше', morePeak: 'Більше',
+    noTableDataMsg: 'Немає даних про столики', noGuestDataMsg: 'Немає даних про гостей', noPeakDataMsg: 'Немає даних про пікові години',
+    birthdayPerkTitle: 'Знижки до дня народження', birthdayPerkDesc: 'Гості з днем народження протягом 3 днів від бронювання отримують особливу пропозицію',
+    birthdayPerkLabel: 'Увімкнути знижки до дня народження', birthdayPerkDescLabel: 'Опис пропозиції',
+    birthdayPerkDescPlaceholder: 'напр. Безкоштовний десерт для іменинників', birthdayBookingBadge: 'День народження',
+    parkingTitle: 'Паркування', parkingDesc: 'Повідомте гостей, чи доступне паркування',
+    parkingDetailsLabel: 'Деталі паркування', parkingDetailsPlaceholder: 'напр. Безкоштовне паркування перед рестораном',
+    waitlistTab: 'Список очікування', waitlistEmpty: 'Список очікування порожній', waitlistNotify: 'Сповістити',
+    waitlistNotifying: 'Надсилання…', waitlistStatus: 'Статус', waitlistPartySize: 'К-сть гостей',
+    waitlistJoinedAt: 'Доданий', waitlistNotified: 'Сповіщений',
+    // Deals / Promotions
+    dealsNav: 'Акції', dealsPageDesc: 'Керуйте знижками та спеціальними пропозиціями',
+    newDeal: 'Нова акція', dealTitle: 'Назва акції', dealDesc: 'Опис', dealType: 'Тип знижки',
+    dealTypePercent: 'Відсоток', dealTypeFixed: 'Фіксована', dealTypeFreeitem: 'Безкоштовно',
+    dealValue: 'Значення', dealCode: 'Промокод', dealValidFrom: 'Діє з', dealValidUntil: 'Діє до',
+    dealMaxUses: 'Макс. використань', dealActive: 'Активна', dealInactive: 'Неактивна',
+    dealSave: 'Зберегти акцію', dealDelete: 'Видалити акцію', dealsEmpty: 'Акцій немає. Створіть першу!',
+    dealActivate: 'Активувати', dealDeactivate: 'Деактивувати',
+    // Referrals
+    referralNav: 'Реферали', referralCode: 'Ваш реферальний код', referralStats: 'Статистика',
+    referralTotal: 'Всього рефералів', referralPending: 'Очікують', referralCompleted: 'Завершені',
+    referralName: 'Ім\'я', referralJoined: 'Приєднався', referralStatus: 'Статус', referralEmpty: 'Рефералів немає',
+    // Ads Manager
+    adsNav: 'Реклама', adsPageDesc: 'Просувайте ресторан у результатах пошуку',
+    adsBoostTitle: 'Просувані результати', adsBoostDesc: 'Ваш ресторан з\'явиться вгорі списку',
+    adsActive: 'Реклама активна', adsInactive: 'Реклама неактивна', adsActivate: 'Увімкнути просування',
+    adsDeactivate: 'Вимкнути просування', adsStartDate: 'Дата початку', adsEndDate: 'Дата закінчення',
+    adsBudget: 'Денний бюджет (PLN)', adsImpressions: 'Покази', adsClicks: 'Кліки',
+    adsSave: 'Зберегти кампанію', adsSaved: 'Кампанію збережено',
+    // Analytics new KPIs
+    totalGuestsKpi: 'Всього гостей', bookingConversionKpi: 'Конверсія', repeatGuestRateKpi: 'Постійні гості',
   },
 }
 
@@ -1020,6 +1276,71 @@ export type Translations = {
   notifNewBooking: string; notifCancelled: string; notifUpdated: string; notifOffline: string;
   // Email verification
   verifyEmailBanner: string; verifyEmailResend: string; verifyEmailSent: string;
+  // Nav labels
+  calendar: string; staff: string;
+  // Page titles & descriptions
+  overview: string; overviewDesc: string;
+  reviews: string; reviewsDesc: string;
+  analyticsLabel: string; analyticsPageDesc: string;
+  integrationsLabel: string; integrationsDesc: string;
+  // Dashboard overview
+  guestsExpected: string; thisMonth: string;
+  avgRatingLabel: string; vsYesterday: string; todaySubtitle: string;
+  quickActions: string;
+  manageBookingsLabel: string; confirmOrCancelDesc: string;
+  viewCalendarLabel: string; seeWeeklyDesc: string;
+  revenueBookingTrends: string; bookingsTodayWillAppear: string;
+  // Reviews
+  reviewsAll: string; reviewsNewest: string; reviewsOldest: string;
+  reviewsHighest: string; reviewsLowest: string;
+  noReviewsYet: string; noReviewsDesc: string;
+  replyToReview: string; sendReply: string;
+  writeReplyPlaceholder: string; restaurantShort: string;
+  failedLoadReviews: string;
+  // Analytics KPIs
+  totalBookingsKpi: string; uniqueGuestsKpi: string;
+  avgPartySizeKpi: string; noShowRateLabel: string;
+  cancellationRateKpi: string; avgLeadTimeKpi: string;
+  daysUnit: string;
+  // Analytics charts
+  bookingsOverTimeChart: string; bookingsByStatusChart: string;
+  peakHoursChart: string; guestDistChart: string;
+  tableUtilChart: string; topGuestsLabel: string;
+  noDataPeriod: string; failedLoadAnalytics: string;
+  retryBtn: string; customRange: string; applyBtn: string;
+  lessPeak: string; morePeak: string;
+  noTableDataMsg: string; noGuestDataMsg: string; noPeakDataMsg: string;
+  // Birthday perks
+  birthdayPerkTitle: string; birthdayPerkDesc: string;
+  birthdayPerkLabel: string; birthdayPerkDescLabel: string;
+  birthdayPerkDescPlaceholder: string; birthdayBookingBadge: string;
+  // Parking
+  parkingTitle: string; parkingDesc: string;
+  parkingDetailsLabel: string; parkingDetailsPlaceholder: string;
+  // Waitlist
+  waitlistTab: string; waitlistEmpty: string; waitlistNotify: string;
+  waitlistNotifying: string; waitlistStatus: string; waitlistPartySize: string;
+  waitlistJoinedAt: string; waitlistNotified: string;
+  // Deals / Promotions
+  dealsNav: string; dealsPageDesc: string;
+  newDeal: string; dealTitle: string; dealDesc: string; dealType: string;
+  dealTypePercent: string; dealTypeFixed: string; dealTypeFreeitem: string;
+  dealValue: string; dealCode: string; dealValidFrom: string; dealValidUntil: string;
+  dealMaxUses: string; dealActive: string; dealInactive: string;
+  dealSave: string; dealDelete: string; dealsEmpty: string;
+  dealActivate: string; dealDeactivate: string;
+  // Referrals
+  referralNav: string; referralCode: string; referralStats: string;
+  referralTotal: string; referralPending: string; referralCompleted: string;
+  referralName: string; referralJoined: string; referralStatus: string; referralEmpty: string;
+  // Ads Manager
+  adsNav: string; adsPageDesc: string;
+  adsBoostTitle: string; adsBoostDesc: string;
+  adsActive: string; adsInactive: string; adsActivate: string; adsDeactivate: string;
+  adsStartDate: string; adsEndDate: string; adsBudget: string;
+  adsImpressions: string; adsClicks: string; adsSave: string; adsSaved: string;
+  // Analytics new KPIs
+  totalGuestsKpi: string; bookingConversionKpi: string; repeatGuestRateKpi: string;
 }
 
 interface LangContextType {

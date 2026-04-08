@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Search, ChevronLeft, ChevronRight, BookOpen,
   Users, Phone, Globe, Layout, MoreVertical, Check, X, Clock, AlertTriangle,
-  Download,
+  Download, Bell, List,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -13,6 +13,7 @@ import { NewBookingModal } from '@/components/bookings/NewBookingModal'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { exportToCSV } from '@/lib/export'
+import { useT } from '@/lib/i18n'
 
 interface Booking {
   id: string
@@ -26,6 +27,10 @@ interface Booking {
   partySize?: number
   status: string
   notes?: string
+  specialRequests?: string
+  seatingPreference?: string
+  allergies?: string[]
+  isBirthdayBooking?: boolean
   source: string
   table?: { name: string; zone?: string }
 }
@@ -89,6 +94,7 @@ function DropdownMenu({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const t = useT()
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -99,10 +105,10 @@ function DropdownMenu({
   }, [])
 
   const actions = [
-    status !== 'confirmed' && { label: 'Confirm',      next: 'confirmed', icon: <Check size={13} />,         cls: 'text-accent' },
-    status !== 'cancelled' && { label: 'Cancel',        next: 'cancelled', icon: <X size={13} />,             cls: 'text-error' },
-    status !== 'no_show'   && { label: 'Mark No-show',  next: 'no_show',   icon: <AlertTriangle size={13} />, cls: 'text-amber' },
-    status !== 'completed' && { label: 'Mark Complete', next: 'completed', icon: <Clock size={13} />,         cls: 'text-muted' },
+    status !== 'confirmed' && { label: t.confirm,      next: 'confirmed', icon: <Check size={13} />,         cls: 'text-accent' },
+    status !== 'cancelled' && { label: t.cancel,        next: 'cancelled', icon: <X size={13} />,             cls: 'text-error' },
+    status !== 'no_show'   && { label: t.markNoShow,    next: 'no_show',   icon: <AlertTriangle size={13} />, cls: 'text-amber' },
+    status !== 'completed' && { label: t.completed,     next: 'completed', icon: <Clock size={13} />,         cls: 'text-muted' },
   ].filter(Boolean) as { label: string; next: string; icon: React.ReactNode; cls: string }[]
 
   return (
@@ -131,10 +137,136 @@ function DropdownMenu({
   )
 }
 
+interface WaitlistEntry {
+  id: string
+  guestName: string
+  guestPhone: string
+  guestEmail?: string
+  date: string
+  timeSlot: string
+  partySize: number
+  status: string
+  notifiedAt?: string
+  createdAt: string
+}
+
 const PER_PAGE = 20
+
+function WaitlistTab({ restaurantId }: { restaurantId: string }) {
+  const t = useT()
+  const [entries, setEntries]     = useState<WaitlistEntry[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [notifying, setNotifying] = useState<string | null>(null)
+  const [date, setDate]           = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const url = `/api/restaurants/${restaurantId}/waitlist` + (date ? `?date=${date}` : '')
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+      const res = await fetch(apiBase + url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error('Failed')
+      setEntries(await res.json())
+    } catch { setEntries([]) } finally { setLoading(false) }
+  }, [restaurantId, date])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleNotify(entryId: string) {
+    setNotifying(entryId)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+      await fetch(`${apiBase}/api/restaurants/${restaurantId}/waitlist/${entryId}/notify`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: 'notified', notifiedAt: new Date().toISOString() } : e))
+    } finally { setNotifying(null) }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-5">
+        <input
+          type="date"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+          className="px-2 py-2 text-xs bg-surface border border-border rounded-btn text-text focus:outline-none focus:border-accent"
+        />
+        <button onClick={load} className="px-3 py-2 text-xs bg-surface border border-border rounded-btn text-muted hover:text-text transition-colors">
+          {t.refresh}
+        </button>
+      </div>
+
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-surface-2/40">
+              {[t.guest, 'Date / Time', t.waitlistPartySize, t.waitlistStatus, t.waitlistJoinedAt, ''].map((h, i) => (
+                <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">{t.loading}</td></tr>
+            ) : entries.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-muted">{t.waitlistEmpty}</td></tr>
+            ) : entries.map(e => (
+              <tr key={e.id} className="border-b border-border hover:bg-surface-2/40 transition-colors">
+                <td className="px-4 py-3">
+                  <p className="font-semibold text-text">{e.guestName}</p>
+                  <p className="text-xs text-muted">{e.guestPhone}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-text">{new Date(e.date).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted">{e.timeSlot}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1 text-text">
+                    <Users size={13} className="text-muted" />
+                    <span>{e.partySize}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex px-2 py-0.5 rounded-chip text-xs font-semibold ${
+                    e.status === 'notified' ? 'bg-accent/15 text-accent' :
+                    e.status === 'expired'  ? 'bg-surface-2 text-muted' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {e.status === 'notified' ? t.waitlistNotified : e.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted">
+                  {new Date(e.createdAt).toLocaleString()}
+                </td>
+                <td className="px-3 py-3">
+                  {e.status === 'waiting' && (
+                    <button
+                      onClick={() => handleNotify(e.id)}
+                      disabled={notifying === e.id}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-accent hover:bg-accent-hover text-white rounded-btn transition-colors disabled:opacity-50"
+                    >
+                      <Bell size={11} />
+                      {notifying === e.id ? t.waitlistNotifying : t.waitlistNotify}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 export default function BookingsPage() {
   const { restaurant } = useMyRestaurant()
+  const t = useT()
+  const [activeTab, setActiveTab] = useState<'bookings' | 'waitlist'>('bookings')
 
   const [bookings, setBookings]       = useState<Booking[]>([])
   const [stats, setStats]             = useState<Stats | null>(null)
@@ -149,6 +281,7 @@ export default function BookingsPage() {
   const [from, setFrom]               = useState('')
   const [to, setTo]                   = useState('')
   const [sort, setSort]               = useState('date_desc')
+  const [hasAllergies, setHasAllergies] = useState(false)
   const [showModal, setShowModal]     = useState(false)
   const [updating, setUpdating]       = useState<string | null>(null)
 
@@ -217,8 +350,8 @@ export default function BookingsPage() {
   return (
     <div>
       <PageHeader
-        title="Bookings"
-        description={total > 0 ? `${total} total bookings` : undefined}
+        title={t.bookings}
+        description={total > 0 ? t.bookingsCount(total) : undefined}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -251,17 +384,39 @@ export default function BookingsPage() {
               )}
               className="flex items-center gap-1.5 px-3 py-2 border border-border bg-surface hover:bg-surface-2 text-muted hover:text-text text-sm font-semibold rounded-btn transition-colors"
             >
-              <Download size={14} /> Export CSV
+              <Download size={14} /> {t.exportCsv}
             </button>
             <button
               onClick={() => setShowModal(true)}
               className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-btn transition-colors"
             >
-              + New Booking
+              + {t.newBooking}
             </button>
           </div>
         }
       />
+
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-5 border-b border-border">
+        <button
+          onClick={() => setActiveTab('bookings')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${activeTab === 'bookings' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-text'}`}
+        >
+          <List size={14} /> {t.bookings}
+        </button>
+        <button
+          onClick={() => setActiveTab('waitlist')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${activeTab === 'waitlist' ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-text'}`}
+        >
+          <Bell size={14} /> {t.waitlistTab}
+        </button>
+      </div>
+
+      {activeTab === 'waitlist' && restaurant?.id && (
+        <WaitlistTab restaurantId={restaurant.id} />
+      )}
+
+      {activeTab === 'bookings' && <>
 
       {/* Status filter chips */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -291,6 +446,17 @@ export default function BookingsPage() {
             </button>
           )
         })}
+        <button
+          onClick={() => { setHasAllergies(a => !a); setPage(1) }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-chip transition-colors ${
+            hasAllergies
+              ? 'bg-red-500 text-white'
+              : 'border border-border bg-surface hover:bg-surface-2 text-muted hover:text-text'
+          }`}
+        >
+          <AlertTriangle size={11} />
+          Has allergies
+        </button>
       </div>
 
       {/* Filters row */}
@@ -300,7 +466,7 @@ export default function BookingsPage() {
           <input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            placeholder="Search guest, phone, ref..."
+            placeholder={t.searchPlaceholder}
             className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-border rounded-btn text-text placeholder:text-muted focus:outline-none focus:border-accent"
           />
         </div>
@@ -340,7 +506,7 @@ export default function BookingsPage() {
       {error && (
         <div className="mb-4 px-4 py-3 rounded-card bg-error/10 border border-error/30 text-sm text-error flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={load} className="text-xs underline">Retry</button>
+          <button onClick={load} className="text-xs underline">{t.refresh}</button>
         </div>
       )}
 
@@ -349,7 +515,7 @@ export default function BookingsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-2/40">
-              {['Code', 'Guest', 'Date & Time', 'Party', 'Table', 'Source', 'Status', ''].map((h, i) => (
+              {['Code', t.guest, 'Date & Time', t.persons, t.table, 'Source', t.status, ''].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
                   {h}
                 </th>
@@ -364,13 +530,15 @@ export default function BookingsPage() {
                 <td colSpan={8}>
                   <EmptyState
                     icon={BookOpen}
-                    title="No bookings found"
+                    title={t.noResults}
                     description="Try adjusting your filters or date range"
                   />
                 </td>
               </tr>
             ) : (
-              bookings.map(b => {
+              bookings
+              .filter(b => !hasAllergies || (b.allergies && b.allergies.length > 0))
+              .map(b => {
                 const partySize = b.partySize ?? b.guestCount
                 const isPending = b.status === 'pending'
                 const isDimmed  = b.status === 'cancelled' || b.status === 'no_show'
@@ -388,8 +556,28 @@ export default function BookingsPage() {
                       <span className="font-mono text-xs text-muted">{b.bookingRef}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-text">{b.guestName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-semibold text-text">{b.guestName}</p>
+                        {b.isBirthdayBooking && (
+                          <span title={t.birthdayBookingBadge}
+                            className="flex items-center gap-0.5 px-1.5 py-0.5 bg-pink-100 text-pink-600 rounded-chip text-[10px] font-bold">
+                            🎂 {t.birthdayBookingBadge}
+                          </span>
+                        )}
+                        {b.allergies && b.allergies.length > 0 && (
+                          <span title={b.allergies.join(', ')}
+                            className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-chip text-[10px] font-bold">
+                            <AlertTriangle size={9} />
+                            {b.allergies.length}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted mt-0.5">{b.guestPhone}</p>
+                      {(b.specialRequests || b.seatingPreference) && (
+                        <p className="text-xs text-accent mt-0.5 truncate max-w-[180px]">
+                          {[b.seatingPreference, b.specialRequests].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-text">{formatDateShort(b.date)}</p>
@@ -443,7 +631,7 @@ export default function BookingsPage() {
       {total > 0 && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-muted">
-            {loading ? 'Loading...' : `Showing ${rowStart}–${rowEnd} of ${total}`}
+            {loading ? t.loading : `Showing ${rowStart}–${rowEnd} of ${total}`}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -466,6 +654,8 @@ export default function BookingsPage() {
           </div>
         </div>
       )}
+
+      </> /* end bookings tab */}
 
       {showModal && restaurant?.id && (
         <NewBookingModal

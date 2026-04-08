@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Image, Animated,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Calendar, Clock, Users, UtensilsCrossed, Edit3, X } from 'lucide-react-native'
+import { Calendar, Clock, Users, UtensilsCrossed, Edit3, X, RotateCcw } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { useTheme, colors, shadows, radii } from '../../src/theme'
 import { useLang } from '../../src/i18n'
@@ -14,16 +14,19 @@ import { normalizeRestaurant } from '../../src/utils/restaurant'
 import { notifyBookingCancelled, cancelReminder } from '../../src/notifications'
 
 // ─── Status config ────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  confirmed: { color: colors.success,  bg: colors.success  + '1A', label: 'Подтверждена' },
-  pending:   { color: '#6B7280',       bg: '#6B728018',             label: 'Ожидает'      },
-  cancelled: { color: colors.error,    bg: colors.error    + '1A', label: 'Отменена'     },
-  completed: { color: '#6B7280',       bg: '#6B728018',             label: 'Завершена'    },
-  no_show:   { color: colors.warning,  bg: colors.warning  + '1A', label: 'Вы не пришли' },
+const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
+  confirmed: { color: colors.success, bg: colors.success + '1A' },
+  pending:   { color: '#6B7280',      bg: '#6B728018'           },
+  cancelled: { color: colors.error,   bg: colors.error  + '1A' },
+  completed: { color: '#6B7280',      bg: '#6B728018'           },
+  no_show:   { color: colors.warning, bg: colors.warning + '1A' },
 }
 
-function getStatusCfg(status: string) {
-  return STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
+function getStatusCfg(status: string, t: any): { color: string; bg: string; label: string } {
+  const colors = STATUS_COLORS[status] ?? STATUS_COLORS.pending
+  const labelKey = `status_${status}` as keyof typeof t
+  const label = (t[labelKey] as string) ?? status
+  return { ...colors, label }
 }
 
 // ─── Human-readable date ──────────────────────────────────────────────────────
@@ -95,8 +98,9 @@ function BookingCard({ b, th, t, onCancelled }: {
 }) {
   const rest       = normalizeRestaurant((b as any).restaurant ?? { id: b.restaurantId })
   const status     = (b.status as string) ?? 'pending'
-  const cfg        = getStatusCfg(status)
+  const cfg        = getStatusCfg(status, t)
   const isUpcoming = status === 'confirmed' || status === 'pending'
+  const isPast     = status === 'cancelled' || status === 'completed' || status === 'no_show'
   const [cancelling, setCancelling] = useState(false)
 
   const scale = useRef(new Animated.Value(1)).current
@@ -174,7 +178,7 @@ function BookingCard({ b, th, t, onCancelled }: {
               style={[styles.actionBtn, { borderColor: th.border }]}
             >
               <Edit3 size={13} color={th.textSub} strokeWidth={1.75} />
-              <Text style={[styles.actionBtnTxt, { color: th.textSub }]}>Изменить</Text>
+              <Text style={[styles.actionBtnTxt, { color: th.textSub }]}>{t.edit_profile}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleCancel}
@@ -189,6 +193,26 @@ function BookingCard({ b, th, t, onCancelled }: {
                     <Text style={[styles.actionBtnTxt, { color: colors.error }]}>{t.cancel}</Text>
                   </>
               }
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Book again for past/completed */}
+        {isPast && (
+          <View style={[styles.actionsRow, { borderTopColor: th.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push({
+                pathname: '/booking/[restaurantId]',
+                params: {
+                  restaurantId: b.restaurantId,
+                  guests: String(b.guestCount),
+                },
+              })}
+              style={[styles.actionBtn, { borderColor: th.accent + '60', backgroundColor: th.accent + '10', flex: 1 }]}
+            >
+              <RotateCcw size={13} color={th.accent} strokeWidth={2} />
+              <Text style={[styles.actionBtnTxt, { color: th.accent }]}>{t.book_again}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -305,7 +329,7 @@ export default function BookingsScreen() {
               <UtensilsCrossed size={48} color={th.textMuted} strokeWidth={1.5} />
               <Text style={[styles.emptyTitle, { color: th.text }]}>{t.no_bookings}</Text>
               <Text style={[styles.emptyDesc, { color: th.textMuted }]}>
-                Найдите ресторан и забронируйте столик
+                {t.find_your_table}
               </Text>
               <TouchableOpacity
                 onPress={() => router.navigate('/(tabs)/')}

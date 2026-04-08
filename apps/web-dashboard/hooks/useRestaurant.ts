@@ -38,7 +38,7 @@ export function useMyRestaurant() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<Restaurant[]>('/api/restaurants')
+    api.get<Restaurant[]>('/api/restaurants/my')
       .then(data => {
         setRestaurant(Array.isArray(data) ? data[0] ?? null : null)
       })

@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import jwt from 'jsonwebtoken'
-import { requireAuth } from '../middleware/auth'
+import { randomBytes } from 'crypto'
+import { requireAuth, requireRestaurant } from '../middleware/auth'
 import { sendBookingConfirmation, scheduleReminders } from '../services/sms'
 import { getIo } from '../lib/socket'
 import {
@@ -10,6 +11,7 @@ import {
   sendBookingCancelledEmail,
   sendNewBookingNotificationEmail,
 } from '../services/email'
+import { notifyWaitlistForSlot } from './waitlist'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -24,6 +26,9 @@ const createBookingSchema = z.object({
   guestPhone: z.string().min(9),
   guestEmail: z.string().email().optional(),
   notes: z.string().optional(),
+  specialRequests: z.string().optional(),
+  seatingPreference: z.enum(['window', 'kids', 'quiet', 'wheelchair']).optional(),
+  allergies: z.array(z.string()).optional(),
   source: z.enum(['app', 'widget', 'manual', 'instagram']).default('app'),
 })
 
@@ -33,6 +38,7 @@ router.post('/', async (req, res) => {
 
     const bookingDate = new Date(`${data.date}T${data.time}:00`)
     const bookingRef  = `#ST${Math.floor(Math.random() * 9000 + 1000)}`
+    const shortCode   = randomBytes(4).toString('hex') // 8 hex chars
 
     // Attach userId if a valid JWT is present (app users)
     let userId: string | undefined
@@ -42,6 +48,29 @@ router.post('/', async (req, res) => {
         const decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET!) as any
         userId = decoded.userId
       } catch {}
+    }
+
+    // Detect birthday perk: user DOB within 7 days of booking date
+    let isBirthdayBooking = false
+    if (userId) {
+      const [userRecord, restaurant] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { dateOfBirth: true } }),
+        prisma.restaurant.findUnique({ where: { id: data.restaurantId }, select: { birthdayPerkEnabled: true } }),
+      ])
+      if (userRecord?.dateOfBirth && restaurant?.birthdayPerkEnabled) {
+        const dob = userRecord.dateOfBirth
+        const bookingMonth = bookingDate.getMonth()
+        const bookingDay   = bookingDate.getDate()
+        // Check if DOB month/day falls within ±7 days of booking date (calendar-based)
+        for (let offset = -3; offset <= 3; offset++) {
+          const check = new Date(bookingDate)
+          check.setDate(check.getDate() + offset)
+          if (check.getMonth() === dob.getMonth() && check.getDate() === dob.getDate()) {
+            isBirthdayBooking = true
+            break
+          }
+        }
+      }
     }
 
     const booking = await prisma.booking.create({
@@ -55,8 +84,13 @@ router.post('/', async (req, res) => {
         guestPhone: data.guestPhone,
         guestEmail: data.guestEmail,
         notes: data.notes,
+        specialRequests: data.specialRequests,
+        seatingPreference: data.seatingPreference,
+        allergies: data.allergies ?? [],
         source: data.source,
         status: 'confirmed',
+        isBirthdayBooking,
+        shortCode,
         ...(userId ? { userId } : {}),
       },
       include: { restaurant: true, table: true }
@@ -133,9 +167,32 @@ router.post('/', async (req, res) => {
     })
 
     res.json({ success: true, booking })
+
+    // Referral: mark completed on first booking by referred user
+    if (booking.userId) {
+      prisma.referral.updateMany({
+        where: { referredId: booking.userId, status: 'pending' },
+        data:  { status: 'completed', completedAt: new Date() },
+      }).catch(() => {})
+    }
   } catch (err) {
     res.status(400).json({ error: 'Invalid booking data', details: err })
   }
+})
+
+// ─── GET BOOKING BY SHORT CODE (public share link) ────────────────────────────
+router.get('/s/:shortCode', async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { shortCode: req.params.shortCode },
+      select: {
+        bookingRef: true, date: true, time: true, guestCount: true,
+        restaurant: { select: { name: true, address: true, emoji: true } },
+      },
+    })
+    if (!booking) return res.status(404).json({ error: 'Not found' })
+    res.json(booking)
+  } catch (err) { res.status(500).json({ error: 'Server error' }) }
 })
 
 // ─── GET AVAILABLE SLOTS ──────────────────────────────────────────────────────
@@ -172,13 +229,12 @@ router.get('/slots', async (req, res) => {
 
 // ─── GET BOOKINGS BY DATE RANGE (owner) ──────────────────────────────────────
 // Query params: restaurantId, status, from, to, search, page, limit, sortBy, sortOrder
-router.get('/', requireAuth, async (req, res, next) => {
+router.get('/', requireAuth, requireRestaurant, async (req, res, next) => {
   try {
-    const { restaurantId, date, from, to, status, search, page = '1', limit = '20', sortBy = 'date', sortOrder = 'desc' } = req.query
+    const restaurantId = ((req as any).restaurant.id) as string
+    const { date, from, to, status, search, page = '1', limit = '20', sortBy = 'date', sortOrder = 'desc' } = req.query
 
-    if (!restaurantId) return res.status(400).json({ error: 'restaurantId required' })
-
-    const where: any = { restaurantId: restaurantId as string }
+    const where: any = { restaurantId }
 
     // Date filter
     if (from && to) {
@@ -222,7 +278,7 @@ router.get('/', requireAuth, async (req, res, next) => {
       prisma.booking.count({ where }),
       prisma.booking.groupBy({
         by: ['status'],
-        where: { restaurantId: restaurantId as string, ...(where.date ? { date: where.date } : {}) },
+        where: { restaurantId, ...(where.date ? { date: where.date } : {}) },
         _count: true,
       }),
     ])
@@ -240,7 +296,11 @@ router.get('/', requireAuth, async (req, res, next) => {
       date: b.date.toISOString(),
       time: b.time,
       duration: b.duration,
-      specialRequests: b.notes,
+      notes: b.notes,
+      specialRequests: b.specialRequests,
+      seatingPreference: b.seatingPreference,
+      allergies: b.allergies,
+      isBirthdayBooking: b.isBirthdayBooking,
       source: b.source,
       status: b.status,
       createdAt: b.createdAt.toISOString(),
@@ -338,6 +398,16 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
       data:  { status },
       include: { restaurant: { select: { id: true, name: true, slug: true, email: true } }, table: { select: { name: true } } },
     })
+
+    // Waitlist: notify first waiting guest when slot opens up
+    if (status === 'cancelled') {
+      notifyWaitlistForSlot(
+        booking.restaurantId,
+        booking.date,
+        booking.time,
+        booking.restaurant.name,
+      ).catch(err => console.error('[Waitlist] notify failed:', err))
+    }
 
     // Email: cancellation to guest
     if (status === 'cancelled' && booking.guestEmail) {

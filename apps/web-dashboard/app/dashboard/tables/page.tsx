@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Edit2, Trash2, X, Table2, Users } from 'lucide-react'
 import clsx from 'clsx'
+import { useT } from '@/lib/i18n'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 
@@ -47,6 +48,7 @@ function TableModal({
   onSave:  (data: FormData) => Promise<void>
   onClose: () => void
 }) {
+  const t = useT()
   const [form, setForm] = useState<FormData>({
     name:        initial?.name ?? '',
     minCapacity: initial?.minCapacity ?? 1,
@@ -76,7 +78,7 @@ function TableModal({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md bg-surface border border-border rounded-2xl shadow-2xl p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-text">{initial ? 'Edit Table' : 'Add Table'}</h2>
+          <h2 className="text-base font-bold text-text">{initial ? t.editItem : t.addTable}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors"
@@ -87,7 +89,7 @@ function TableModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted uppercase tracking-wider">Table name</label>
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t.tableName}</label>
             <input
               type="text"
               value={form.name}
@@ -100,6 +102,7 @@ function TableModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted uppercase tracking-wider">Min guests</label>
+
               <input
                 type="number"
                 min={1}
@@ -155,14 +158,14 @@ function TableModal({
               onClick={onClose}
               className="flex-1 py-2.5 border border-border rounded-lg text-sm text-text hover:bg-surface-2 transition-colors"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="flex-1 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
             >
-              {saving ? 'Saving…' : 'Save Table'}
+              {saving ? t.saving : t.save}
             </button>
           </div>
         </form>
@@ -184,6 +187,7 @@ function TableCard({
   onEdit:   () => void
   onDelete: () => void
 }) {
+  const t = useT()
   const zone      = ZONES.includes(table.shape as Zone) ? table.shape as Zone : 'Indoor'
   const zoneColor = ZONE_COLORS[zone] ?? ZONE_COLORS.Indoor
 
@@ -196,7 +200,7 @@ function TableCard({
         </span>
         <div className="flex items-center gap-1.5">
           <div className={clsx('w-2 h-2 rounded-full', table.isActive ? 'bg-green-400' : 'bg-muted')} />
-          <span className="text-xs text-muted">{table.isActive ? 'Active' : 'Inactive'}</span>
+          <span className="text-xs text-muted">{table.isActive ? t.free : 'Inactive'}</span>
         </div>
       </div>
 
@@ -215,7 +219,7 @@ function TableCard({
           onClick={onEdit}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-surface-2 border border-border rounded-lg text-xs text-text hover:bg-surface-2/80 transition-colors font-medium"
         >
-          <Edit2 size={12} /> Edit
+          <Edit2 size={12} /> {t.editItem}
         </button>
         <button
           onClick={onDelete}
@@ -234,6 +238,7 @@ function TableCard({
 
 export default function TablesPage() {
   const router = useRouter()
+  const t = useT()
 
   const [token,      setToken]      = useState<string | null>(null)
   const [activeId,   setActiveId]   = useState<string | null>(null)
@@ -346,18 +351,18 @@ export default function TablesPage() {
       {/* Header */}
       <header className="shrink-0 border-b border-border bg-surface px-8 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-text">Tables</h1>
+          <h1 className="text-lg font-bold text-text">{t.tables}</h1>
           <p className="text-sm text-muted mt-0.5">
             {loading
-              ? 'Loading…'
-              : `${tables.length} table${tables.length !== 1 ? 's' : ''} · ${totalCapacity} total capacity`}
+              ? t.loading
+              : t.tableCount(tables.length)}
           </p>
         </div>
         <button
           onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-lg transition-colors"
         >
-          <Plus size={15} /> Add Table
+          <Plus size={15} /> {t.addTable}
         </button>
       </header>
 
@@ -377,14 +382,14 @@ export default function TablesPage() {
           <div className="flex flex-col items-center justify-center py-24 text-muted gap-4">
             <Table2 size={40} className="text-muted/40" />
             <div className="text-center">
-              <p className="font-semibold text-text mb-1">No tables yet</p>
-              <p className="text-sm">Add your first table to get started.</p>
+              <p className="font-semibold text-text mb-1">{t.noTables}</p>
+              <p className="text-sm">{t.noTablesHint}</p>
             </div>
             <button
               onClick={openAdd}
               className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-lg transition-colors"
             >
-              <Plus size={15} /> Add Table
+              <Plus size={15} /> {t.addTable}
             </button>
           </div>
         ) : (

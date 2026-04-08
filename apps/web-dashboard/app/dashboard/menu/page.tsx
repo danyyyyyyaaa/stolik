@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { UtensilsCrossed } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 import {
   DragDropContext,
   Droppable,
@@ -58,6 +59,7 @@ const ALLERGENS = [
 export default function MenuPage() {
   const { restaurant, loading: restaurantLoading } = useMyRestaurant()
   const restaurantId = restaurant?.id ?? null
+  const t = useT()
 
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -359,7 +361,7 @@ export default function MenuPage() {
     return (
       <div>
         <PageHeader
-          title="Menu"
+          title={t.menu}
           description="Manage your restaurant menu and categories"
         />
         <div className="space-y-4">

@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Skeleton } from '@/components/shared/LoadingSkeleton'
+import { useT } from '@/lib/i18n'
 
 const TABS = ['General', 'Hours', 'Notifications', 'SMS Templates', 'Danger Zone'] as const
 type Tab = typeof TABS[number]
@@ -61,6 +62,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
 
 export default function SettingsPage() {
   const { restaurant, loading: restaurantLoading } = useMyRestaurant()
+  const t = useT()
 
   const [activeTab, setActiveTab] = useState<Tab>('General')
   const [saved, setSaved] = useState(false)
@@ -85,6 +87,12 @@ export default function SettingsPage() {
   )
   const [slotDuration, setSlotDuration] = useState(60)
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(30)
+  const [birthdayPerkEnabled, setBirthdayPerkEnabled] = useState(false)
+  const [birthdayPerkDescription, setBirthdayPerkDescription] = useState('')
+
+  // Parking state
+  const [hasParking, setHasParking] = useState(false)
+  const [parkingDetails, setParkingDetails] = useState('')
 
   // Notifications tab state
   const [notifs, setNotifs] = useState<NotifSettings>({
@@ -232,6 +240,10 @@ export default function SettingsPage() {
         website: r.website ?? '',
         district: r.district ?? '',
       })
+      setBirthdayPerkEnabled(r.birthdayPerkEnabled ?? false)
+      setBirthdayPerkDescription(r.birthdayPerkDescription ?? '')
+      setHasParking(r.hasParking ?? false)
+      setParkingDetails(r.parkingDetails ?? '')
     }
   }, [restaurant])
 
@@ -244,7 +256,11 @@ export default function SettingsPage() {
     if (!restaurant) return
     setSaving(true)
     try {
-      await api.put(`/api/restaurants/${restaurant.id}`, form)
+      await api.put(`/api/restaurants/${restaurant.id}`, {
+        ...form,
+        hasParking,
+        parkingDetails: parkingDetails || null,
+      })
       showSaved()
     } catch {
       // silently fail
@@ -261,6 +277,8 @@ export default function SettingsPage() {
         openingHours: JSON.stringify(hours),
         slotDuration,
         maxAdvanceDays,
+        birthdayPerkEnabled,
+        birthdayPerkDescription: birthdayPerkDescription || null,
       })
       showSaved()
     } catch {
@@ -305,7 +323,7 @@ export default function SettingsPage() {
   if (restaurantLoading) {
     return (
       <div>
-        <PageHeader title="Settings" description="Restaurant profile and preferences" />
+        <PageHeader title={t.settings} description={t.profileSub} />
         <div className="space-y-3 max-w-2xl">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -322,13 +340,13 @@ export default function SettingsPage() {
       disabled={saving}
       className="px-6 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
     >
-      {saved ? '✓ Saved!' : saving ? 'Saving...' : 'Save changes'}
+      {saved ? `✓ ${t.profileSaved}` : saving ? t.saving : t.save}
     </button>
   )
 
   return (
     <div>
-      <PageHeader title="Settings" description="Restaurant profile and preferences" />
+      <PageHeader title={t.settings} description={t.profileSub} />
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-border mb-6">
@@ -351,7 +369,7 @@ export default function SettingsPage() {
       {activeTab === 'General' && (
         <div className="max-w-2xl space-y-5">
           <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Restaurant name *</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">{t.restaurantNameLabel} *</label>
             <input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -360,7 +378,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Description</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">{t.descriptionLabel}</label>
             <textarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -371,7 +389,7 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">Cuisine type</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">{t.cuisineLabel}</label>
               <select
                 value={form.cuisine}
                 onChange={e => setForm(f => ({ ...f, cuisine: e.target.value }))}
@@ -385,7 +403,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">District</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">{t.districtLabel}</label>
               <select
                 value={form.district}
                 onChange={e => setForm(f => ({ ...f, district: e.target.value }))}
@@ -400,7 +418,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Price range</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">{t.priceRangeLabel}</label>
             <div className="flex gap-2">
               {(['$', '$$', '$$$', '$$$$'] as const).map(p => (
                 <button
@@ -419,7 +437,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Address</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">{t.addressLabel}</label>
             <input
               value={form.address}
               onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
@@ -429,7 +447,7 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">Phone</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">{t.phone}</label>
               <input
                 type="tel"
                 value={form.phone}
@@ -438,7 +456,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">{t.email}</label>
               <input
                 type="email"
                 value={form.email}
@@ -449,7 +467,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Website</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">{t.websiteLabel}</label>
             <input
               type="url"
               value={form.website}
@@ -457,6 +475,43 @@ export default function SettingsPage() {
               placeholder="https://"
               className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-accent bg-surface text-text"
             />
+          </div>
+
+          {/* Parking */}
+          <div className="border border-border rounded-card p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-text">🅿 {t.parkingTitle}</p>
+                <p className="text-xs text-muted mt-0.5">{t.parkingDesc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHasParking(v => !v)}
+                className={[
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                  hasParking ? 'bg-accent' : 'bg-muted/30',
+                ].join(' ')}
+                role="switch"
+                aria-checked={hasParking}
+              >
+                <span className={[
+                  'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                  hasParking ? 'translate-x-5' : 'translate-x-0',
+                ].join(' ')} />
+              </button>
+            </div>
+            {hasParking && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-muted mb-1.5">{t.parkingDetailsLabel}</label>
+                <input
+                  type="text"
+                  value={parkingDetails}
+                  onChange={e => setParkingDetails(e.target.value)}
+                  placeholder={t.parkingDetailsPlaceholder}
+                  className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-accent bg-surface text-text"
+                />
+              </div>
+            )}
           </div>
 
           <div className="pt-2">
@@ -518,7 +573,7 @@ export default function SettingsPage() {
                     </select>
                   </>
                 ) : (
-                  <span className="text-sm text-muted">Closed</span>
+                  <span className="text-sm text-muted">{t.closedDay}</span>
                 )}
               </div>
             ))}
@@ -534,14 +589,14 @@ export default function SettingsPage() {
               }
               className="text-sm text-accent hover:underline"
             >
-              Copy Monday to all days
+              {t.copyFromMonday}
             </button>
           </div>
 
           {/* Slot duration + advance booking */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">Slot duration</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">{t.slotDurationLabel}</label>
               <select
                 value={slotDuration}
                 onChange={e => setSlotDuration(Number(e.target.value))}
@@ -566,6 +621,43 @@ export default function SettingsPage() {
                 <option value={60}>60 days</option>
               </select>
             </div>
+          </div>
+
+          {/* Birthday perks */}
+          <div className="border border-border rounded-card p-4 mb-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-text">{t.birthdayPerkTitle}</p>
+                <p className="text-xs text-muted mt-0.5">{t.birthdayPerkDesc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBirthdayPerkEnabled(v => !v)}
+                className={[
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                  birthdayPerkEnabled ? 'bg-accent' : 'bg-muted/30',
+                ].join(' ')}
+                role="switch"
+                aria-checked={birthdayPerkEnabled}
+              >
+                <span className={[
+                  'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                  birthdayPerkEnabled ? 'translate-x-5' : 'translate-x-0',
+                ].join(' ')} />
+              </button>
+            </div>
+            {birthdayPerkEnabled && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-muted mb-1.5">{t.birthdayPerkDescLabel}</label>
+                <input
+                  type="text"
+                  value={birthdayPerkDescription}
+                  onChange={e => setBirthdayPerkDescription(e.target.value)}
+                  placeholder={t.birthdayPerkDescPlaceholder}
+                  className="w-full border border-border rounded-btn px-3 py-2 text-sm focus:outline-none focus:border-accent bg-surface text-text"
+                />
+              </div>
+            )}
           </div>
 
           <SaveButton onClick={handleSaveHours} />
@@ -607,7 +699,7 @@ export default function SettingsPage() {
           {/* Type + Language selectors */}
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[180px]">
-              <label className="block text-xs font-semibold text-muted mb-1">Template type</label>
+              <label className="block text-xs font-semibold text-muted mb-1">{t.smsSettings}</label>
               <select
                 value={smsType}
                 onChange={e => setSmsType(e.target.value as SmsType)}
@@ -638,7 +730,7 @@ export default function SettingsPage() {
 
           {/* Available variables */}
           <div>
-            <p className="text-xs font-semibold text-muted mb-2">Available variables — click to insert</p>
+            <p className="text-xs font-semibold text-muted mb-2">{t.smsVarsTitle}</p>
             <div className="flex flex-wrap gap-1.5">
               {SMS_VARS.map(v => (
                 <button
@@ -654,7 +746,7 @@ export default function SettingsPage() {
 
           {/* Template textarea */}
           <div>
-            <label className="block text-xs font-semibold text-muted mb-1">Template</label>
+            <label className="block text-xs font-semibold text-muted mb-1">{t.smsCustomLabel}</label>
             <textarea
               value={currentTemplate}
               onChange={e => setSmsTemplate(e.target.value)}
@@ -666,7 +758,7 @@ export default function SettingsPage() {
 
           {/* Live preview */}
           <div>
-            <p className="text-xs font-semibold text-muted mb-2">Preview</p>
+            <p className="text-xs font-semibold text-muted mb-2">{t.smsPreview}</p>
             <div className="bg-surface-2 border border-border rounded-xl p-4">
               <div className="bg-surface border border-border rounded-xl px-4 py-3 max-w-xs">
                 <p className="text-xs text-text leading-relaxed">{previewText}</p>
@@ -682,7 +774,7 @@ export default function SettingsPage() {
               disabled={smsSaving}
               className="px-5 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
             >
-              {smsSaved ? '✓ Saved!' : smsSaving ? 'Saving…' : 'Save template'}
+              {smsSaved ? `✓ ${t.smsSaved}` : smsSaving ? t.saving : 'Save template'}
             </button>
             <button
               onClick={resetTemplate}

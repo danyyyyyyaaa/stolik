@@ -1,28 +1,22 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useLang, type Lang } from '@/lib/i18n'
 
-const LANGUAGES = [
-  { code: 'en', label: 'EN', flag: '🇬🇧' },
-  { code: 'pl', label: 'PL', flag: '🇵🇱' },
-  { code: 'ru', label: 'RU', flag: '🇷🇺' },
-  { code: 'uk', label: 'UK', flag: '🇺🇦' },
-] as const
+const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
+  { code: 'EN', label: 'EN', flag: '🇬🇧' },
+  { code: 'PL', label: 'PL', flag: '🇵🇱' },
+  { code: 'RU', label: 'RU', flag: '🇷🇺' },
+  { code: 'UK', label: 'UK', flag: '🇺🇦' },
+]
 
 export function LanguageSwitcher({ light = false }: { light?: boolean }) {
-  const [lang, setLang] = useState('en')
+  const { lang, setLang } = useLang()
   const [open, setOpen] = useState(false)
 
-  useEffect(() => {
-    const saved = localStorage.getItem('dinto-language') ?? 'en'
-    setLang(saved)
-  }, [])
-
-  function handleChange(code: string) {
+  function handleChange(code: Lang) {
     setLang(code)
     setOpen(false)
-    localStorage.setItem('dinto-language', code)
-    window.dispatchEvent(new CustomEvent('dinto-lang-change', { detail: code }))
   }
 
   const current = LANGUAGES.find(l => l.code === lang) ?? LANGUAGES[0]

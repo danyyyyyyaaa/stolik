@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { useT } from '@/lib/i18n'
 
 const PRICE_IDS = {
   pro: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ?? '',
@@ -80,6 +81,7 @@ const FEATURE_KEYS = Object.keys(PLANS[0].features) as Array<keyof typeof PLANS[
 function BillingContent() {
   const { restaurant } = useMyRestaurant()
   const restaurantId = restaurant?.id
+  const t = useT()
 
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
@@ -125,7 +127,7 @@ function BillingContent() {
 
   return (
     <div>
-      <PageHeader title="Billing" description="Subscription plans and payment management" />
+      <PageHeader title={t.plansTitle} description={t.choosePlanSub} />
 
       {isSuccess && (
         <div className="mb-6 flex items-center gap-3 px-5 py-4 bg-green-50 border border-green-200 rounded-card text-green-800 text-sm font-medium">
@@ -144,7 +146,7 @@ function BillingContent() {
         <div className="bg-surface border border-border rounded-card p-6 mb-6 shadow-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-muted mb-1">Current Plan</p>
+              <p className="text-sm text-muted mb-1">{t.currentPlan}</p>
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-bold text-text capitalize">
                   {subscription?.plan ?? 'Free'}
@@ -181,14 +183,14 @@ function BillingContent() {
                 disabled={portalLoading}
                 className="px-4 py-2 border border-border rounded-btn text-sm text-text hover:bg-surface-2 disabled:opacity-50 transition-colors"
               >
-                {portalLoading ? 'Loading...' : 'Manage Subscription'}
+                {portalLoading ? t.loading : t.manageSubscription}
               </button>
             )}
           </div>
         </div>
       )}
 
-      <h3 className="text-base font-semibold text-text mb-4">Choose a Plan</h3>
+      <h3 className="text-base font-semibold text-text mb-4">{t.choosePlan}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {PLANS.map(plan => {
@@ -202,7 +204,7 @@ function BillingContent() {
             >
               {isCurrent && (
                 <div className="text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-chip self-start mb-3">
-                  Current Plan
+                  {t.currentPlan}
                 </div>
               )}
               <h3 className="text-lg font-bold text-text">{plan.name}</h3>
@@ -240,7 +242,7 @@ function BillingContent() {
                   disabled
                   className="w-full py-2 border border-border rounded-btn text-sm text-muted cursor-not-allowed"
                 >
-                  Current Plan
+                  {t.yourPlan}
                 </button>
               ) : plan.price === 0 ? null : (
                 <button
@@ -248,7 +250,7 @@ function BillingContent() {
                   disabled={upgradeLoading === plan.priceId}
                   className="w-full py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
                 >
-                  {upgradeLoading === plan.priceId ? 'Loading...' : `Upgrade to ${plan.name}`}
+                  {upgradeLoading === plan.priceId ? t.loading : `Upgrade to ${plan.name}`}
                 </button>
               )}
             </div>
@@ -263,16 +265,21 @@ function BillingContent() {
   )
 }
 
+function BillingFallback() {
+  const t = useT()
+  return (
+    <div>
+      <PageHeader title={t.plansTitle} description={t.choosePlanSub} />
+      <div className="bg-surface border border-border rounded-card p-6 animate-pulse shadow-card">
+        <div className="h-6 w-40 bg-surface-2 rounded" />
+      </div>
+    </div>
+  )
+}
+
 export default function BillingPage() {
   return (
-    <Suspense fallback={
-      <div>
-        <PageHeader title="Billing" description="Subscription plans and payment management" />
-        <div className="bg-surface border border-border rounded-card p-6 animate-pulse shadow-card">
-          <div className="h-6 w-40 bg-surface-2 rounded" />
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<BillingFallback />}>
       <BillingContent />
     </Suspense>
   )

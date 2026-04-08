@@ -33,11 +33,14 @@ export async function register(
   lastName: string,
   email: string,
   password: string,
+  referralCode?: string,
   phone?: string,
 ): Promise<AuthResponse> {
   return withRetry(async () => {
     const { data } = await client.post<AuthResponse>('/api/auth/register', {
-      firstName, lastName, email, password, ...(phone ? { phone } : {}),
+      firstName, lastName, email, password,
+      ...(phone        ? { phone }        : {}),
+      ...(referralCode ? { referralCode } : {}),
     })
     return data
   })
@@ -61,6 +64,7 @@ export async function updateProfile(data: {
   lastName?: string
   phone?: string
   avatarUrl?: string | null
+  dateOfBirth?: string | null
 }): Promise<User> {
   const { data: user } = await client.patch<User>('/api/auth/profile', data)
   return user

@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Skeleton } from '@/components/shared/LoadingSkeleton'
 import { getInitials } from '@/lib/utils'
 import { Users, UserPlus } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 
 interface StaffMember {
   id: string
@@ -28,6 +29,7 @@ interface StaffResponse {
 
 export default function StaffPage() {
   const { restaurant, loading: restaurantLoading } = useMyRestaurant()
+  const t = useT()
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -254,7 +256,7 @@ export default function StaffPage() {
                 onClick={() => { setInviteOpen(false); setInviteEmail(''); setInviteRole('staff') }}
                 className="px-4 border border-border rounded-btn text-sm text-muted hover:bg-surface-2"
               >
-                Cancel
+                {t.cancel}
               </button>
             </div>
           </div>
