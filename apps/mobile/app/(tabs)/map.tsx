@@ -50,9 +50,11 @@ const SILVER_STYLE = [
 ]
 
 // ─── Custom Marker ────────────────────────────────────────────────────────────
+// pointerEvents="none" is REQUIRED — without it, the View absorbs touch events
+// on Android and Marker's onPress never fires.
 function RestaurantMarker({ r, selected }: { r: any; selected: boolean }) {
   return (
-    <View style={[mk.wrap, selected && mk.wrapSelected]}>
+    <View style={[mk.wrap, selected && mk.wrapSelected]} pointerEvents="none">
       <View style={[mk.pin, { backgroundColor: selected ? colors.primaryAccent : colors.primary }]}>
         <Text style={mk.pinEmoji}>{r.emoji ?? '🍽️'}</Text>
       </View>
@@ -329,13 +331,14 @@ export default function MapScreen() {
             initialRegion={{ latitude: city.lat, longitude: city.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
             customMapStyle={SILVER_STYLE}
             onPress={() => setSelected(null)}
+            onMarkerPress={() => { /* handled by Marker.onPress below */ }}
           >
             {restaurants.map((r, i) => (
               <Marker
                 key={r.id}
                 coordinate={getCoords(r, i)}
-                onPress={() => setSelected(r)}
-                tracksViewChanges={false}
+                onPress={(e) => { e.stopPropagation?.(); setSelected(r) }}
+                tracksViewChanges={selected?.id === r.id}
               >
                 <RestaurantMarker r={r} selected={selected?.id === r.id} />
               </Marker>
