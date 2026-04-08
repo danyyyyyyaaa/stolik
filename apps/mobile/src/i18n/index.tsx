@@ -120,6 +120,11 @@ export interface Translations {
   referral_code_field: string; referral_code_placeholder: string
   // ads
   sponsored: string
+  // navigation / directions
+  get_directions: string
+  open_google_maps: string
+  open_apple_maps: string
+  navigate_to_restaurant: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -226,6 +231,10 @@ const T: Record<LangKey, Translations> = {
     referral_share: 'Share code', referral_count: 'Friends invited', referral_pending: 'Pending',
     referral_code_field: 'Referral code (optional)', referral_code_placeholder: 'Enter referral code',
     sponsored: 'Ad',
+    get_directions: 'Get directions',
+    open_google_maps: 'Open in Google Maps',
+    open_apple_maps: 'Open in Apple Maps',
+    navigate_to_restaurant: 'Navigate to restaurant',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
@@ -330,6 +339,10 @@ const T: Record<LangKey, Translations> = {
     referral_share: 'Udostępnij kod', referral_count: 'Zaproszeni znajomi', referral_pending: 'Oczekuje',
     referral_code_field: 'Kod polecający (opcjonalnie)', referral_code_placeholder: 'Wpisz kod polecający',
     sponsored: 'Reklama',
+    get_directions: 'Wyznacz trasę',
+    open_google_maps: 'Otwórz w Google Maps',
+    open_apple_maps: 'Otwórz w Apple Maps',
+    navigate_to_restaurant: 'Nawiguj do restauracji',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
@@ -434,6 +447,10 @@ const T: Record<LangKey, Translations> = {
     referral_share: 'Поделиться кодом', referral_count: 'Приглашено друзей', referral_pending: 'Ожидает',
     referral_code_field: 'Реферальный код (необязательно)', referral_code_placeholder: 'Введите реферальный код',
     sponsored: 'Реклама',
+    get_directions: 'Проложить маршрут',
+    open_google_maps: 'Открыть в Google Картах',
+    open_apple_maps: 'Открыть в Apple Картах',
+    navigate_to_restaurant: 'Навигация до ресторана',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
@@ -538,6 +555,10 @@ const T: Record<LangKey, Translations> = {
     referral_share: 'Поділитися кодом', referral_count: 'Запрошено друзів', referral_pending: 'Очікує',
     referral_code_field: 'Реферальний код (необов\'язково)', referral_code_placeholder: 'Введіть реферальний код',
     sponsored: 'Реклама',
+    get_directions: 'Прокласти маршрут',
+    open_google_maps: 'Відкрити в Google Картах',
+    open_apple_maps: 'Відкрити в Apple Картах',
+    navigate_to_restaurant: 'Навігація до ресторану',
   },
 }
 

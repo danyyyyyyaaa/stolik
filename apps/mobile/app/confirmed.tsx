@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Share } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -6,6 +6,7 @@ import { useTheme } from '../src/theme'
 import { useLang } from '../src/i18n'
 import { useAppStore, type Booking } from '../src/store/useAppStore'
 import { normalizeRestaurant } from '../src/utils/restaurant'
+import DirectionsSheet from '../src/components/DirectionsSheet'
 
 const { width } = Dimensions.get('window')
 const NUM_DOTS  = 12
@@ -92,9 +93,11 @@ export default function ConfirmedScreen() {
   const { th }       = useTheme()
   const { t }        = useLang()
   const lastBooking  = useAppStore(s => s.lastBooking)
+  const [showDirections, setShowDirections] = useState(false)
 
-  const b = lastBooking
+  const b    = lastBooking
   const rest = b?.restaurant ? normalizeRestaurant((b as any).restaurant) : null
+  const restRaw = (b as any)?.restaurant
 
   function fmtDate(s: string): string {
     if (!s) return '—'
@@ -167,6 +170,20 @@ export default function ConfirmedScreen() {
           >
             <Text style={styles.primaryBtnText}>{t.view_booking as string}</Text>
           </TouchableOpacity>
+
+          {/* Navigate to restaurant — shown when we have address or coords */}
+          {rest && (restRaw?.latitude || restRaw?.address || rest.address) && (
+            <TouchableOpacity
+              onPress={() => setShowDirections(true)}
+              activeOpacity={0.85}
+              style={[styles.secondaryBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
+            >
+              <Text style={[styles.secondaryBtnText, { color: th.textSub }]}>
+                🗺️  {t.navigate_to_restaurant as string}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {b && (
             <TouchableOpacity
               onPress={handleShare}
@@ -185,6 +202,17 @@ export default function ConfirmedScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <DirectionsSheet
+        visible={showDirections}
+        name={rest?.name ?? ''}
+        address={restRaw?.address ?? rest?.address}
+        lat={restRaw?.latitude}
+        lng={restRaw?.longitude}
+        googlePlaceId={restRaw?.googlePlaceId}
+        t={t}
+        onClose={() => setShowDirections(false)}
+      />
     </SafeAreaView>
   )
 }

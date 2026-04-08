@@ -10,6 +10,7 @@ import * as Location from 'expo-location'
 import { useTheme, colors, shadows, radii } from '../../src/theme'
 import { useLang } from '../../src/i18n'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import DirectionsSheet from '../../src/components/DirectionsSheet'
 
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
 const CITY_KEY = 'dinto_selected_city'
@@ -76,6 +77,7 @@ const mk = StyleSheet.create({
 // ─── Bottom Sheet ─────────────────────────────────────────────────────────────
 function BottomSheet({ r, th, t, onClose }: { r: any; th: any; t: any; onClose: () => void }) {
   const slideY = useRef(new Animated.Value(300)).current
+  const [showDirections, setShowDirections] = useState(false)
 
   useEffect(() => {
     Animated.spring(slideY, {
@@ -86,80 +88,90 @@ function BottomSheet({ r, th, t, onClose }: { r: any; th: any; t: any; onClose: 
     }).start()
   }, [])
 
+  const hasCoords = !!(r.latitude && r.longitude)
+
   return (
-    <Animated.View
-      style={[bs.sheet, { backgroundColor: th.bgCard, transform: [{ translateY: slideY }] }, shadows.xl]}
-    >
-      {/* Drag handle */}
-      <View style={[bs.handle, { backgroundColor: th.border }]} />
+    <>
+      <Animated.View
+        style={[bs.sheet, { backgroundColor: th.bgCard, transform: [{ translateY: slideY }] }, shadows.xl]}
+      >
+        {/* Drag handle */}
+        <View style={[bs.handle, { backgroundColor: th.border }]} />
 
-      <View style={bs.content}>
-        {/* Emoji + Info */}
-        <View style={bs.row}>
-          <View style={[bs.emojiBox, { backgroundColor: (r.color ?? colors.primary) + '20' }]}>
-            <Text style={{ fontSize: 26 }}>{r.emoji ?? '🍽️'}</Text>
+        <View style={bs.content}>
+          {/* Emoji + Info */}
+          <View style={bs.row}>
+            <View style={[bs.emojiBox, { backgroundColor: (r.color ?? colors.primary) + '20' }]}>
+              <Text style={{ fontSize: 26 }}>{r.emoji ?? '🍽️'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[bs.name, { color: th.text }]}>{r.name}</Text>
+              <Text style={[bs.sub, { color: th.textSub }]}>
+                {r.cuisine} · {r.priceRange}
+              </Text>
+              {r.rating > 0 && (
+                <View style={bs.ratingRow}>
+                  <Star size={12} color="#F0A500" fill="#F0A500" />
+                  <Text style={[bs.ratingTxt, { color: th.textSub }]}>{r.rating?.toFixed(1)}</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity onPress={onClose} style={bs.closeBtn}>
+              <Text style={[bs.closeTxt, { color: th.textMuted }]}>✕</Text>
+            </TouchableOpacity>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[bs.name, { color: th.text }]}>{r.name}</Text>
-            <Text style={[bs.sub, { color: th.textSub }]}>
-              {r.cuisine} · {r.priceRange}
-            </Text>
-            {r.rating > 0 && (
-              <View style={bs.ratingRow}>
-                <Star size={12} color="#F0A500" fill="#F0A500" />
-                <Text style={[bs.ratingTxt, { color: th.textSub }]}>{r.rating?.toFixed(1)}</Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity onPress={onClose} style={bs.closeBtn}>
-            <Text style={[bs.closeTxt, { color: th.textMuted }]}>✕</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Details */}
-        {r.address && (
-          <View style={bs.detailRow}>
-            <MapPin size={14} color={th.textMuted} />
-            <Text style={[bs.detailTxt, { color: th.textSub }]}>{r.address}</Text>
-          </View>
-        )}
-
-        {/* Actions row */}
-        <View style={bs.actionsRow}>
-          {/* Route button */}
-          {r.latitude && r.longitude && (
+          {/* Address row — tappable to open directions */}
+          {r.address && (
             <TouchableOpacity
-              onPress={() => {
-                const lat = r.latitude
-                const lng = r.longitude
-                const url = Platform.OS === 'ios'
-                  ? `maps://app?daddr=${lat},${lng}`
-                  : `google.navigation:q=${lat},${lng}`
-                Linking.canOpenURL(url).then(ok => {
-                  if (ok) Linking.openURL(url)
-                  else Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
-                }).catch(() => {
-                  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
-                })
-              }}
-              activeOpacity={0.8}
-              style={[bs.routeBtn, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}
+              onPress={() => setShowDirections(true)}
+              activeOpacity={0.7}
+              style={bs.detailRow}
             >
-              <Navigation size={14} color={colors.primary} strokeWidth={1.75} />
-              <Text style={[bs.routeTxt, { color: colors.primary }]}>{t.route}</Text>
+              <MapPin size={14} color={th.textMuted} />
+              <Text style={[bs.detailTxt, { color: th.textSub }]}>{r.address}</Text>
+              {(hasCoords || r.address) && (
+                <Navigation size={13} color={colors.primary} strokeWidth={1.75} style={{ marginLeft: 4 }} />
+              )}
             </TouchableOpacity>
           )}
-          {/* Book CTA */}
-          <TouchableOpacity
-            onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: r.id } })}
-            activeOpacity={0.85}
-            style={[bs.bookBtn, { backgroundColor: colors.primary, flex: 1 }]}
-          >
-            <Text style={bs.bookTxt}>🍽️  Забронировать</Text>
-          </TouchableOpacity>
+
+          {/* Actions row */}
+          <View style={bs.actionsRow}>
+            {/* Directions button */}
+            {(hasCoords || r.address) && (
+              <TouchableOpacity
+                onPress={() => setShowDirections(true)}
+                activeOpacity={0.8}
+                style={[bs.routeBtn, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40' }]}
+              >
+                <Navigation size={14} color={colors.primary} strokeWidth={1.75} />
+                <Text style={[bs.routeTxt, { color: colors.primary }]}>{t.get_directions}</Text>
+              </TouchableOpacity>
+            )}
+            {/* Book CTA */}
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: r.id } })}
+              activeOpacity={0.85}
+              style={[bs.bookBtn, { backgroundColor: colors.primary, flex: 1 }]}
+            >
+              <Text style={bs.bookTxt}>{t.reserve}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+
+      <DirectionsSheet
+        visible={showDirections}
+        name={r.name}
+        address={r.address}
+        lat={r.latitude}
+        lng={r.longitude}
+        googlePlaceId={r.googlePlaceId}
+        t={t}
+        onClose={() => setShowDirections(false)}
+      />
+    </>
   )
 }
 const bs = StyleSheet.create({

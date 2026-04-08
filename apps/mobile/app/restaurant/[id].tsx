@@ -14,6 +14,7 @@ import { toggleFavorite } from '../../src/api/favorites'
 import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { Stars } from '../../src/components/Stars'
+import DirectionsSheet from '../../src/components/DirectionsSheet'
 
 const TABS = ['about', 'menu', 'reviews'] as const
 type TabKey = typeof TABS[number]
@@ -230,7 +231,8 @@ export default function RestaurantScreen() {
   const [guests,       setGuests]       = useState(2)
   const [slots,        setSlots]        = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const [loginModal,   setLoginModal]   = useState(false)
+  const [loginModal,       setLoginModal]       = useState(false)
+  const [showDirections,   setShowDirections]   = useState(false)
 
   useEffect(() => {
     if (activeTab !== 'menu' || !id || apiMenu !== null) return
@@ -367,21 +369,12 @@ export default function RestaurantScreen() {
                       <TouchableOpacity onPress={() => Linking.openURL(`tel:${v}`)}>
                         <Text style={[s.infoVal, { color: th.accent, textDecorationLine: 'underline' }]}>{v}</Text>
                       </TouchableOpacity>
-                    ) : type === 'address' && (r as any)?.latitude && (r as any)?.longitude ? (
+                    ) : type === 'address' ? (
                       <TouchableOpacity
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}
-                        onPress={() => {
-                          const lat = (r as any).latitude
-                          const lng = (r as any).longitude
-                          const url = Platform.OS === 'ios'
-                            ? `maps://app?daddr=${lat},${lng}`
-                            : `google.navigation:q=${lat},${lng}`
-                          Linking.canOpenURL(url).then(ok => {
-                            Linking.openURL(ok ? url : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
-                          }).catch(() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`))
-                        }}
+                        onPress={() => setShowDirections(true)}
                       >
-                        <Text style={[s.infoVal, { color: th.text }]}>{v}</Text>
+                        <Text style={[s.infoVal, { color: th.text }]} numberOfLines={2}>{v}</Text>
                         <Feather name="navigation" size={13} color={th.accent} />
                       </TouchableOpacity>
                     ) : (
@@ -390,6 +383,20 @@ export default function RestaurantScreen() {
                   </View>
                 ))}
               </View>
+
+              {/* Get directions button */}
+              {(((r as any)?.latitude && (r as any)?.longitude) || nr.address) && (
+                <TouchableOpacity
+                  onPress={() => setShowDirections(true)}
+                  activeOpacity={0.82}
+                  style={[s.directionsBtn, { backgroundColor: th.bgCard, borderColor: th.border }]}
+                >
+                  <Feather name="navigation" size={15} color={th.accent} />
+                  <Text style={[s.directionsBtnText, { color: th.accent }]}>
+                    {t.get_directions as string}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -610,6 +617,17 @@ export default function RestaurantScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <DirectionsSheet
+        visible={showDirections}
+        name={nr.name}
+        address={nr.address}
+        lat={(r as any)?.latitude}
+        lng={(r as any)?.longitude}
+        googlePlaceId={(r as any)?.googlePlaceId}
+        t={t}
+        onClose={() => setShowDirections(false)}
+      />
     </View>
   )
 }
@@ -647,6 +665,10 @@ function makeStyles(th: any) {
     infoRow:          { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: 1 },
     infoKey:          { fontSize: 13 },
     infoVal:          { fontSize: 13, fontWeight: '500', flexShrink: 1, textAlign: 'right', maxWidth: '60%' },
+
+    // Get directions button
+    directionsBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1 },
+    directionsBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold' },
 
     // Menu
     menuSection:      { marginBottom: 20 },
