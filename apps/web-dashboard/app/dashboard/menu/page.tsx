@@ -1,13 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { UtensilsCrossed } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import {
   DragDropContext,
-  Droppable,
-  Draggable,
+  Droppable as DroppableBase,
+  Draggable as DraggableBase,
   DropResult,
+  type DroppableProvided,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
 } from '@hello-pangea/dnd'
+// @ts-ignore — @hello-pangea/dnd types incompatible with @types/react 18.3
+const Droppable = DroppableBase as any
+// @ts-ignore
+const Draggable = DraggableBase as any
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -481,7 +488,7 @@ export default function MenuPage() {
           <div className="flex-1 min-w-0">
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="categories" type="CATEGORY">
-                {(provided) => (
+                {(provided: DroppableProvided) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
@@ -493,7 +500,7 @@ export default function MenuPage() {
                         draggableId={`cat-${cat.id}`}
                         index={catIdx}
                       >
-                        {(catProvided, catSnapshot) => (
+                        {(catProvided: DraggableProvided, catSnapshot: DraggableStateSnapshot) => (
                           <div
                             ref={catProvided.innerRef}
                             {...catProvided.draggableProps}
@@ -567,7 +574,7 @@ export default function MenuPage() {
                               droppableId={`category-${cat.id}`}
                               type="ITEM"
                             >
-                              {(itemsProvided) => (
+                              {(itemsProvided: DroppableProvided) => (
                                 <div
                                   ref={itemsProvided.innerRef}
                                   {...itemsProvided.droppableProps}
@@ -579,7 +586,7 @@ export default function MenuPage() {
                                       draggableId={item.id}
                                       index={itemIdx}
                                     >
-                                      {(itemProvided, itemSnapshot) => (
+                                      {(itemProvided: DraggableProvided, itemSnapshot: DraggableStateSnapshot) => (
                                         <div
                                           ref={itemProvided.innerRef}
                                           {...itemProvided.draggableProps}
@@ -672,7 +679,7 @@ export default function MenuPage() {
                                       )}
                                     </Draggable>
                                   ))}
-                                  {itemsProvided.placeholder}
+                                  {itemsProvided.placeholder as React.ReactNode}
 
                                   {cat.items.length === 0 &&
                                     addingItemCatId !== cat.id && (
@@ -742,7 +749,7 @@ export default function MenuPage() {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    {provided.placeholder as React.ReactNode}
                   </div>
                 )}
               </Droppable>

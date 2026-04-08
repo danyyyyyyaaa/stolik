@@ -54,7 +54,7 @@ export default function PromotionsPage() {
     if (!restaurant?.id) return
     setLoading(true)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const base  = process.env.NEXT_PUBLIC_API_URL || ''
       const res   = await fetch(`${base}/api/restaurants/${restaurant.id}/deals`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -75,7 +75,7 @@ export default function PromotionsPage() {
     if (!restaurant?.id || !form.title?.trim()) { setError('Title is required'); return }
     setSaving(true); setError('')
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const base  = process.env.NEXT_PUBLIC_API_URL || ''
       const url   = editing
         ? `${base}/api/restaurants/${restaurant.id}/deals/${editing.id}`
@@ -103,7 +103,7 @@ export default function PromotionsPage() {
   }
 
   async function handleToggle(deal: Deal) {
-    const token = localStorage.getItem('accessToken')
+    const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
     const base  = process.env.NEXT_PUBLIC_API_URL || ''
     await fetch(`${base}/api/restaurants/${restaurant!.id}/deals/${deal.id}`, {
       method: 'PATCH',
@@ -115,7 +115,7 @@ export default function PromotionsPage() {
 
   async function handleDelete(deal: Deal) {
     if (!confirm(`${t.dealDelete}?`)) return
-    const token = localStorage.getItem('accessToken')
+    const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
     const base  = process.env.NEXT_PUBLIC_API_URL || ''
     await fetch(`${base}/api/restaurants/${restaurant!.id}/deals/${deal.id}`, {
       method: 'DELETE',

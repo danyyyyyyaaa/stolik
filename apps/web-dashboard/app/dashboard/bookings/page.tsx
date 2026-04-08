@@ -162,7 +162,7 @@ function WaitlistTab({ restaurantId }: { restaurantId: string }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const url = `/api/restaurants/${restaurantId}/waitlist` + (date ? `?date=${date}` : '')
       const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
       const res = await fetch(apiBase + url, { headers: { Authorization: `Bearer ${token}` } })
@@ -176,7 +176,7 @@ function WaitlistTab({ restaurantId }: { restaurantId: string }) {
   async function handleNotify(entryId: string) {
     setNotifying(entryId)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
       await fetch(`${apiBase}/api/restaurants/${restaurantId}/waitlist/${entryId}/notify`, {
         method: 'POST',

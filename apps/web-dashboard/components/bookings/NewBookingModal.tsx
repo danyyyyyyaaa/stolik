@@ -18,12 +18,15 @@ interface Table {
 
 interface Props {
   restaurantId: string
-  token: string
+  token?: string
   onClose: () => void
   onCreated: (booking: Record<string, unknown>) => void
 }
 
-export function NewBookingModal({ restaurantId, token, onClose, onCreated }: Props) {
+export function NewBookingModal({ restaurantId, token: tokenProp, onClose, onCreated }: Props) {
+  const token = tokenProp ?? (typeof window !== 'undefined'
+    ? localStorage.getItem('stolik_token') || localStorage.getItem('token') || ''
+    : '')
   const [form, setForm] = useState({
     guestName:  '',
     guestPhone: '',

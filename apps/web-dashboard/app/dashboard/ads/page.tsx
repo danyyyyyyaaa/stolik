@@ -35,7 +35,7 @@ export default function AdsPage() {
     if (!restaurant?.id) return
     setLoading(true)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const base  = process.env.NEXT_PUBLIC_API_URL || ''
       const res   = await fetch(`${base}/api/restaurants/${restaurant.id}/promotions`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -59,7 +59,7 @@ export default function AdsPage() {
     if (!restaurant?.id) return
     setSaving(true); setError(''); setSaved(false)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('stolik_token') || localStorage.getItem('token')
       const base  = process.env.NEXT_PUBLIC_API_URL || ''
       const res   = await fetch(`${base}/api/restaurants/${restaurant.id}/promotions`, {
         method: 'POST',
