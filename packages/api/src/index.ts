@@ -31,6 +31,8 @@ import { waitlistRouter } from './routes/waitlist'
 import { dealsRouter } from './routes/deals'
 import { referralsRouter } from './routes/referrals'
 import { promotionsRouter } from './routes/promotions'
+import { eventsRouter } from './routes/events'
+import { messagesRouter } from './routes/messages'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -107,6 +109,8 @@ app.use('/api/restaurants/:id/waitlist', waitlistRouter)
 app.use('/api', dealsRouter)                            // /api/deals + /api/restaurants/:id/deals
 app.use('/api/referrals', referralsRouter)
 app.use('/api/restaurants', promotionsRouter)           // /api/restaurants/:id/promotions
+app.use('/api/restaurants/:id/events', eventsRouter)   // /api/restaurants/:id/events
+app.use('/api/bookings/:bookingId/messages', messagesRouter) // /api/bookings/:bookingId/messages
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))

@@ -104,6 +104,7 @@ model Restaurant {
   waitlist          Waitlist[]
   deals             RestaurantDeal[]
   promotion         RestaurantPromotion?
+  events            RestaurantEvent[]
 
   @@index([partnerId])
   @@map("restaurants")
@@ -255,6 +256,7 @@ model Booking {
   user         User?      @relation(fields: [userId], references: [id])
   userId       String?
   reminders    Reminder[]
+  messages     BookingMessage[]
 
   @@map("bookings")
 }
@@ -569,6 +571,43 @@ model RestaurantDeal {
 
   @@index([restaurantId])
   @@map("restaurant_deals")
+}
+
+// ─── RESTAURANT EVENT ────────────────────────────────────────────────────────
+model RestaurantEvent {
+  id              String   @id @default(cuid())
+  restaurantId    String
+  title           String
+  description     String?
+  date            DateTime
+  startTime       String   // "19:00"
+  endTime         String?  // "23:00"
+  maxGuests       Int?
+  pricePerPerson  Float?
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, date])
+  @@map("restaurant_events")
+}
+
+// ─── BOOKING MESSAGE ─────────────────────────────────────────────────────────
+model BookingMessage {
+  id         String   @id @default(cuid())
+  bookingId  String
+  senderId   String
+  senderRole String   // "restaurant" | "guest"
+  message    String
+  createdAt  DateTime @default(now())
+
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_messages")
 }
 
 // ─── RESTAURANT PROMOTION (ADS) ──────────────────────────────────────────────
