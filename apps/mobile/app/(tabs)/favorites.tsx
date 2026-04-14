@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
 } from 'react-native'
+import { Image } from 'expo-image'
+import * as Haptics from 'expo-haptics'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Heart, Star, MapPin } from 'lucide-react-native'
 import { router } from 'expo-router'
@@ -25,6 +27,7 @@ function FavCard({
 
   async function handleUnfavorite() {
     setRemoving(true)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     try {
       await toggleFavorite(item.id)
       onUnfavorite(item.id)
@@ -38,7 +41,7 @@ function FavCard({
       onPress={() => router.push(`/restaurant/${item.id}`)}
       style={[styles.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
     >
-      <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
+      <Image source={{ uri: imageUrl }} style={styles.cardImage} contentFit="cover" transition={300} />
       <View style={styles.cardBody}>
         <View style={styles.cardRow}>
           <Text style={[styles.cardName, { color: th.text }]} numberOfLines={1}>{item.name}</Text>

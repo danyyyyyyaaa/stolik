@@ -125,6 +125,7 @@ export interface Translations {
   open_google_maps: string
   open_apple_maps: string
   navigate_to_restaurant: string
+  no_connection: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -235,6 +236,7 @@ const T: Record<LangKey, Translations> = {
     open_google_maps: 'Open in Google Maps',
     open_apple_maps: 'Open in Apple Maps',
     navigate_to_restaurant: 'Navigate to restaurant',
+    no_connection: 'No internet connection',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
@@ -343,6 +345,7 @@ const T: Record<LangKey, Translations> = {
     open_google_maps: 'Otwórz w Google Maps',
     open_apple_maps: 'Otwórz w Apple Maps',
     navigate_to_restaurant: 'Nawiguj do restauracji',
+    no_connection: 'Brak połączenia z internetem',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
@@ -451,6 +454,7 @@ const T: Record<LangKey, Translations> = {
     open_google_maps: 'Открыть в Google Картах',
     open_apple_maps: 'Открыть в Apple Картах',
     navigate_to_restaurant: 'Навигация до ресторана',
+    no_connection: 'Нет подключения к интернету',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
@@ -559,6 +563,7 @@ const T: Record<LangKey, Translations> = {
     open_google_maps: 'Відкрити в Google Картах',
     open_apple_maps: 'Відкрити в Apple Картах',
     navigate_to_restaurant: 'Навігація до ресторану',
+    no_connection: 'Немає підключення до інтернету',
   },
 }
 

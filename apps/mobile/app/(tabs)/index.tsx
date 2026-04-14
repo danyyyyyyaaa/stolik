@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Animated, Dimensions, FlatList, Image, Modal, Pressable,
+  Animated, Dimensions, FlatList, Modal, Pressable,
   RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Bell, ChevronDown, MapPin, Search, Star } from 'lucide-react-native'
@@ -107,7 +108,7 @@ function PopularCard({ r, onPress }: { r: NormalizedRestaurant; onPress: () => v
         onPressOut={onPressOut}
         style={pc.card}
       >
-        <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+        <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} contentFit="cover" transition={300} />
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
         <View style={pc.gradient} />
 
@@ -160,7 +161,7 @@ function AvailableNowCard({
         style={[an.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
       >
         {/* Photo */}
-        <Image source={{ uri: rImage(r) }} style={an.photo} resizeMode="cover" />
+        <Image source={{ uri: rImage(r) }} style={an.photo} contentFit="cover" transition={300} />
 
         {/* Info */}
         <View style={an.info}>
@@ -239,7 +240,7 @@ function RestaurantCard({
         >
           {/* Image */}
           <View style={s.imgWrap}>
-            <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            <Image source={{ uri: rImage(r) }} style={StyleSheet.absoluteFillObject} contentFit="cover" transition={300} />
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.08)' }]} />
             <View style={s.imgGradient} />
             <View style={s.imgNameArea}>

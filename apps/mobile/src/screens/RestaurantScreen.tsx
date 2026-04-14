@@ -13,6 +13,7 @@ import { getSlots } from '../api/restaurants'
 import { createBooking } from '../api/bookings'
 import { buildDates } from '../utils/restaurant'
 import type { RootStackParamList } from '../navigation/AppNavigator'
+import DirectionsButton from '../components/DirectionsButton'
 
 type NavProp   = NativeStackNavigationProp<RootStackParamList, 'Restaurant'>
 type RouteProp2 = RouteProp<RootStackParamList, 'Restaurant'>
@@ -141,11 +142,25 @@ export default function RestaurantScreen() {
                   <Text style={[s.infoKey, { color: th.textSub }]}>{t.open_until}</Text>
                   <Text style={[s.infoVal, { color: th.text }]}>{open}</Text>
                 </View>
-                <View style={s.infoRow}>
+                <View style={[s.infoRow, { borderBottomColor: th.border }]}>
                   <Text style={[s.infoKey, { color: th.textSub }]}>{t.district}</Text>
                   <Text style={[s.infoVal, { color: th.text }]}>{r.district}</Text>
                 </View>
+                {!!(r as any).address && (
+                  <View style={s.infoRow}>
+                    <Text style={[s.infoKey, { color: th.textSub }]}>{t.address}</Text>
+                    <Text style={[s.infoVal, { color: th.text, flex: 1, textAlign: 'right' }]} numberOfLines={2}>
+                      {(r as any).address}
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              <DirectionsButton
+                lat={(r as any).latitude ?? null}
+                lng={(r as any).longitude ?? null}
+                name={r.name}
+              />
             </View>
           )}
           {activeTab === 'menu' && (

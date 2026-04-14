@@ -62,3 +62,107 @@ select option {
   background-color: rgb(var(--surface-2));
   color: rgb(var(--text));
 }
+
+/* ── Interactive states ───────────────────────────────────────────────────── */
+
+/* Buttons — translateY lift + shadow */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2
+    px-4 py-2 rounded-btn font-medium text-sm
+    bg-accent text-white
+    transition-all duration-150
+    hover:-translate-y-px hover:shadow-md hover:bg-accent-hover
+    active:translate-y-0 active:shadow-sm active:brightness-95
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2
+    px-4 py-2 rounded-btn font-medium text-sm
+    bg-surface-2 text-text border border-border
+    transition-all duration-150
+    hover:-translate-y-px hover:shadow-md hover:bg-surface
+    active:translate-y-0 active:shadow-none
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2
+    px-3 py-1.5 rounded-btn font-medium text-sm text-muted
+    transition-all duration-150
+    hover:bg-surface-2 hover:text-text
+    active:bg-surface
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+/* Cards — lift on hover */
+.card-interactive {
+  @apply transition-all duration-150
+    hover:-translate-y-0.5 hover:shadow-md
+    active:translate-y-0 active:shadow-card;
+}
+
+/* Inputs */
+input, textarea, select {
+  @apply transition-shadow duration-150;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  @apply outline-none ring-2 ring-accent/50 border-accent;
+}
+
+/* Table rows */
+.table-row-hover {
+  @apply hover:bg-surface-2/50 transition-colors duration-100 cursor-default;
+}
+
+/* Count-up animation helper */
+@keyframes count-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-count-in {
+  animation: count-in 0.3s ease-out forwards;
+}
+
+/* Notification badge pulse */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(27,122,74,0.4); }
+  50%       { transform: scale(1.05); box-shadow: 0 0 0 4px rgba(27,122,74,0); }
+}
+.badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--surface-2)) 25%,
+    rgb(var(--surface)) 50%,
+    rgb(var(--surface-2)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Modal backdrop blur */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center;
+}
+
+/* Dropdown scale-in */
+@keyframes dropdown-in {
+  from { opacity: 0; transform: scaleY(0.9); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.dropdown-enter {
+  transform-origin: top;
+  animation: dropdown-in 0.12s ease-out forwards;
+}

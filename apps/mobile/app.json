@@ -17,7 +17,17 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "pl.dinto.mobile"
+      "bundleIdentifier": "pl.dinto.mobile",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "waze",
+          "uber",
+          "bolt",
+          "citymapper",
+          "maps"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

@@ -21,6 +21,7 @@ import { getMe } from '../src/api/auth'
 import AuthChoiceScreen from '../src/screens/AuthChoiceScreen'
 import RegisterScreen from '../src/screens/RegisterScreen'
 import OnboardingScreen from '../src/screens/OnboardingScreen'
+import OfflineBanner from '../src/components/OfflineBanner'
 
 const ONBOARDING_KEY = 'onboarding_completed'
 
@@ -194,6 +195,8 @@ function RootStack() {
         <Stack.Screen name="booking/[restaurantId]"    options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
         <Stack.Screen name="confirmed"                 options={{ animation: 'fade', gestureEnabled: false }} />
       </Stack>
+      {/* Global offline banner — slides in from top when connection is lost */}
+      <OfflineBanner />
     </>
   )
 }

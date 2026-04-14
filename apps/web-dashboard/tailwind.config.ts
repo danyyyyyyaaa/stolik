@@ -9,7 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        sans:    ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-serif)', 'DM Serif Display', 'Georgia', 'serif'],
+      },
+      fontSize: {
+        'display-lg': ['36px', { lineHeight: '44px', letterSpacing: '-0.02em' }],
+        'display':    ['30px', { lineHeight: '38px', letterSpacing: '-0.01em' }],
+        'heading-lg': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em' }],
+        'heading':    ['20px', { lineHeight: '28px', letterSpacing: '-0.005em' }],
+        'body-lg':    ['16px', { lineHeight: '24px' }],
+        'body':       ['14px', { lineHeight: '20px' }],
+        'caption':    ['12px', { lineHeight: '16px' }],
+      },
+      spacing: {
+        'section': '32px',
+        'group':   '24px',
+        'element': '16px',
+        'tight':   '8px',
+        'micro':   '4px',
       },
       colors: {
         bg:             'rgb(var(--bg) / <alpha-value>)',

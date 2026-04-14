@@ -14,6 +14,7 @@ import { createBooking } from '../../src/api/bookings'
 import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { notifyBookingConfirmed, scheduleReminder } from '../../src/notifications'
+import * as Haptics from 'expo-haptics'
 
 export default function BookingScreen() {
   const { th }     = useTheme()
@@ -121,8 +122,10 @@ export default function BookingScreen() {
       notifyBookingConfirmed({ restaurantName: restName, date, time: selectedTime })
       scheduleReminder({ bookingId: result.booking.id, restaurantName: restName, date, time: selectedTime })
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.replace('/confirmed')
     } catch (e: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
       setError(e.message || t.booking_error as string)
     } finally {
       setLoading(false)

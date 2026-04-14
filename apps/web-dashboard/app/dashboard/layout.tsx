@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
 import { DashboardSidebar } from '@/components/layouts/DashboardSidebar'
 import { NotificationProvider } from '@/lib/notifications'
 import ToastContainer from '@/components/ToastNotification'
@@ -11,6 +13,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const { restaurant } = useRestaurant()
+  const pathname = usePathname()
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -65,9 +68,18 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <span className="font-semibold text-text text-sm truncate">{restaurant?.name ?? 'Dashboard'}</span>
           </div>
 
-          <div className="max-w-7xl mx-auto p-4 lg:p-6">
-            {children}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="max-w-7xl mx-auto p-4 lg:p-6"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         <ToastContainer />

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet,
-  Image, Modal, Pressable, ScrollView, Animated, Dimensions,
+  Modal, Pressable, ScrollView, Animated, Dimensions,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, SlidersHorizontal, X, ChevronRight, XCircle } from 'lucide-react-native'
 import { router } from 'expo-router'
@@ -177,7 +178,7 @@ function RestaurantRow({ item, th, onPress }: { item: any; th: any; onPress: () 
         onPressOut={onPressOut}
         style={[rr.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
       >
-        <Image source={{ uri: rImage(item) }} style={rr.photo} resizeMode="cover" />
+        <Image source={{ uri: rImage(item) }} style={rr.photo} contentFit="cover" transition={300} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[rr.name, { color: th.text }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[rr.sub, { color: th.textSub }]} numberOfLines={1}>
