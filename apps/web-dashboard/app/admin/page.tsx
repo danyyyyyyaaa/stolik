@@ -41,10 +41,10 @@ export default function AdminPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {loading ? Array.from({ length: 4 }).map((_, i) => <StatsCardSkeleton key={i} />) : (
           <>
-            <StatsCard title="Restaurants"    value={stats?.totalRestaurants ?? 0}                    icon={Building2} />
-            <StatsCard title="Total users"    value={stats?.totalUsers ?? 0}                          icon={Users}       iconColor="text-blue-400" />
-            <StatsCard title="Today bookings" value={stats?.todayBookings ?? stats?.bookingsToday ?? 0} icon={Calendar}    iconColor="text-amber" />
-            <StatsCard title="Month bookings" value={stats?.monthBookings ?? 0}                        icon={TrendingUp} />
+            <StatsCard title="Restaurants"    value={stats?.totalRestaurants ?? 0}                    icon={Building2} accentColor="bg-accent" />
+            <StatsCard title="Total users"    value={stats?.totalUsers ?? 0}                          icon={Users}       iconColor="text-blue-400" accentColor="bg-blue-400" />
+            <StatsCard title="Today bookings" value={stats?.todayBookings ?? stats?.bookingsToday ?? 0} icon={Calendar}    iconColor="text-amber" accentColor="bg-amber" />
+            <StatsCard title="Month bookings" value={stats?.monthBookings ?? 0}                        icon={TrendingUp} accentColor="bg-accent" />
           </>
         )}
       </div>

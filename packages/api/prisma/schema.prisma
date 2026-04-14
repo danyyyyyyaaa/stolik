@@ -107,6 +107,9 @@ model Restaurant {
   events            RestaurantEvent[]
 
   @@index([partnerId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([isActive])
   @@map("restaurants")
 }
 
@@ -258,6 +261,10 @@ model Booking {
   reminders    Reminder[]
   messages     BookingMessage[]
 
+  @@index([restaurantId, date])
+  @@index([restaurantId, status])
+  @@index([userId])
+  @@index([date])
   @@map("bookings")
 }
 

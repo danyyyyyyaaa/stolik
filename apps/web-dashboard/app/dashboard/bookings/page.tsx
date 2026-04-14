@@ -546,9 +546,9 @@ export default function BookingsPage() {
                   <tr
                     key={b.id}
                     className={[
-                      'border-b border-border transition-colors hover:bg-green-50/40',
-                      isPending && 'border-l-2 border-l-amber-400',
-                      isDimmed  && 'opacity-60',
+                      'border-b border-border last:border-0 transition-colors hover:bg-surface-2/60',
+                      isPending && 'border-l-2 border-l-warning',
+                      isDimmed  && 'opacity-55',
                       updating === b.id && 'opacity-40 pointer-events-none',
                     ].filter(Boolean).join(' ')}
                   >

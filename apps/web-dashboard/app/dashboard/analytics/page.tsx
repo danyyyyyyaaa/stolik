@@ -427,15 +427,15 @@ export default function AnalyticsPage() {
           Array.from({ length: 9 }).map((_, i) => <StatsCardSkeleton key={i} />)
         ) : (
           <>
-            <StatsCard title={t.totalBookingsKpi} value={totalBookings} trend={kpis?.totalBookingsChange} icon={BookOpen} />
-            <StatsCard title={t.uniqueGuestsKpi} value={uniqueGuests} trend={kpis?.uniqueGuestsChange} icon={Users} iconColor="text-blue-400" />
-            <StatsCard title={t.totalGuestsKpi} value={totalGuests} icon={Users} iconColor="text-emerald-400" />
-            <StatsCard title={t.avgPartySizeKpi} value={typeof avgPartySize === 'number' ? avgPartySize.toFixed(1) : avgPartySize} trend={kpis?.avgPartySizeChange} icon={Users} iconColor="text-amber" />
-            <StatsCard title={t.bookingConversionKpi} value={`${bookingConversion}%`} icon={TrendingDown} iconColor="text-accent" />
-            <StatsCard title={t.repeatGuestRateKpi} value={`${repeatGuestRate}%`} icon={Users} iconColor="text-purple-400" />
-            <StatsCard title={t.noShowRateLabel} value={`${typeof noShowRate === 'number' ? noShowRate.toFixed(1) : noShowRate}%`} trend={kpis?.noShowRateChange} icon={XCircle} iconColor="text-error" />
-            <StatsCard title={t.cancellationRateKpi} value={`${typeof cancellationRate === 'number' ? cancellationRate.toFixed(1) : cancellationRate}%`} trend={kpis?.cancellationRateChange} icon={TrendingDown} iconColor="text-warning" />
-            <StatsCard title={t.avgLeadTimeKpi} value={`${avgLeadTimeDays} ${t.daysUnit}`} trend={kpis?.avgLeadTimeDaysChange} icon={Clock} iconColor="text-indigo-400" />
+            <StatsCard title={t.totalBookingsKpi} value={totalBookings} trend={kpis?.totalBookingsChange} icon={BookOpen} accentColor="bg-accent" />
+            <StatsCard title={t.uniqueGuestsKpi} value={uniqueGuests} trend={kpis?.uniqueGuestsChange} icon={Users} iconColor="text-blue-400" accentColor="bg-blue-400" />
+            <StatsCard title={t.totalGuestsKpi} value={totalGuests} icon={Users} iconColor="text-emerald-400" accentColor="bg-emerald-400" />
+            <StatsCard title={t.avgPartySizeKpi} value={typeof avgPartySize === 'number' ? avgPartySize.toFixed(1) : avgPartySize} trend={kpis?.avgPartySizeChange} icon={Users} iconColor="text-amber" accentColor="bg-amber" />
+            <StatsCard title={t.bookingConversionKpi} value={`${bookingConversion}%`} icon={TrendingDown} iconColor="text-accent" accentColor="bg-accent" />
+            <StatsCard title={t.repeatGuestRateKpi} value={`${repeatGuestRate}%`} icon={Users} iconColor="text-purple-400" accentColor="bg-purple-400" />
+            <StatsCard title={t.noShowRateLabel} value={`${typeof noShowRate === 'number' ? noShowRate.toFixed(1) : noShowRate}%`} trend={kpis?.noShowRateChange} icon={XCircle} iconColor="text-error" accentColor="bg-error" />
+            <StatsCard title={t.cancellationRateKpi} value={`${typeof cancellationRate === 'number' ? cancellationRate.toFixed(1) : cancellationRate}%`} trend={kpis?.cancellationRateChange} icon={TrendingDown} iconColor="text-warning" accentColor="bg-warning" />
+            <StatsCard title={t.avgLeadTimeKpi} value={`${avgLeadTimeDays} ${t.daysUnit}`} trend={kpis?.avgLeadTimeDaysChange} icon={Clock} iconColor="text-indigo-400" accentColor="bg-indigo-400" />
           </>
         )}
       </div>
