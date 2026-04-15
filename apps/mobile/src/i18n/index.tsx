@@ -20,7 +20,7 @@ export interface Translations {
   find_restaurant_btn: string
   // general
   cancel: string; details: string; rating: string; open_until: string
-  about: string; menu: string; reviews: string; profile: string
+  about: string; menu: string; reviews: string; promotions: string; profile: string
   settings: string; language: string; theme: string; dark: string; light: string
   logout: string; tonight: string; tomorrow: string; this_weekend: string
   // booking summary
@@ -126,6 +126,24 @@ export interface Translations {
   open_apple_maps: string
   navigate_to_restaurant: string
   no_connection: string
+  // menu (Phase 5)
+  menu_empty_title: string; menu_empty_desc: string
+  menu_unavailable: string; allergens_label: string
+  // promotions (Phase 5)
+  promotions_label: string; promo_book_btn: string
+  promo_active_now: string; promo_permanent: string
+  promo_copy_code: string; promo_code_copied: string
+  promo_ends_in: string
+  // amenities (Phase 5)
+  amenities_label: string
+  amenity_parking: string; amenity_wifi: string; amenity_terrace: string
+  amenity_kids_menu: string; amenity_highchairs: string; amenity_live_music: string
+  amenity_wheelchair: string; amenity_pets: string; amenity_smoking: string
+  amenity_ac: string; amenity_private_rooms: string
+  avg_bill_label: string; price_range_label: string
+  payment_cash: string; payment_card: string; payment_apple: string; payment_google: string
+  // boost badges
+  boost_recommended: string; boost_top: string; boost_premium: string
 }
 
 const T: Record<LangKey, Translations> = {
@@ -148,7 +166,7 @@ const T: Record<LangKey, Translations> = {
     no_bookings: 'No reservations yet', find_restaurant_btn: 'Find a restaurant',
     cancel: 'Cancel', details: 'Details',
     rating: 'rating', open_until: 'Open until',
-    about: 'About', menu: 'Menu', reviews: 'Reviews',
+    about: 'About', menu: 'Menu', reviews: 'Reviews', promotions: 'Offers',
     profile: 'Profile', settings: 'Settings', language: 'Language',
     theme: 'Theme', dark: 'Dark', light: 'Light', logout: 'Log out',
     tonight: 'Tonight', tomorrow: 'Tomorrow', this_weekend: 'This weekend',
@@ -237,6 +255,20 @@ const T: Record<LangKey, Translations> = {
     open_apple_maps: 'Open in Apple Maps',
     navigate_to_restaurant: 'Navigate to restaurant',
     no_connection: 'No internet connection',
+    menu_empty_title: 'No menu yet', menu_empty_desc: "The restaurant hasn't added their menu yet",
+    menu_unavailable: 'Not available today', allergens_label: 'Allergens',
+    promotions_label: 'Promotions', promo_book_btn: 'Book a table',
+    promo_active_now: 'Active now', promo_permanent: 'Permanent offer',
+    promo_copy_code: 'Copy code', promo_code_copied: 'Copied!',
+    promo_ends_in: 'Ends in',
+    amenities_label: 'Amenities',
+    amenity_parking: 'Parking', amenity_wifi: 'Wi-Fi', amenity_terrace: 'Terrace',
+    amenity_kids_menu: 'Kids menu', amenity_highchairs: 'High chairs', amenity_live_music: 'Live music',
+    amenity_wheelchair: 'Accessible', amenity_pets: 'Pets', amenity_smoking: 'Smoking',
+    amenity_ac: 'A/C', amenity_private_rooms: 'Private rooms',
+    avg_bill_label: 'Avg. bill', price_range_label: 'Price range',
+    payment_cash: 'Cash', payment_card: 'Card', payment_apple: 'Apple Pay', payment_google: 'Google Pay',
+    boost_recommended: 'Recommended', boost_top: 'Top', boost_premium: 'Premium',
   },
   pl: {
     all: 'Wszystkie', polish: 'Polska', italian: 'Włoska', japanese: 'Japońska', french: 'Francuska',
@@ -257,7 +289,7 @@ const T: Record<LangKey, Translations> = {
     no_bookings: 'Brak rezerwacji', find_restaurant_btn: 'Znajdź restaurację',
     cancel: 'Anuluj', details: 'Szczegóły',
     rating: 'ocena', open_until: 'Czynne do',
-    about: 'O restauracji', menu: 'Menu', reviews: 'Opinie',
+    about: 'O restauracji', menu: 'Menu', reviews: 'Opinie', promotions: 'Oferty',
     profile: 'Profil', settings: 'Ustawienia', language: 'Język',
     theme: 'Motyw', dark: 'Ciemny', light: 'Jasny', logout: 'Wyloguj',
     tonight: 'Dziś wieczór', tomorrow: 'Jutro', this_weekend: 'Ten weekend',
@@ -346,6 +378,20 @@ const T: Record<LangKey, Translations> = {
     open_apple_maps: 'Otwórz w Apple Maps',
     navigate_to_restaurant: 'Nawiguj do restauracji',
     no_connection: 'Brak połączenia z internetem',
+    menu_empty_title: 'Brak menu', menu_empty_desc: 'Restauracja nie dodała jeszcze menu',
+    menu_unavailable: 'Niedostępne dziś', allergens_label: 'Alergeny',
+    promotions_label: 'Promocje', promo_book_btn: 'Zarezerwuj stolik',
+    promo_active_now: 'Teraz aktywne', promo_permanent: 'Stała oferta',
+    promo_copy_code: 'Kopiuj kod', promo_code_copied: 'Skopiowano!',
+    promo_ends_in: 'Kończy się za',
+    amenities_label: 'Udogodnienia',
+    amenity_parking: 'Parking', amenity_wifi: 'Wi-Fi', amenity_terrace: 'Taras',
+    amenity_kids_menu: 'Menu dla dzieci', amenity_highchairs: 'Krzesełka', amenity_live_music: 'Muzyka na żywo',
+    amenity_wheelchair: 'Dostępność', amenity_pets: 'Zwierzęta', amenity_smoking: 'Palenie',
+    amenity_ac: 'Klimatyzacja', amenity_private_rooms: 'Sale prywatne',
+    avg_bill_label: 'Śr. rachunek', price_range_label: 'Przedział cenowy',
+    payment_cash: 'Gotówka', payment_card: 'Karta', payment_apple: 'Apple Pay', payment_google: 'Google Pay',
+    boost_recommended: 'Polecamy', boost_top: 'Top', boost_premium: 'Premium',
   },
   ru: {
     all: 'Все', polish: 'Польская', italian: 'Итальянская', japanese: 'Японская', french: 'Французская',
@@ -366,7 +412,7 @@ const T: Record<LangKey, Translations> = {
     no_bookings: 'Броней пока нет', find_restaurant_btn: 'Найти ресторан',
     cancel: 'Отмена', details: 'Подробнее',
     rating: 'рейтинг', open_until: 'Открыто до',
-    about: 'О ресторане', menu: 'Меню', reviews: 'Отзывы',
+    about: 'О ресторане', menu: 'Меню', reviews: 'Отзывы', promotions: 'Акции',
     profile: 'Профиль', settings: 'Настройки', language: 'Язык',
     theme: 'Тема', dark: 'Тёмная', light: 'Светлая', logout: 'Выйти',
     tonight: 'Сегодня вечером', tomorrow: 'Завтра', this_weekend: 'На выходных',
@@ -455,6 +501,20 @@ const T: Record<LangKey, Translations> = {
     open_apple_maps: 'Открыть в Apple Картах',
     navigate_to_restaurant: 'Навигация до ресторана',
     no_connection: 'Нет подключения к интернету',
+    menu_empty_title: 'Меню отсутствует', menu_empty_desc: 'Ресторан ещё не добавил меню',
+    menu_unavailable: 'Недоступно сегодня', allergens_label: 'Аллергены',
+    promotions_label: 'Акции', promo_book_btn: 'Забронировать столик',
+    promo_active_now: 'Сейчас активно', promo_permanent: 'Постоянная акция',
+    promo_copy_code: 'Копировать код', promo_code_copied: 'Скопировано!',
+    promo_ends_in: 'Заканчивается через',
+    amenities_label: 'Удобства',
+    amenity_parking: 'Парковка', amenity_wifi: 'Wi-Fi', amenity_terrace: 'Терраса',
+    amenity_kids_menu: 'Детское меню', amenity_highchairs: 'Стульчики', amenity_live_music: 'Живая музыка',
+    amenity_wheelchair: 'Доступность', amenity_pets: 'С питомцами', amenity_smoking: 'Курение',
+    amenity_ac: 'Кондиционер', amenity_private_rooms: 'Приватные залы',
+    avg_bill_label: 'Ср. счёт', price_range_label: 'Ценовой сегмент',
+    payment_cash: 'Наличные', payment_card: 'Карта', payment_apple: 'Apple Pay', payment_google: 'Google Pay',
+    boost_recommended: 'Рекомендуем', boost_top: 'Топ', boost_premium: 'Премиум',
   },
   uk: {
     all: 'Всі', polish: 'Польська', italian: 'Італійська', japanese: 'Японська', french: 'Французька',
@@ -475,7 +535,7 @@ const T: Record<LangKey, Translations> = {
     no_bookings: 'Броней поки немає', find_restaurant_btn: 'Знайди ресторан',
     cancel: 'Скасувати', details: 'Детальніше',
     rating: 'рейтинг', open_until: 'Відчинено до',
-    about: 'Про ресторан', menu: 'Меню', reviews: 'Відгуки',
+    about: 'Про ресторан', menu: 'Меню', reviews: 'Відгуки', promotions: 'Акції',
     profile: 'Профіль', settings: 'Налаштування', language: 'Мова',
     theme: 'Тема', dark: 'Темна', light: 'Світла', logout: 'Вийти',
     tonight: 'Сьогодні ввечері', tomorrow: 'Завтра', this_weekend: 'На вихідних',
@@ -564,6 +624,20 @@ const T: Record<LangKey, Translations> = {
     open_apple_maps: 'Відкрити в Apple Картах',
     navigate_to_restaurant: 'Навігація до ресторану',
     no_connection: 'Немає підключення до інтернету',
+    menu_empty_title: 'Меню відсутнє', menu_empty_desc: 'Ресторан ще не додав меню',
+    menu_unavailable: 'Недоступно сьогодні', allergens_label: 'Алергени',
+    promotions_label: 'Акції', promo_book_btn: 'Забронювати столик',
+    promo_active_now: 'Зараз активно', promo_permanent: 'Постійна акція',
+    promo_copy_code: 'Копіювати код', promo_code_copied: 'Скопійовано!',
+    promo_ends_in: 'Закінчується через',
+    amenities_label: 'Зручності',
+    amenity_parking: 'Парковка', amenity_wifi: 'Wi-Fi', amenity_terrace: 'Тераса',
+    amenity_kids_menu: 'Дитяче меню', amenity_highchairs: 'Стільчики', amenity_live_music: 'Жива музика',
+    amenity_wheelchair: 'Доступність', amenity_pets: 'З тваринами', amenity_smoking: 'Куріння',
+    amenity_ac: 'Кондиціонер', amenity_private_rooms: 'Приватні зали',
+    avg_bill_label: 'Сер. рахунок', price_range_label: 'Ціновий сегмент',
+    payment_cash: 'Готівка', payment_card: 'Картка', payment_apple: 'Apple Pay', payment_google: 'Google Pay',
+    boost_recommended: 'Рекомендуємо', boost_top: 'Топ', boost_premium: 'Преміум',
   },
 }
 

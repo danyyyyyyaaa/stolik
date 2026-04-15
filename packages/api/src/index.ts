@@ -33,6 +33,9 @@ import { referralsRouter } from './routes/referrals'
 import { promotionsRouter } from './routes/promotions'
 import { eventsRouter } from './routes/events'
 import { messagesRouter } from './routes/messages'
+import { publicRouter } from './routes/public'
+import { boostsRouter } from './routes/boosts'
+import { webhooksRouter } from './routes/webhooks'
 import { startCronJobs } from './cron'
 
 dotenv.config()
@@ -79,6 +82,7 @@ app.use(cors({
 // so the raw body is preserved for signature verification
 app.use('/api/subscriptions', subscriptionsRouter)
 app.use('/api/billing/webhook', express.raw({ type: 'application/json' }), billingRouter)
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhooksRouter)
 
 app.use(express.json())
 
@@ -109,8 +113,10 @@ app.use('/api/restaurants/:id/waitlist', waitlistRouter)
 app.use('/api', dealsRouter)                            // /api/deals + /api/restaurants/:id/deals
 app.use('/api/referrals', referralsRouter)
 app.use('/api/restaurants', promotionsRouter)           // /api/restaurants/:id/promotions
+app.use('/api/restaurants/:id/boosts', boostsRouter)   // /api/restaurants/:id/boosts
 app.use('/api/restaurants/:id/events', eventsRouter)   // /api/restaurants/:id/events
 app.use('/api/bookings/:bookingId/messages', messagesRouter) // /api/bookings/:bookingId/messages
+app.use('/api/public', publicRouter)                        // public read-only endpoints
 
 // Serve local uploads as static files (fallback when R2 is not configured)
 app.use('/uploads', express.static('uploads'))

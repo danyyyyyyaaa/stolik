@@ -73,6 +73,32 @@ model Restaurant {
   // Parking
   hasParking      Boolean @default(false)
   parkingDetails  String?
+  parkingType     String? // "free" | "paid" | "street" | "valet"
+
+  // Amenities
+  hasWifi              Boolean @default(false)
+  wifiDetails          String?
+  hasOutdoorSeating    Boolean @default(false)
+  outdoorDetails       String?
+  hasChildMenu         Boolean @default(false)
+  hasHighChairs        Boolean @default(false)
+  hasLiveMusic         Boolean @default(false)
+  liveMusicDetails     String?
+  isSmokingAllowed     Boolean @default(false)
+  hasAirConditioning   Boolean @default(false)
+  hasPrivateRooms      Boolean @default(false)
+  privateRoomDetails   String?
+  wheelchairAccessible Boolean @default(false)
+  petsAllowed          Boolean @default(false)
+  paymentMethods       String[] @default([])
+  averageBill          Float?
+  averageBillCurrency  String @default("PLN")
+  priceRangeNum        Int @default(2) // 1=budget, 2=mid, 3=expensive, 4=luxury
+
+  // Boost / ranking scores (updated by cron)
+  baseScore  Int @default(0)
+  boostScore Int @default(0)
+  totalScore Int @default(0)
 
   status    String   @default("active") // "draft" | "active" | "suspended"
 
@@ -105,6 +131,8 @@ model Restaurant {
   deals             RestaurantDeal[]
   promotion         RestaurantPromotion?
   events            RestaurantEvent[]
+  promotions        Promotion[]
+  boosts            Boost[]
 
   @@index([partnerId])
   @@index([ownerId])
@@ -328,29 +356,51 @@ model MenuCategory {
   id           String     @id @default(cuid())
   restaurantId String
   name         String
+  nameEn       String?
+  namePl       String?
+  nameUk       String?
   sortOrder    Int        @default(0)
+  isVisible    Boolean    @default(true)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   items        MenuItem[]
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@map("menu_categories")
 }
 
 model MenuItem {
-  id          String       @id @default(cuid())
-  categoryId  String
-  name        String
-  description String?
-  price       Float
-  imageUrl    String?
-  available   Boolean      @default(true)
-  sortOrder   Int          @default(0)
-  photoUrl    String?
-  allergens   String[]     @default([])
-  isPopular   Boolean      @default(false)
-  category    MenuCategory @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime     @default(now())
+  id               String       @id @default(cuid())
+  categoryId       String
+  restaurantId     String?
+  name             String
+  nameEn           String?
+  namePl           String?
+  nameUk           String?
+  description      String?
+  descriptionEn    String?
+  descriptionPl    String?
+  descriptionUk    String?
+  price            Float
+  currency         String       @default("PLN")
+  imageUrl         String?
+  available        Boolean      @default(true)
+  isAvailable      Boolean      @default(true)
+  sortOrder        Int          @default(0)
+  photoUrl         String?
+  allergens        String[]     @default([])
+  tags             String[]     @default([])
+  isPopular        Boolean      @default(false)
+  weight           String?
+  calories         Int?
+  specialPrice     Float?
+  specialPriceLabel String?
+  category         MenuCategory @relation(fields: [categoryId], references: [id])
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
+  @@index([categoryId])
+  @@index([restaurantId])
   @@map("menu_items")
 }
 
@@ -617,7 +667,98 @@ model BookingMessage {
   @@map("booking_messages")
 }
 
-// ─── RESTAURANT PROMOTION (ADS) ──────────────────────────────────────────────
+// ─── PROMOTION (Акции ресторана) ─────────────────────────────────────────────
+enum PromotionType {
+  DISCOUNT
+  SPECIAL_OFFER
+  HAPPY_HOUR
+  EVENT
+  BOOKING_BONUS
+}
+
+enum PromotionStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+model Promotion {
+  id              String          @id @default(cuid())
+  restaurantId    String
+  title           String
+  titleEn         String?
+  titlePl         String?
+  titleUk         String?
+  description     String
+  descriptionEn   String?
+  descriptionPl   String?
+  descriptionUk   String?
+  imageUrl        String?
+  type            PromotionType
+  discountPercent Int?
+  discountAmount  Float?
+  startDate       DateTime
+  endDate         DateTime?
+  recurringDays   Int[]           @default([])
+  timeStart       String?
+  timeEnd         String?
+  status          PromotionStatus @default(DRAFT)
+  isHighlighted   Boolean         @default(false)
+  conditions      String?
+  promoCode       String?
+  viewCount       Int             @default(0)
+  clickCount      Int             @default(0)
+  bookingCount    Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status])
+  @@index([status, isHighlighted])
+  @@map("promotions")
+}
+
+// ─── BOOST (Продвижение / реклама) ───────────────────────────────────────────
+enum BoostLevel {
+  BOOST
+  BOOST_PRO
+  BOOST_PREMIUM
+}
+
+enum BoostStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model Boost {
+  id              String      @id @default(cuid())
+  restaurantId    String
+  level           BoostLevel
+  startDate       DateTime
+  endDate         DateTime
+  dailyRate       Float
+  totalAmount     Float
+  status          BoostStatus @default(PENDING)
+  stripePaymentId String?
+  paidAt          DateTime?
+  impressions     Int         @default(0)
+  clicks          Int         @default(0)
+  bookings        Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status])
+  @@index([status, endDate])
+  @@map("boosts")
+}
+
+// ─── RESTAURANT PROMOTION (ADS) — legacy ─────────────────────────────────────
 model RestaurantPromotion {
   id           String    @id @default(cuid())
   restaurantId String    @unique

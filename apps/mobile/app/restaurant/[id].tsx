@@ -15,8 +15,11 @@ import { buildDates, normalizeRestaurant, type NormalizedRestaurant } from '../.
 import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { Stars } from '../../src/components/Stars'
 import DirectionsSheet from '../../src/components/DirectionsSheet'
+import MenuSection from '../../src/components/MenuSection'
+import PromotionsSection from '../../src/components/PromotionsSection'
+import AmenitiesSection from '../../src/components/AmenitiesSection'
 
-const TABS = ['about', 'menu', 'reviews'] as const
+const TABS = ['about', 'menu', 'promotions', 'reviews'] as const
 type TabKey = typeof TABS[number]
 
 // ─── Cuisine name map ─────────────────────────────────────────────────────────
@@ -104,24 +107,7 @@ const MENUS: Record<string, { category: string; items: { name: string; desc: str
   ],
 }
 
-// ─── API menu types ───────────────────────────────────────────────────────────
-
 const API = process.env.EXPO_PUBLIC_API_URL || 'https://stolik-production.up.railway.app'
-
-type ApiMenuItem = {
-  id: string
-  name: string
-  description: string | null
-  price: number
-  imageUrl: string | null
-  available: boolean
-}
-
-type ApiMenuCategory = {
-  id: string
-  name: string
-  items: ApiMenuItem[]
-}
 
 // ─── Mock reviews ─────────────────────────────────────────────────────────────
 
@@ -224,8 +210,6 @@ export default function RestaurantScreen() {
   const imageUrl = mockR?.image ?? `https://picsum.photos/seed/dinto-${id}/800/400`
 
   const [activeTab,    setActiveTab]    = useState<TabKey>('about')
-  const [apiMenu,      setApiMenu]      = useState<ApiMenuCategory[] | null>(null)
-  const [menuLoading,  setMenuLoading]  = useState(false)
   const [date,         setDate]         = useState<string | null>(null)
   const [time,         setTime]         = useState<string | null>(null)
   const [guests,       setGuests]       = useState(2)
@@ -234,18 +218,6 @@ export default function RestaurantScreen() {
   const [loginModal,       setLoginModal]       = useState(false)
   const [showDirections,   setShowDirections]   = useState(false)
 
-  useEffect(() => {
-    if (activeTab !== 'menu' || !id || apiMenu !== null) return
-    setMenuLoading(true)
-    fetch(`${API}/api/menu/${id}`)
-      .then(r => r.json())
-      .then((data: ApiMenuCategory[]) => {
-        if (Array.isArray(data)) setApiMenu(data)
-        else setApiMenu([])
-      })
-      .catch(() => setApiMenu([]))
-      .finally(() => setMenuLoading(false))
-  }, [activeTab, id])
 
   const dates = buildDates(t.tonight, t.tomorrow)
 
@@ -282,7 +254,6 @@ export default function RestaurantScreen() {
 
   const s = makeStyles(th)
   const cuisine = nr.cuisine ?? ''
-  const menuSections = MENUS[cuisine] ?? MENUS['polish']
 
   return (
     <View style={[s.root, { backgroundColor: th.bg }]}>
@@ -384,6 +355,9 @@ export default function RestaurantScreen() {
                 ))}
               </View>
 
+              {/* Amenities */}
+              <AmenitiesSection amenities={r as any} />
+
               {/* Get directions button */}
               {(((r as any)?.latitude && (r as any)?.longitude) || nr.address) && (
                 <TouchableOpacity
@@ -401,70 +375,13 @@ export default function RestaurantScreen() {
           )}
 
           {/* Menu */}
-          {activeTab === 'menu' && (
-            <View>
-              {menuLoading ? (
-                <ActivityIndicator size="small" color={th.accent} style={{ marginTop: 24 }} />
-              ) : apiMenu && apiMenu.length > 0 ? (
-                <>
-                  {apiMenu.map(section => (
-                    <View key={section.id} style={s.menuSection}>
-                      <Text style={[s.menuCategory, { color: th.text }]}>{section.name}</Text>
-                      {section.items.map(item => (
-                        <View
-                          key={item.id}
-                          style={[
-                            s.menuItem,
-                            { borderBottomColor: th.border, opacity: item.available ? 1 : 0.45 },
-                          ]}
-                        >
-                          {item.imageUrl ? (
-                            <Image
-                              source={{ uri: item.imageUrl }}
-                              style={s.menuItemPhoto}
-                              resizeMode="cover"
-                            />
-                          ) : null}
-                          <View style={s.menuItemLeft}>
-                            <Text style={[s.menuItemName, { color: th.text }]}>{item.name}</Text>
-                            {item.description ? (
-                              <Text style={[s.menuItemDesc, { color: th.textMuted }]}>{item.description}</Text>
-                            ) : null}
-                            {!item.available && (
-                              <Text style={[s.menuItemUnavailable, { color: th.textMuted }]}>
-                                {t.unavailable ?? 'Niedostępne'}
-                              </Text>
-                            )}
-                          </View>
-                          <Text style={[s.menuItemPrice, { color: th.accent }]}>
-                            {item.price.toFixed(2)} zł
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                  <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
-                </>
-              ) : (
-                <>
-                  {menuSections.map(section => (
-                    <View key={section.category} style={s.menuSection}>
-                      <Text style={[s.menuCategory, { color: th.text }]}>{section.category}</Text>
-                      {section.items.map(item => (
-                        <View key={item.name} style={[s.menuItem, { borderBottomColor: th.border }]}>
-                          <View style={s.menuItemLeft}>
-                            <Text style={[s.menuItemName, { color: th.text }]}>{item.name}</Text>
-                            <Text style={[s.menuItemDesc, { color: th.textMuted }]}>{item.desc}</Text>
-                          </View>
-                          <Text style={[s.menuItemPrice, { color: th.accent }]}>{item.price}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                  <Text style={[s.menuNote, { color: th.textMuted }]}>{t.menu_note}</Text>
-                </>
-              )}
-            </View>
+          {activeTab === 'menu' && id && (
+            <MenuSection restaurantId={id as string} />
+          )}
+
+          {/* Promotions */}
+          {activeTab === 'promotions' && id && (
+            <PromotionsSection restaurantId={id as string} />
           )}
 
           {/* Reviews */}

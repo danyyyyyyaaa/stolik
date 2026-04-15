@@ -1,12 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { api } from '@/lib/api'
 import { useMyRestaurant } from '@/hooks/useRestaurant'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Skeleton } from '@/components/shared/LoadingSkeleton'
 import { useT } from '@/lib/i18n'
 
-const TABS = ['General', 'Hours', 'Notifications', 'SMS Templates', 'Danger Zone'] as const
+const TABS = ['General', 'Hours', 'Amenities', 'Notifications', 'SMS Templates', 'Danger Zone'] as const
 type Tab = typeof TABS[number]
 
 const DISTRICTS = [
@@ -90,9 +91,36 @@ export default function SettingsPage() {
   const [birthdayPerkEnabled, setBirthdayPerkEnabled] = useState(false)
   const [birthdayPerkDescription, setBirthdayPerkDescription] = useState('')
 
-  // Parking state
+  // Parking state (kept in General tab for backwards compat)
   const [hasParking, setHasParking] = useState(false)
   const [parkingDetails, setParkingDetails] = useState('')
+
+  // Amenities tab state
+  const [amenities, setAmenities] = useState({
+    hasParking:          false,
+    parkingType:         'free' as 'free' | 'paid' | 'street' | 'valet',
+    parkingDetails:      '',
+    hasWifi:             false,
+    wifiDetails:         '',
+    hasOutdoorSeating:   false,
+    outdoorDetails:      '',
+    hasChildMenu:        false,
+    hasHighChairs:       false,
+    hasLiveMusic:        false,
+    liveMusicDetails:    '',
+    isSmokingAllowed:    false,
+    hasAirConditioning:  false,
+    hasPrivateRooms:     false,
+    privateRoomDetails:  '',
+    wheelchairAccessible:false,
+    petsAllowed:         false,
+    paymentMethods:      [] as string[],
+    priceRangeNum:       2,
+    averageBill:         '' as string | number,
+    averageBillCurrency: 'PLN',
+  })
+  const [amenitiesSaving, setAmenitiesSaving] = useState(false)
+  const [amenitiesSaved,  setAmenitiesSaved]  = useState(false)
 
   // Notifications tab state
   const [notifs, setNotifs] = useState<NotifSettings>({
@@ -244,6 +272,29 @@ export default function SettingsPage() {
       setBirthdayPerkDescription(r.birthdayPerkDescription ?? '')
       setHasParking(r.hasParking ?? false)
       setParkingDetails(r.parkingDetails ?? '')
+      setAmenities({
+        hasParking:          r.hasParking          ?? false,
+        parkingType:         r.parkingType         ?? 'free',
+        parkingDetails:      r.parkingDetails      ?? '',
+        hasWifi:             r.hasWifi             ?? false,
+        wifiDetails:         r.wifiDetails         ?? '',
+        hasOutdoorSeating:   r.hasOutdoorSeating   ?? false,
+        outdoorDetails:      r.outdoorDetails      ?? '',
+        hasChildMenu:        r.hasChildMenu        ?? false,
+        hasHighChairs:       r.hasHighChairs       ?? false,
+        hasLiveMusic:        r.hasLiveMusic        ?? false,
+        liveMusicDetails:    r.liveMusicDetails    ?? '',
+        isSmokingAllowed:    r.isSmokingAllowed    ?? false,
+        hasAirConditioning:  r.hasAirConditioning  ?? false,
+        hasPrivateRooms:     r.hasPrivateRooms     ?? false,
+        privateRoomDetails:  r.privateRoomDetails  ?? '',
+        wheelchairAccessible:r.wheelchairAccessible ?? false,
+        petsAllowed:         r.petsAllowed         ?? false,
+        paymentMethods:      r.paymentMethods      ?? [],
+        priceRangeNum:       r.priceRangeNum       ?? 2,
+        averageBill:         r.averageBill         ?? '',
+        averageBillCurrency: r.averageBillCurrency ?? 'PLN',
+      })
     }
   }, [restaurant])
 
@@ -286,6 +337,26 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSaveAmenities = async () => {
+    if (!restaurant) return
+    setAmenitiesSaving(true)
+    try {
+      await api.put(`/api/restaurants/${restaurant.id}/amenities`, {
+        ...amenities,
+        parkingType:  amenities.hasParking     ? amenities.parkingType : null,
+        parkingDetails: amenities.parkingDetails  || null,
+        wifiDetails:    amenities.wifiDetails     || null,
+        outdoorDetails: amenities.outdoorDetails  || null,
+        liveMusicDetails: amenities.liveMusicDetails || null,
+        privateRoomDetails: amenities.privateRoomDetails || null,
+        averageBill: amenities.averageBill !== '' ? Number(amenities.averageBill) : null,
+      })
+      setAmenitiesSaved(true)
+      setTimeout(() => setAmenitiesSaved(false), 2000)
+    } catch { /* silently */ }
+    finally { setAmenitiesSaving(false) }
   }
 
   const handleSaveNotifs = async () => {
@@ -661,6 +732,186 @@ export default function SettingsPage() {
           </div>
 
           <SaveButton onClick={handleSaveHours} />
+        </div>
+      )}
+
+      {/* Amenities tab */}
+      {activeTab === 'Amenities' && (
+        <div className="max-w-2xl space-y-3">
+
+          {/* Helper: toggle row with animated expand */}
+          {([
+            {
+              key: 'hasParking', emoji: '🅿️', label: 'Parking', desc: 'Parking available for guests',
+              details: [
+                {
+                  type: 'select' as const, field: 'parkingType', label: 'Parking type',
+                  options: [['free','Free parking'],['paid','Paid parking'],['street','Street parking'],['valet','Valet']],
+                },
+                { type: 'text' as const, field: 'parkingDetails', label: 'Details', placeholder: 'e.g. 20 spaces in basement' },
+              ],
+            },
+            {
+              key: 'hasWifi', emoji: '📶', label: 'Wi-Fi', desc: 'Free Wi-Fi for guests',
+              details: [{ type: 'text' as const, field: 'wifiDetails', label: 'Network / password hint', placeholder: 'e.g. ask staff for password' }],
+            },
+            {
+              key: 'hasOutdoorSeating', emoji: '🌿', label: 'Outdoor seating', desc: 'Terrace or garden',
+              details: [{ type: 'text' as const, field: 'outdoorDetails', label: 'Details', placeholder: 'e.g. heated terrace, 40 seats' }],
+            },
+            {
+              key: 'hasLiveMusic', emoji: '🎵', label: 'Live music', desc: 'Regular live performances',
+              details: [{ type: 'text' as const, field: 'liveMusicDetails', label: 'Details', placeholder: 'e.g. Jazz Fridays 20:00–23:00' }],
+            },
+            {
+              key: 'hasPrivateRooms', emoji: '🔒', label: 'Private rooms', desc: 'Separate rooms for events',
+              details: [{ type: 'text' as const, field: 'privateRoomDetails', label: 'Details', placeholder: 'e.g. room for up to 20 people' }],
+            },
+            { key: 'hasChildMenu',       emoji: '👶', label: 'Kids menu',          desc: 'Special menu for children', details: [] },
+            { key: 'hasHighChairs',       emoji: '🪑', label: 'High chairs',         desc: 'Baby high chairs available', details: [] },
+            { key: 'hasAirConditioning',  emoji: '❄️', label: 'Air conditioning',    desc: 'Climate control', details: [] },
+            { key: 'wheelchairAccessible',emoji: '♿', label: 'Wheelchair access',   desc: 'Accessible entrance and facilities', details: [] },
+            { key: 'petsAllowed',         emoji: '🐾', label: 'Pets allowed',        desc: 'Pets welcome on the premises', details: [] },
+            { key: 'isSmokingAllowed',    emoji: '🚬', label: 'Smoking allowed',     desc: 'Designated smoking area', details: [] },
+          ] as const).map(row => {
+            const isOn = !!(amenities as any)[row.key]
+            return (
+              <div key={row.key} className="bg-surface border border-border rounded-card overflow-hidden">
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{row.emoji}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-text">{row.label}</p>
+                      <p className="text-xs text-muted">{row.desc}</p>
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    checked={isOn}
+                    onChange={() => setAmenities(a => ({ ...a, [row.key]: !isOn }))}
+                  />
+                </div>
+                <AnimatePresence initial={false}>
+                  {isOn && row.details.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
+                        {row.details.map((detail) => (
+                          <div key={detail.field}>
+                            <label className="block text-xs font-medium text-muted mb-1.5">{detail.label}</label>
+                            {detail.type === 'select' ? (
+                              <select
+                                value={(amenities as any)[detail.field]}
+                                onChange={e => setAmenities((a: any) => ({ ...a, [detail.field]: e.target.value }))}
+                                className="w-full border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent"
+                              >
+                                {(detail as any).options.map(([val, lbl]: [string, string]) => (
+                                  <option key={val} value={val}>{lbl}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={(amenities as any)[detail.field]}
+                                onChange={e => setAmenities((a: any) => ({ ...a, [detail.field]: e.target.value }))}
+                                placeholder={(detail as any).placeholder}
+                                className="w-full border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent placeholder:text-muted"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
+
+          {/* Payment methods */}
+          <div className="bg-surface border border-border rounded-card p-4">
+            <p className="text-sm font-semibold text-text mb-3">💳 Payment methods</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([['cash','Cash 💵'],['card','Card / Terminal 💳'],['apple_pay','Apple Pay 🍎'],['google_pay','Google Pay 🔵']] as const).map(([val, lbl]) => {
+                const checked = amenities.paymentMethods.includes(val)
+                return (
+                  <label key={val} className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setAmenities(a => ({
+                        ...a,
+                        paymentMethods: checked
+                          ? a.paymentMethods.filter(m => m !== val)
+                          : [...a.paymentMethods, val],
+                      }))}
+                      className="w-4 h-4 accent-accent"
+                    />
+                    <span className="text-sm text-text">{lbl}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Price range */}
+          <div className="bg-surface border border-border rounded-card p-4">
+            <p className="text-sm font-semibold text-text mb-3">💲 Price range</p>
+            <div className="flex gap-2">
+              {([1,2,3,4] as const).map(n => (
+                <button
+                  key={n}
+                  onClick={() => setAmenities(a => ({ ...a, priceRangeNum: n }))}
+                  className={`px-4 py-2 rounded-btn text-sm font-semibold border transition-colors ${
+                    amenities.priceRangeNum === n
+                      ? 'bg-accent text-white border-accent'
+                      : 'bg-surface border-border text-muted hover:text-text'
+                  }`}
+                >
+                  {'💲'.repeat(n)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Average bill */}
+          <div className="bg-surface border border-border rounded-card p-4">
+            <p className="text-sm font-semibold text-text mb-3">🧾 Average bill</p>
+            <div className="flex gap-3">
+              <input
+                type="number"
+                min={0}
+                value={amenities.averageBill}
+                onChange={e => setAmenities(a => ({ ...a, averageBill: e.target.value }))}
+                placeholder="e.g. 120"
+                className="flex-1 border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent placeholder:text-muted"
+              />
+              <select
+                value={amenities.averageBillCurrency}
+                onChange={e => setAmenities(a => ({ ...a, averageBillCurrency: e.target.value }))}
+                className="border border-border rounded-btn px-3 py-2 text-sm bg-surface text-text focus:outline-none focus:border-accent"
+              >
+                <option value="PLN">PLN</option>
+                <option value="EUR">EUR</option>
+                <option value="UAH">UAH</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Save */}
+          <div className="pt-2">
+            <button
+              onClick={handleSaveAmenities}
+              disabled={amenitiesSaving}
+              className="px-6 py-2 bg-accent text-white rounded-btn text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+            >
+              {amenitiesSaved ? '✓ Saved' : amenitiesSaving ? 'Saving…' : 'Save Amenities'}
+            </button>
+          </div>
         </div>
       )}
 

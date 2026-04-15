@@ -32,20 +32,32 @@ router.get('/', async (req, res) => {
     select: {
       id: true, name: true, slug: true, description: true,
       cuisine: true, district: true, city: true, address: true,
-      priceRange: true, rating: true, reviewCount: true,
+      priceRange: true, priceRangeNum: true,
+      rating: true, reviewCount: true,
       emoji: true, coverImage: true, isPremium: true,
       googleRating: true, latitude: true, longitude: true,
+      totalScore: true, boostScore: true,
+      hasParking: true, hasWifi: true, hasOutdoorSeating: true,
+      petsAllowed: true,
       promotion: { select: { isActive: true, startsAt: true, endsAt: true } },
+      boosts: {
+        where: { status: 'ACTIVE', endDate: { gt: now } },
+        select: { level: true },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
     },
-    orderBy: [{ isPremium: 'desc' }, { rating: 'desc' }],
+    orderBy: [{ totalScore: 'desc' }, { googleRating: 'desc' }],
   })
 
   const result = restaurants.map(r => {
     const p = (r as any).promotion
     const isPromoted = !!(p?.isActive && (!p.startsAt || p.startsAt <= now) && (!p.endsAt || p.endsAt >= now))
-    const { promotion: _, ...rest } = r as any
-    return { ...rest, isPromoted }
-  }).sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0) || (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0))
+    const activeBoost = (r as any).boosts?.[0]
+    const boostLevel: string | null = activeBoost?.level ?? null
+    const { promotion: _, boosts: __, ...rest } = r as any
+    return { ...rest, isPromoted, boostLevel }
+  })
 
   res.json(result)
 })
@@ -470,6 +482,48 @@ router.patch('/:id/publish', requireAuth, async (req, res) => {
     data: { isPublished: true, isActive: true }
   })
   res.json(updated)
+})
+
+// ─── PUT /api/restaurants/:id/amenities ──────────────────────────────────────
+const amenitiesSchema = z.object({
+  hasParking:          z.boolean().optional(),
+  parkingType:         z.enum(['free', 'paid', 'street', 'valet']).nullable().optional(),
+  parkingDetails:      z.string().max(200).nullable().optional(),
+  hasWifi:             z.boolean().optional(),
+  wifiDetails:         z.string().max(200).nullable().optional(),
+  hasOutdoorSeating:   z.boolean().optional(),
+  outdoorDetails:      z.string().max(200).nullable().optional(),
+  hasChildMenu:        z.boolean().optional(),
+  hasHighChairs:       z.boolean().optional(),
+  hasLiveMusic:        z.boolean().optional(),
+  liveMusicDetails:    z.string().max(200).nullable().optional(),
+  isSmokingAllowed:    z.boolean().optional(),
+  hasAirConditioning:  z.boolean().optional(),
+  hasPrivateRooms:     z.boolean().optional(),
+  privateRoomDetails:  z.string().max(200).nullable().optional(),
+  wheelchairAccessible:z.boolean().optional(),
+  petsAllowed:         z.boolean().optional(),
+  paymentMethods:      z.array(z.string()).optional(),
+  priceRangeNum:       z.number().int().min(1).max(4).optional(),
+  averageBill:         z.number().positive().nullable().optional(),
+  averageBillCurrency: z.string().max(5).optional(),
+})
+
+router.put('/:id/amenities', requireAuth, async (req, res) => {
+  const userId = (req as any).userId
+  const r = await prisma.restaurant.findFirst({ where: { id: req.params.id, ownerId: userId } })
+  if (!r) return res.status(403).json({ error: 'Not authorized' })
+
+  const parsed = amenitiesSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+  try {
+    const updated = await prisma.restaurant.update({
+      where: { id: req.params.id },
+      data:  parsed.data,
+    })
+    res.json(updated)
+  } catch (err) { res.status(500).json({ error: 'Failed to update amenities' }) }
 })
 
 // ─── Nested tables routes ─────────────────────────────────────────────────────

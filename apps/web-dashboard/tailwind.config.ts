@@ -67,7 +67,7 @@ const config: Config = {
   },
   plugins: [
     // scrollbar-none utility
-    function({ addUtilities }: { addUtilities: (u: Record<string, unknown>) => void }) {
+    function({ addUtilities }: { addUtilities: (u: any) => void }) {
       addUtilities({
         '.scrollbar-none': {
           '-ms-overflow-style': 'none',

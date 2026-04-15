@@ -1,4 +1,5 @@
 import cron from 'node-cron'
+import { expirePromotions, expireBoosts, recalculateScores } from './phase5-jobs'
 import { processReminders } from './reminders'
 import { processAbandonedBookings } from './abandoned-bookings'
 import { processPushReminders } from './booking-reminders-push'
@@ -23,5 +24,11 @@ export function startCronJobs() {
   cron.schedule('0 8 * * 1', () => processWeeklyReport().catch(console.error))
   // Google Reviews sync — daily at 3:00 AM
   cron.schedule('0 3 * * *', () => syncAllGoogleReviews().catch(console.error))
+  // Phase 5: Expire promotions — every hour
+  cron.schedule('0 * * * *', () => expirePromotions().catch(console.error))
+  // Phase 5: Expire boosts + zero boostScore — every hour
+  cron.schedule('0 * * * *', () => expireBoosts().catch(console.error))
+  // Phase 5: Recalculate restaurant scores — every 6 hours
+  cron.schedule('0 */6 * * *', () => recalculateScores().catch(console.error))
   console.log('[Cron] All jobs started')
 }

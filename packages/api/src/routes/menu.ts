@@ -2,9 +2,14 @@ import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
+import { getIo } from '../lib/socket'
 
 const prisma = new PrismaClient()
 const router = Router()
+
+function emitMenuUpdated(restaurantId: string) {
+  getIo()?.to(`restaurant:${restaurantId}`).emit('menu:updated', { restaurantId })
+}
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -94,6 +99,7 @@ router.post('/categories', requireAuth, async (req, res) => {
     const category = await prisma.menuCategory.create({
       data: { restaurantId, name, sortOrder: sortOrder ?? 0 },
     })
+    emitMenuUpdated(restaurantId)
     res.status(201).json(category)
   } catch (err) {
     console.error(err)
@@ -117,6 +123,7 @@ router.patch('/categories/:id', requireAuth, async (req, res) => {
 
   try {
     const updated = await prisma.menuCategory.update({ where: { id }, data: parsed.data })
+    emitMenuUpdated(category.restaurantId)
     res.json(updated)
   } catch (err) {
     console.error(err)
@@ -139,6 +146,7 @@ router.delete('/categories/:id', requireAuth, async (req, res) => {
   try {
     await prisma.menuItem.deleteMany({ where: { categoryId: id } })
     await prisma.menuCategory.delete({ where: { id } })
+    emitMenuUpdated(category.restaurantId)
     res.json({ ok: true })
   } catch (err) {
     console.error(err)
@@ -162,17 +170,20 @@ router.post('/items', requireAuth, async (req, res) => {
   try {
     const item = await prisma.menuItem.create({
       data: {
-        categoryId:  parsed.data.categoryId,
-        name:        parsed.data.name,
-        description: parsed.data.description,
-        price:       parsed.data.price,
-        imageUrl:    parsed.data.photoUrl ?? parsed.data.imageUrl,
-        available:   parsed.data.available ?? true,
-        sortOrder:   parsed.data.sortOrder ?? 0,
-        allergens:   parsed.data.allergens ?? [],
-        isPopular:   parsed.data.isPopular ?? false,
+        categoryId:   parsed.data.categoryId,
+        restaurantId: category.restaurantId,
+        name:         parsed.data.name,
+        description:  parsed.data.description,
+        price:        parsed.data.price,
+        imageUrl:     parsed.data.photoUrl ?? parsed.data.imageUrl,
+        available:    parsed.data.available ?? true,
+        isAvailable:  parsed.data.available ?? true,
+        sortOrder:    parsed.data.sortOrder ?? 0,
+        allergens:    parsed.data.allergens ?? [],
+        isPopular:    parsed.data.isPopular ?? false,
       },
     })
+    emitMenuUpdated(category.restaurantId)
     res.status(201).json(item)
   } catch (err) {
     console.error(err)
@@ -195,10 +206,15 @@ router.patch('/items/:id', requireAuth, async (req, res) => {
   if (!restaurant) return res.status(403).json({ error: 'Access denied' })
 
   try {
-    const { photoUrl, ...restData } = parsed.data
+    const { photoUrl, available, ...restData } = parsed.data
     const updateData: any = { ...restData }
     if (photoUrl !== undefined) updateData.imageUrl = photoUrl
+    if (available !== undefined) {
+      updateData.available = available
+      updateData.isAvailable = available
+    }
     const updated = await prisma.menuItem.update({ where: { id }, data: updateData })
+    emitMenuUpdated(item.category.restaurantId)
     res.json(updated)
   } catch (err) {
     console.error(err)
@@ -220,6 +236,7 @@ router.delete('/items/:id', requireAuth, async (req, res) => {
 
   try {
     await prisma.menuItem.delete({ where: { id } })
+    emitMenuUpdated(item.category.restaurantId)
     res.json({ ok: true })
   } catch (err) {
     console.error(err)

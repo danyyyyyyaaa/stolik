@@ -16,6 +16,8 @@ import { MOCK_RESTAURANTS } from '../../src/data/mockRestaurants'
 import { normalizeRestaurant, type NormalizedRestaurant } from '../../src/utils/restaurant'
 import LanguagePickerModal from '../../src/components/LanguagePickerModal'
 import FilterModal from '../../src/components/FilterModal'
+import FeaturedPromotionsBanner from '../../src/components/FeaturedPromotionsBanner'
+import { AmenitiesCompact } from '../../src/components/AmenitiesSection'
 import { type FilterState, DEFAULT_FILTERS, countActiveFilters, applyFilters } from '../../src/utils/filters'
 
 const { width: W } = Dimensions.get('window')
@@ -227,7 +229,7 @@ function RestaurantCard({
 
   const isOpen      = (r as any).isOpen !== false
   const reviewCount = (r as any).reviewCount as number | undefined
-  const isPromoted  = !!(r as any).isPromoted
+  const boostLevel  = (r as any).boostLevel as 'BOOST' | 'BOOST_PRO' | 'BOOST_PREMIUM' | null
 
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }, { scale }] }}>
@@ -236,7 +238,14 @@ function RestaurantCard({
           onPress={onPress}
           onPressIn={onPressIn}
           onPressOut={onPressOut}
-          style={[s.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
+          style={[
+            s.card,
+            {
+              backgroundColor: th.bgCard,
+              borderColor: boostLevel === 'BOOST_PREMIUM' ? '#F0A500' : th.border,
+              borderWidth: boostLevel === 'BOOST_PREMIUM' ? 2 : 1,
+            },
+          ]}
         >
           {/* Image */}
           <View style={s.imgWrap}>
@@ -252,9 +261,19 @@ function RestaurantCard({
                 <Text style={s.openTxt}>{t.available_now}</Text>
               </View>
             )}
-            {isPromoted && (
-              <View style={s.adBadge}>
-                <Text style={s.adTxt}>{t.sponsored as string}</Text>
+            {boostLevel === 'BOOST_PREMIUM' && (
+              <View style={[s.boostBadge, s.boostBadgePremium]}>
+                <Text style={s.boostBadgeTxt}>⭐ {(t as any).boost_premium}</Text>
+              </View>
+            )}
+            {boostLevel === 'BOOST_PRO' && (
+              <View style={[s.boostBadge, s.boostBadgePro]}>
+                <Text style={s.boostBadgeTxt}>🔥 {(t as any).boost_top}</Text>
+              </View>
+            )}
+            {boostLevel === 'BOOST' && (
+              <View style={[s.boostBadge, s.boostBadgeBasic]}>
+                <Text style={s.boostBadgeTxt}>✨ {(t as any).boost_recommended}</Text>
               </View>
             )}
           </View>
@@ -285,6 +304,8 @@ function RestaurantCard({
                 {[r.district, r.city].filter(Boolean).join(', ')}
               </Text>
             </View>
+
+            <AmenitiesCompact amenities={r as any} />
 
             <TouchableOpacity
               onPress={onPress}
@@ -323,19 +344,13 @@ const s = StyleSheet.create({
   locTxt:      { fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', flex: 1 },
   reserveBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: radii.md, marginTop: 2 },
   reserveTxt:  { color: '#fff', fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold' },
-  adBadge:     { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
-  adTxt:       { color: '#fff', fontSize: 10, fontFamily: 'PlusJakartaSans_600SemiBold', letterSpacing: 0.5 },
+  boostBadge:        { position: 'absolute', top: 12, left: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm },
+  boostBadgePremium: { backgroundColor: '#F0A500' },
+  boostBadgePro:     { backgroundColor: 'rgba(99,102,241,0.92)' },
+  boostBadgeBasic:   { backgroundColor: 'rgba(0,0,0,0.52)' },
+  boostBadgeTxt:     { color: '#fff', fontSize: 10, fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: 0.3 },
 })
 
-// ─── Deal card styles ─────────────────────────────────────────────────────────
-const dc = StyleSheet.create({
-  card:     { width: 180, borderRadius: radii.md, borderWidth: 1, padding: 12, marginRight: 12 },
-  badge:    { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm, marginBottom: 8 },
-  badgeTxt: { color: '#fff', fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold' },
-  restName: { fontSize: 11, fontFamily: 'PlusJakartaSans_400Regular', marginBottom: 3 },
-  title:    { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold', marginBottom: 6, lineHeight: 18 },
-  expire:   { fontSize: 10, fontFamily: 'PlusJakartaSans_400Regular' },
-})
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
@@ -349,7 +364,6 @@ export default function HomeScreen() {
   const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS)
   const [loading,         setLoading]         = useState(true)
   const [refreshing,      setRefreshing]      = useState(false)
-  const [deals,           setDeals]           = useState<any[]>([])
 
   const activeFilterCount = countActiveFilters(filters)
 
@@ -372,12 +386,6 @@ export default function HomeScreen() {
     if (restaurants.length === 0) setRestaurants(MOCK_RESTAURANTS)
     setLoading(false)
     load()
-    // Load deals
-    const apiBase = process.env.EXPO_PUBLIC_API_URL || ''
-    fetch(`${apiBase}/api/deals`)
-      .then(r => r.json())
-      .then(d => setDeals(Array.isArray(d) ? d.slice(0, 6) : []))
-      .catch(() => {})
   }, [])
 
   const onRefresh = useCallback(async () => {
@@ -386,10 +394,31 @@ export default function HomeScreen() {
     setRefreshing(false)
   }, [])
 
+  const BOOST_ORDER: Record<string, number> = { BOOST_PREMIUM: 0, BOOST_PRO: 1, BOOST: 2 }
+
   const filtered = applyFilters(restaurants as NormalizedRestaurant[], filters)
+    .slice()
+    .sort((a, b) => {
+      const scoreA = (a as any).totalScore ?? 0
+      const scoreB = (b as any).totalScore ?? 0
+      return scoreB - scoreA
+    })
+
   const featured = [...(restaurants as NormalizedRestaurant[])]
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     .slice(0, 8)
+
+  const promoted = (restaurants as NormalizedRestaurant[])
+    .filter(r => {
+      const lvl = (r as any).boostLevel as string | null
+      return lvl === 'BOOST_PRO' || lvl === 'BOOST_PREMIUM'
+    })
+    .slice()
+    .sort((a, b) => {
+      const oa = BOOST_ORDER[(a as any).boostLevel] ?? 9
+      const ob = BOOST_ORDER[(b as any).boostLevel] ?? 9
+      return oa - ob
+    })
 
   // "Available now" = first 3 from filtered list
   const availableNow = filtered.slice(0, 3)
@@ -526,45 +555,39 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* ── Deals 🔥 ── */}
-              {deals.length > 0 && (
+              {/* ── Recommended (Boosted) ── */}
+              {!loading && promoted.length > 0 && (
                 <View style={hs.section}>
                   <View style={hs.sectionHead}>
-                    <Text style={[hs.sectionTitle, { color: th.text }]}>{t.deals_label as string}</Text>
+                    <Text style={[hs.sectionTitle, { color: th.text }]}>
+                      ✨ {(t as any).boost_recommended ?? 'Recommended'}
+                    </Text>
+                    <View style={[hs.sponsoredLabel, { borderColor: th.border }]}>
+                      <Text style={[hs.sponsoredTxt, { color: th.textMuted }]}>Sponsored</Text>
+                    </View>
                   </View>
                   <FlatList
-                    data={deals}
+                    data={promoted}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    keyExtractor={d => d.id}
+                    keyExtractor={r => r.id + '_rec'}
+                    snapToInterval={W * 0.72 + 12}
+                    decelerationRate="fast"
                     contentContainerStyle={{ paddingRight: 16 }}
-                    renderItem={({ item: deal }) => (
-                      <TouchableOpacity
-                        onPress={() => router.push(`/restaurant/${deal.restaurant?.id ?? deal.restaurantId}`)}
-                        activeOpacity={0.85}
-                        style={[dc.card, { backgroundColor: th.bgCard, borderColor: th.border }]}
-                      >
-                        <View style={[dc.badge, { backgroundColor: colors.primaryAccent }]}>
-                          <Text style={dc.badgeTxt}>
-                            {deal.discountType === 'freeitem' ? '🎁 Free'
-                              : deal.discountType === 'percent' ? `${deal.discountValue}% ${t.deal_off as string}`
-                              : `${deal.discountValue} PLN ${t.deal_off as string}`}
-                          </Text>
-                        </View>
-                        <Text style={[dc.restName, { color: th.textSub }]} numberOfLines={1}>
-                          {deal.restaurant?.name ?? ''}
-                        </Text>
-                        <Text style={[dc.title, { color: th.text }]} numberOfLines={2}>{deal.title}</Text>
-                        {deal.validUntil && (
-                          <Text style={[dc.expire, { color: th.textMuted }]}>
-                            {t.deal_expires as string}: {new Date(deal.validUntil).toLocaleDateString()}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
+                    renderItem={({ item }) => (
+                      <PopularCard
+                        r={item}
+                        onPress={() => router.push(`/restaurant/${item.id}`)}
+                      />
                     )}
                   />
                 </View>
               )}
+
+              {/* ── Featured Promotions Banner ── */}
+              <FeaturedPromotionsBanner
+                onSeeAll={() => router.navigate('/(tabs)/search')}
+              />
 
               {/* ── Available Now ── */}
               {!loading && availableNow.length > 0 && (
@@ -701,6 +724,10 @@ const hs = StyleSheet.create({
   seeAll:      { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold' },
   countBadge:  { paddingHorizontal: 10, paddingVertical: 3, borderRadius: radii.sm },
   countTxt:    { fontSize: 12, fontFamily: 'PlusJakartaSans_700Bold' },
+
+  // Sponsored label
+  sponsoredLabel: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: radii.sm, borderWidth: 1 },
+  sponsoredTxt:   { fontSize: 10, fontFamily: 'PlusJakartaSans_500Medium' },
 
   // Empty state
   empty:       { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
